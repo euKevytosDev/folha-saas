@@ -1,0 +1,48 @@
+server:
+  port: ${SERVER_PORT:8080}
+  error:
+    include-message: never
+    include-stacktrace: never
+    include-binding-errors: never
+    include-exception: false
+
+spring:
+  application:
+    name: folha
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  config:
+    import: optional:file:../.env[.properties],optional:file:.env[.properties]
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/folha}
+    username: ${DATABASE_USERNAME:folha}
+    password: ${DATABASE_PASSWORD:folha}
+    hikari:
+      pool-name: folha-pool
+      maximum-pool-size: ${DATABASE_POOL_SIZE:10}
+      minimum-idle: 2
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+app:
+  name: Folha
+  frontend-dir: ${FRONTEND_DIR:}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:8080}
+  jwt:
+    secret: ${JWT_SECRET:change-me-dev-only-not-for-production-use-32b}
+    access-token-expiration-ms: ${JWT_ACCESS_EXPIRATION_MS:900000}
+    refresh-token-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:604800000}
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%X{tenantId:-}] %logger{36} - %msg%n"

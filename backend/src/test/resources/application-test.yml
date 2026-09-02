@@ -1,0 +1,18 @@
+spring:
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5433/folha}
+    username: ${DATABASE_USERNAME:folha}
+    password: ${DATABASE_PASSWORD:folha}
+  jpa:
+    hibernate:
+      ddl-auto: none
+
+app:
+  frontend-dir: ${user.dir}/../frontend
+  cors:
+    allowed-origins:
+      - http://localhost:8080
+  jwt:
+    secret: test-secret-only-for-local-tests-not-prod
+    access-token-expiration-ms: 900000
+    refresh-token-expiration-ms: 604800000

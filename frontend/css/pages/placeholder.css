@@ -1,0 +1,15 @@
+.panel-main {
+    padding: var(--space-10) 0 var(--space-16);
+}
+
+.panel-main h1 {
+    font-family: var(--font-display);
+    font-size: clamp(1.8rem, 5vw, 2.4rem);
+    letter-spacing: -0.03em;
+    margin: var(--space-3) 0;
+}
+
+.placeholder-card {
+    margin-top: var(--space-6);
+    padding: var(--space-6);
+}

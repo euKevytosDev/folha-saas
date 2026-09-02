@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Folha — Pedidos online para sacolões e hortifrutis</title>
+    <meta name="description" content="Crie a loja online do seu sacolão. Seus clientes pedem pelo celular, você organiza os pedidos em um só painel.">
+    <meta property="og:title" content="Folha — Pedidos online para sacolões">
+    <meta property="og:description" content="Loja no celular, pedidos organizados e operação simples para hortifrutis e mercados.">
+    <meta property="og:type" content="website">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,650&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/reset.css">
+    <link rel="stylesheet" href="/css/layout.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/pages/landing.css">
+</head>
+<body class="page-shell">
+    <header class="site-header">
+        <div class="container header-inner">
+            <a class="brand" href="/">
+                <img class="brand-mark" src="/assets/icons/logo.svg" alt="">
+                <span class="brand-name">Folha</span>
+            </a>
+            <nav class="header-nav" aria-label="Principal">
+                <a href="#recursos">Recursos</a>
+                <a href="#planos">Planos</a>
+            </nav>
+            <div class="header-actions">
+                <a class="btn btn-ghost" href="/login">Entrar</a>
+                <a class="btn btn-primary" href="/cadastro">Começar</a>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="container hero-grid">
+                <div>
+                    <span class="badge"><span class="status-dot"></span> Feito para o celular do cliente</span>
+                    <h1>A loja do seu sacolão, pronta no WhatsApp da vizinhança.</h1>
+                    <p class="hero-copy">Catálogo, pedidos, entrega e pagamentos em uma plataforma só. O cliente pede pelo celular, sem instalar nada.</p>
+                    <div class="hero-actions">
+                        <a class="btn btn-primary" href="/cadastro">Criar minha loja</a>
+                        <a class="btn btn-secondary" href="/loja/sacolao-demo">Ver loja de exemplo</a>
+                    </div>
+                    <div class="hero-meta">
+                        <span id="api-status">Verificando API…</span>
+                        <span>Multi-tenant desde o primeiro dia</span>
+                    </div>
+                </div>
+                <div class="phone" aria-hidden="true">
+                    <div class="phone-bar">
+                        <span class="phone-store">Sacolão do Bairro</span>
+                        <span class="badge">Aberto</span>
+                    </div>
+                    <div class="phone-search"></div>
+                    <div class="chips">
+                        <span class="chip">Frutas</span>
+                        <span class="chip">Verduras</span>
+                        <span class="chip">Legumes</span>
+                    </div>
+                    <div class="product-mini">
+                        <article>
+                            <div class="product-thumb"></div>
+                            <h3>Banana prata</h3>
+                            <p>R$ 6,90/kg</p>
+                        </article>
+                        <article>
+                            <div class="product-thumb"></div>
+                            <h3>Alface crespa</h3>
+                            <p>R$ 3,50/un</p>
+                        </article>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="features" id="recursos">
+            <div class="container">
+                <h2 class="section-title">Operação completa, sem complicar.</h2>
+                <p class="muted" style="margin-top: 0.75rem; max-width: 36rem;">Tudo que um hortifruti precisa para vender online, organizado em um painel simples.</p>
+                <div class="feature-grid">
+                    <article class="card feature-card">
+                        <span class="badge">Loja</span>
+                        <h3>Vitrine no celular</h3>
+                        <p class="muted">Categorias, busca, produtos por kg e carrinho pensados para dedo e pressa.</p>
+                    </article>
+                    <article class="card feature-card">
+                        <span class="badge">Pedidos</span>
+                        <h3>Fila organizada</h3>
+                        <p class="muted">Do pedido novo até a entrega, com histórico e valores preservados.</p>
+                    </article>
+                    <article class="card feature-card">
+                        <span class="badge">SaaS</span>
+                        <h3>Vários estabelecimentos</h3>
+                        <p class="muted">Cada loja com seus dados isolados, planos e usuários próprios.</p>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section class="steps">
+            <div class="container">
+                <h2 class="section-title">Do cadastro ao primeiro pedido.</h2>
+                <div class="step-grid">
+                    <article class="card step-card">
+                        <strong>1</strong>
+                        <h3>Crie a loja</h3>
+                        <p class="muted">Nome, logo, horário e endereço. Sua URL fica pronta: /loja/seu-sacolao.</p>
+                    </article>
+                    <article class="card step-card">
+                        <strong>2</strong>
+                        <h3>Monte o catálogo</h3>
+                        <p class="muted">Categorias, preços, estoque e disponibilidade em poucos toques.</p>
+                    </article>
+                    <article class="card step-card">
+                        <strong>3</strong>
+                        <h3>Receba pedidos</h3>
+                        <p class="muted">O cliente finaliza no celular. Você confirma, separa e entrega.</p>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section class="plans" id="planos">
+            <div class="container">
+                <h2 class="section-title">Planos que crescem com a banca.</h2>
+                <div class="plan-grid">
+                    <article class="card plan-card">
+                        <h3>Basic</h3>
+                        <p class="plan-price">R$ 79</p>
+                        <ul>
+                            <li>Loja pública</li>
+                            <li>Pedidos e catálogo</li>
+                            <li>Até 2 usuários</li>
+                        </ul>
+                        <a class="btn btn-secondary btn-block" href="/cadastro">Começar</a>
+                    </article>
+                    <article class="card plan-card featured">
+                        <h3>Pro</h3>
+                        <p class="plan-price">R$ 149</p>
+                        <ul>
+                            <li>Cupons e relatórios</li>
+                            <li>PIX e entregas</li>
+                            <li>Até 8 usuários</li>
+                        </ul>
+                        <a class="btn btn-primary btn-block" href="/cadastro">Escolher Pro</a>
+                    </article>
+                    <article class="card plan-card">
+                        <h3>Premium</h3>
+                        <p class="plan-price">R$ 249</p>
+                        <ul>
+                            <li>Domínio próprio</li>
+                            <li>Fiscal e WhatsApp</li>
+                            <li>Usuários ilimitados</li>
+                        </ul>
+                        <a class="btn btn-secondary btn-block" href="/cadastro">Falar com a Folha</a>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section class="cta-band">
+            <div class="container">
+                <div class="card">
+                    <span class="badge">Sem aplicativo para o cliente</span>
+                    <h2 class="section-title">Abra a loja ainda esta semana.</h2>
+                    <a class="btn btn-primary" href="/cadastro">Criar conta</a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container footer-inner">
+            <span>Folha — pedidos online para sacolões e hortifrutis</span>
+            <div class="footer-links">
+                <a href="/login">Painel</a>
+                <a href="/superadmin">Super admin</a>
+            </div>
+        </div>
+    </footer>
+
+    <script type="module" src="/js/pages/landing.js"></script>
+</body>
+</html>

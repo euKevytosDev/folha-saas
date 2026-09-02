@@ -1,0 +1,37 @@
+# Build
+backend/target/
+*.class
+*.jar
+*.war
+*.log
+
+# Environment and secrets
+.env
+.env.local
+*.pem
+*.p12
+*.jks
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.classpath
+.project
+.settings/
+.factorypath
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Maven wrapper leftovers
+backend/.mvn/wrapper/maven-wrapper.jar.md5
+
+# Logs and temp
+*.swp
+*.swo
+/tmp/
+backend/hs_err_pid*

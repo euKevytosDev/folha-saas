@@ -1,0 +1,15 @@
+package com.sacolao;
+
+import com.sacolao.config.AppProperties;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+
+@SpringBootApplication
+@EnableConfigurationProperties(AppProperties.class)
+public class SacolaoApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(SacolaoApplication.class, args);
+    }
+}

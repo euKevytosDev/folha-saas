@@ -1,0 +1,8 @@
+app:
+  frontend-dir: ${FRONTEND_DIR:${user.dir}/../frontend}
+
+logging:
+  level:
+    com.sacolao: DEBUG
+    org.flywaydb: INFO
+    org.springframework.security: INFO
