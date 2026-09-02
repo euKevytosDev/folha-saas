@@ -42,6 +42,12 @@ app:
     secret: ${JWT_SECRET:change-me-dev-only-not-for-production-use-32b}
     access-token-expiration-ms: ${JWT_ACCESS_EXPIRATION_MS:900000}
     refresh-token-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:604800000}
+  auth:
+    password-reset-expiration-ms: ${PASSWORD_RESET_EXPIRATION_MS:3600000}
+    cookie-secure: ${COOKIE_SECURE:false}
+  bootstrap:
+    superadmin-email: ${BOOTSTRAP_SUPERADMIN_EMAIL:}
+    superadmin-password: ${BOOTSTRAP_SUPERADMIN_PASSWORD:}
 
 logging:
   pattern:

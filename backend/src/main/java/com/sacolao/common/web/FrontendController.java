@@ -26,6 +26,11 @@ public class FrontendController {
         return "forward:/pages/recuperar-senha.html";
     }
 
+    @GetMapping("/redefinir-senha")
+    public String resetPassword() {
+        return "forward:/pages/redefinir-senha.html";
+    }
+
     @GetMapping("/loja/{slug}")
     public String store() {
         return "forward:/pages/loja.html";

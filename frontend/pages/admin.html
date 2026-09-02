@@ -18,22 +18,59 @@
 <body class="page-shell">
     <header class="site-header">
         <div class="container header-inner">
-            <a class="brand" href="/">
+            <a class="brand" href="/admin">
                 <img class="brand-mark" src="/assets/icons/logo.svg" alt="">
-                <span class="brand-name">Folha</span>
+                <span class="brand-name" id="store-name">Folha</span>
             </a>
-            <a class="btn btn-secondary" href="/login">Entrar</a>
+            <div class="header-actions">
+                <span class="muted" id="user-name"></span>
+                <button class="btn btn-secondary" id="logout-button" type="button">Sair</button>
+            </div>
         </div>
     </header>
     <main class="panel-main">
         <div class="container">
-            <span class="badge">Estabelecimento</span>
-            <h1>Painel administrativo</h1>
-            <p class="muted">O dashboard, pedidos e catálogo entram a partir da Fase 2, depois da autenticação JWT.</p>
-            <div class="card placeholder-card">
-                <p>Esta rota já está reservada. Faça login para acessar o painel quando a autenticação estiver ativa.</p>
+            <span class="badge" id="user-role">Painel</span>
+            <h1>Sua loja</h1>
+            <p class="muted">Pedidos e catálogo entram nas próximas fases. A autenticação e o isolamento do estabelecimento já estão ativos.</p>
+            <div class="panel-grid">
+                <section class="card placeholder-card">
+                    <h2>Estabelecimento</h2>
+                    <p class="muted" id="store-slug"></p>
+                    <p>Plano: <strong id="store-plan"></strong></p>
+                    <p>Status: <strong id="store-status"></strong></p>
+                    <p style="margin-top: 1rem;"><a class="btn btn-secondary" id="store-link" href="/">Ver loja pública</a></p>
+                </section>
+                <section class="card placeholder-card" id="users-card">
+                    <h2>Equipe</h2>
+                    <div id="users-list"></div>
+                    <div class="alert" id="users-alert" hidden></div>
+                    <form id="user-form" class="auth-form" style="margin-top: 1rem;">
+                        <div class="field">
+                            <label for="member-name">Nome</label>
+                            <input id="member-name" name="name" type="text" required>
+                        </div>
+                        <div class="field">
+                            <label for="member-email">E-mail</label>
+                            <input id="member-email" name="email" type="email" required>
+                        </div>
+                        <div class="field">
+                            <label for="member-password">Senha</label>
+                            <input id="member-password" name="password" type="password" minlength="8" required>
+                        </div>
+                        <div class="field">
+                            <label for="member-role">Perfil</label>
+                            <select id="member-role" name="role">
+                                <option value="STAFF">STAFF</option>
+                                <option value="ADMIN">ADMIN</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary" type="submit">Adicionar</button>
+                    </form>
+                </section>
             </div>
         </div>
     </main>
+    <script type="module" src="/js/pages/admin.js?v=2"></script>
 </body>
 </html>

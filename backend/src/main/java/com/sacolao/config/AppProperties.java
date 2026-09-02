@@ -9,7 +9,9 @@ public record AppProperties(
         String name,
         String frontendDir,
         Cors cors,
-        Jwt jwt
+        Jwt jwt,
+        Auth auth,
+        Bootstrap bootstrap
 ) {
     public record Cors(List<String> allowedOrigins) {
     }
@@ -18,6 +20,18 @@ public record AppProperties(
             String secret,
             long accessTokenExpirationMs,
             long refreshTokenExpirationMs
+    ) {
+    }
+
+    public record Auth(
+            long passwordResetExpirationMs,
+            boolean cookieSecure
+    ) {
+    }
+
+    public record Bootstrap(
+            String superadminEmail,
+            String superadminPassword
     ) {
     }
 }

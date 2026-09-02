@@ -30,10 +30,10 @@ public class WebConfig implements WebMvcConfigurer {
 
         registry.addResourceHandler("/css/**")
                 .addResourceLocations(location + "css/")
-                .setCacheControl(CacheControl.maxAge(1, TimeUnit.HOURS).cachePublic());
+                .setCacheControl(CacheControl.noStore());
         registry.addResourceHandler("/js/**")
                 .addResourceLocations(location + "js/")
-                .setCacheControl(CacheControl.maxAge(1, TimeUnit.HOURS).cachePublic());
+                .setCacheControl(CacheControl.noStore());
         registry.addResourceHandler("/assets/**")
                 .addResourceLocations(location + "assets/")
                 .setCacheControl(CacheControl.maxAge(7, TimeUnit.DAYS).cachePublic());

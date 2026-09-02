@@ -18,21 +18,26 @@
 <body class="page-shell">
     <header class="site-header">
         <div class="container header-inner">
-            <a class="brand" href="/">
+            <a class="brand" href="/superadmin">
                 <img class="brand-mark" src="/assets/icons/logo.svg" alt="">
                 <span class="brand-name">Folha</span>
             </a>
+            <div class="header-actions">
+                <span class="muted" id="user-name"></span>
+                <button class="btn btn-secondary" id="logout-button" type="button">Sair</button>
+            </div>
         </div>
     </header>
     <main class="panel-main">
         <div class="container">
             <span class="badge">Plataforma</span>
-            <h1>Super admin</h1>
-            <p class="muted">Métricas da plataforma, estabelecimentos e planos entram na Fase 8.</p>
-            <div class="card placeholder-card">
-                <p>Acesso restrito a SUPER_ADMIN. Isolamento de dados operacionais dos tenants será validado no backend.</p>
-            </div>
+            <h1>Estabelecimentos</h1>
+            <p class="muted">Visão global da plataforma. Dados operacionais de clientes permanecem isolados em cada tenant.</p>
+            <section class="card placeholder-card">
+                <div id="establishments-list"></div>
+            </section>
         </div>
     </main>
+    <script type="module" src="/js/pages/superadmin.js?v=2"></script>
 </body>
 </html>

@@ -19,29 +19,33 @@ A API vive em `/api/v1`. O frontend é servido pelo próprio Spring Boot.
 
 Schema compartilhado no PostgreSQL, com `establishment_id` em toda entidade operacional.
 
-- Painel autenticado: o tenant sai do JWT.
-- Loja pública: o tenant sai do `slug` da URL.
-- `SUPER_ADMIN` não carrega tenant e não acessa dados operacionais sem ação explícita.
+- Painel autenticado: o tenant sai do JWT e é confirmado no banco.
+- Consultas operacionais usam `establishment_id`. Acesso cruzado responde **404**.
+- `SUPER_ADMIN` não carrega tenant e não usa endpoints operacionais comuns.
 - O frontend nunca é a fonte da verdade do isolamento.
 
-### Autenticação (a partir da Fase 2)
+### Autenticação
 
-Spring Security + JWT.
+Spring Security + JWT HS256.
 
-- Access token curto
-- Refresh token persistido apenas como hash
+- Access token curto no header `Authorization: Bearer`
+- Claims: `sub`, `role`, `establishmentId`
+- Refresh token opaco, aleatório, persistido **somente como hash SHA-256**
+- Rotação de refresh token a cada uso
+- Cookie HttpOnly `folha_refresh` (SameSite=Lax, Path=`/api/v1/auth`) para o browser
+- O JSON de login/refresh também devolve o refresh token para clientes de API/testes; o frontend **não** grava esse valor
+- Access token no `sessionStorage` (exposto a XSS; TTL curto. Não usar `localStorage` para refresh)
 - Senhas com BCrypt
 - Roles: `SUPER_ADMIN`, `OWNER`, `ADMIN`, `STAFF`
 
-### Dinheiro e auditoria
-
-Valores monetários usam `BigDecimal` / `NUMERIC`. Pedidos guardam snapshot de preço, produto e endereço. O servidor recalcula totais.
+CSRF do formulário está desabilitado porque o access token não vai em cookie. O refresh cookie só é enviado em POST same-site para `/api/v1/auth/*`.
 
 ## Tecnologias
 
 - Java 21
 - Spring Boot 4.1
 - Spring Web MVC, Security, Data JPA, Validation
+- Nimbus JWT
 - PostgreSQL 16
 - Flyway
 - HTML5, CSS3, JavaScript (ES modules) e Fetch API
@@ -50,15 +54,19 @@ Valores monetários usam `BigDecimal` / `NUMERIC`. Pedidos guardam snapshot de p
 
 ### 1. PostgreSQL
 
-Com Docker:
+Neste ambiente a porta `5432` já estava ocupada. O banco da Folha usa **5433**.
+
+```
+jdbc:postgresql://localhost:5433/folha
+```
+
+Usuário/senha padrão de desenvolvimento: `folha` / `folha`.
+
+Com Docker (porta 5432 por padrão; ajuste se houver conflito):
 
 ```bash
 docker compose up -d
 ```
-
-Sem Docker, crie o banco `folha` e o usuário `folha`.
-
-Se a porta `5432` já estiver ocupada, use outra porta e ajuste `DATABASE_URL`.
 
 ### 2. Variáveis de ambiente
 
@@ -71,7 +79,6 @@ Nunca commite o arquivo `.env`.
 ### 3. Subir a aplicação
 
 ```bash
-chmod +x scripts/dev.sh
 ./scripts/dev.sh
 ```
 
@@ -79,12 +86,12 @@ Ou:
 
 ```bash
 cd backend
-mvn spring-boot:run
+./mvnw spring-boot:run
 ```
 
 Abra [http://localhost:8080](http://localhost:8080).
 
-A API de saúde responde em [http://localhost:8080/api/v1/health](http://localhost:8080/api/v1/health).
+Saúde: [http://localhost:8080/api/v1/health](http://localhost:8080/api/v1/health).
 
 ## Variáveis de ambiente
 
@@ -96,65 +103,73 @@ A API de saúde responde em [http://localhost:8080/api/v1/health](http://localho
 | `DATABASE_USERNAME` | Usuário do banco |
 | `DATABASE_PASSWORD` | Senha do banco |
 | `CORS_ALLOWED_ORIGINS` | Origens permitidas, separadas por vírgula |
-| `JWT_SECRET` | Segredo do JWT (mínimo 32 bytes, só em variável de ambiente) |
-| `JWT_ACCESS_EXPIRATION_MS` | Expiração do access token |
-| `JWT_REFRESH_EXPIRATION_MS` | Expiração do refresh token |
-| `FRONTEND_DIR` | Pasta do frontend em desenvolvimento; vazio em produção |
+| `JWT_SECRET` | Segredo HMAC do JWT (mínimo 32 bytes) |
+| `JWT_ACCESS_EXPIRATION_MS` | TTL do access token (padrão 15 min) |
+| `JWT_REFRESH_EXPIRATION_MS` | TTL do refresh token (padrão 7 dias) |
+| `PASSWORD_RESET_EXPIRATION_MS` | TTL do token de recuperação |
+| `COOKIE_SECURE` | `true` em HTTPS |
+| `BOOTSTRAP_SUPERADMIN_EMAIL` | Cria SUPER_ADMIN no perfil `dev` se ainda não existir |
+| `BOOTSTRAP_SUPERADMIN_PASSWORD` | Senha do SUPER_ADMIN inicial |
+| `FRONTEND_DIR` | Pasta do frontend em desenvolvimento |
 
 ## Banco e migrations
 
-O Hibernate **não** cria tabelas. Toda mudança de schema passa pelo Flyway em `backend/src/main/resources/db/migration`.
+O Hibernate **não** cria tabelas. Toda mudança de schema passa pelo Flyway.
 
-A Fase 1 cria:
+Fase 1 (`V1__baseline.sql`):
 
 - `establishments`
 - `users`
 - `refresh_tokens`
 - `password_reset_tokens`
 
+A Fase 2 reutiliza esse schema. Nenhuma migration extra foi necessária.
+
 IDs são UUID. Datas em `timestamptz` (UTC).
 
 ## Usuários iniciais
 
-Ainda não há seed. Login, cadastro e SUPER_ADMIN entram na Fase 2.
+Não há seed obrigatório. O cadastro público cria um `OWNER` e o estabelecimento.
+
+No perfil `dev`, um `SUPER_ADMIN` pode ser criado pelas variáveis `BOOTSTRAP_SUPERADMIN_*`.
 
 ## Endpoints principais
 
-| Método | Caminho | Descrição |
+| Método | Caminho | Acesso |
 | --- | --- | --- |
-| `GET` | `/api/v1/health` | Saúde da aplicação |
-| `GET` | `/` | Landing da plataforma |
-| `GET` | `/login` | Login |
-| `GET` | `/cadastro` | Cadastro |
-| `GET` | `/loja/{slug}` | Loja pública (placeholder até a Fase 3) |
-| `GET` | `/admin` | Painel do estabelecimento |
-| `GET` | `/superadmin` | Painel da plataforma |
+| `GET` | `/api/v1/health` | público |
+| `POST` | `/api/v1/auth/register` | público |
+| `POST` | `/api/v1/auth/login` | público |
+| `POST` | `/api/v1/auth/refresh` | cookie ou body |
+| `POST` | `/api/v1/auth/logout` | cookie ou body |
+| `POST` | `/api/v1/auth/forgot-password` | público |
+| `POST` | `/api/v1/auth/reset-password` | público |
+| `POST` | `/api/v1/auth/change-password` | autenticado |
+| `GET` | `/api/v1/auth/me` | autenticado |
+| `GET` | `/api/v1/establishments/me` | OWNER, ADMIN, STAFF |
+| `GET` | `/api/v1/establishments/{id}` | próprio tenant; SUPER_ADMIN (explícito) |
+| `PUT` | `/api/v1/establishments/{id}` | OWNER, ADMIN do próprio tenant |
+| `PATCH` | `/api/v1/establishments/{id}/status` | OWNER do próprio tenant ou SUPER_ADMIN |
+| `GET/POST` | `/api/v1/users` | OWNER, ADMIN do próprio tenant |
+| `GET` | `/api/v1/admin/establishments` | SUPER_ADMIN |
 
-## Estrutura
+Páginas: `/`, `/login`, `/cadastro`, `/recuperar-senha`, `/redefinir-senha`, `/admin`, `/superadmin`, `/loja/{slug}`.
 
+## Testes
+
+Os testes de integração usam o banco `folha_test` na porta **5433**.
+
+```bash
+cd backend
+./mvnw test
 ```
-backend/src/main/java/com/sacolao/
-  config/          CORS, Security, Jackson, estáticos
-  common/          API, exceções, health, páginas
-  tenant/          TenantContext
-  auth/            Fase 2
-  security/        Fase 2
-  establishment/   tenant
-  user/            usuários e roles
-  plan/            planos SaaS
-  ...              demais domínios
 
-frontend/
-  css/             variáveis, layout, componentes, páginas
-  js/api/          cliente HTTP
-  js/pages/        scripts por tela
-  pages/           HTML
-```
+O teste mais importante é `TenantIsolationIT`: usuário do tenant A não lê nem altera dados do tenant B.
 
 ## Fases
 
-1. Fundação (esta) — projeto executável, schema base, frontend e health
-2. Auth, JWT e isolamento multi-tenant
+1. Fundação — projeto executável, schema base, frontend e health
+2. Auth, JWT e isolamento multi-tenant (esta)
 3. Categorias, produtos, loja e carrinho
 4. Checkout, pedidos e dashboard
 5. Pagamentos, webhooks e idempotência

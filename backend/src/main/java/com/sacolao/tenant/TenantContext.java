@@ -6,13 +6,11 @@ import java.util.UUID;
 /**
  * Contexto do tenant da requisição atual.
  *
- * Estratégia (FASE 2):
- * - Painel autenticado: establishment_id extraído do JWT.
- * - Loja pública: establishment resolvido pelo slug da URL.
- * - SUPER_ADMIN: contexto vazio, sem acesso operacional a dados do tenant
- *   salvo ação administrativa explícita.
+ * - Painel autenticado: establishment_id extraído do JWT e confirmado no banco.
+ * - Loja pública: establishment resolvido pelo slug da URL (Fase 3).
+ * - SUPER_ADMIN: contexto vazio; sem acesso operacional implícito.
  *
- * O filtro/interceptor deve sempre chamar {@link #clear()} ao final da requisição.
+ * Sempre limpar com {@link #clear()} ao final da requisição.
  */
 public final class TenantContext {
 
@@ -30,7 +28,7 @@ public final class TenantContext {
     }
 
     public static UUID require() {
-        return get().orElseThrow(() -> new IllegalStateException("Tenant não definido para esta requisição"));
+        return get().orElseThrow(TenantNotBoundException::new);
     }
 
     public static void clear() {

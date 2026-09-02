@@ -2,13 +2,17 @@ package com.sacolao.common.exception;
 
 import com.sacolao.common.api.ApiError;
 import com.sacolao.common.api.FieldErrorDetail;
+import com.sacolao.tenant.TenantNotBoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.BindException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -66,6 +70,26 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ResponseEntity<ApiError> handleMethodNotAllowed(HttpServletRequest request) {
         return respond(405, "METHOD_NOT_ALLOWED", "Método não permitido", request, List.of());
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiError> handleAccessDenied(HttpServletRequest request) {
+        return respond(403, "FORBIDDEN", "Acesso negado", request, List.of());
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ApiError> handleAuthentication(HttpServletRequest request) {
+        return respond(401, "UNAUTHORIZED", "Não autenticado", request, List.of());
+    }
+
+    @ExceptionHandler(TenantNotBoundException.class)
+    public ResponseEntity<ApiError> handleTenant(HttpServletRequest request) {
+        return respond(403, "FORBIDDEN", "Operação requer um estabelecimento", request, List.of());
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiError> handleConflict(HttpServletRequest request) {
+        return respond(409, "CONFLICT", "Registro em conflito", request, List.of());
     }
 
     @ExceptionHandler({NoResourceFoundException.class, NoHandlerFoundException.class})

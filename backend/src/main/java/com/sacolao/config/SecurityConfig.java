@@ -1,8 +1,13 @@
 package com.sacolao.config;
 
+import com.sacolao.security.AuthErrorWriter;
+import com.sacolao.security.JwtAuthenticationFilter;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -12,15 +17,25 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
 
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final AuthErrorWriter errorWriter;
+
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, AuthErrorWriter errorWriter) {
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.errorWriter = errorWriter;
+    }
+
     /**
-     * FASE 1: a API e as páginas públicas ficam abertas para o esqueleto executar.
-     * FASE 2 substituirá este encadeamento por JWT + autorização por role,
-     * mantendo apenas rotas públicas (loja, health, login) liberadas.
+     * CSRF desabilitado: o access token vai no header Authorization (não em cookie).
+     * O refresh token usa cookie HttpOnly com SameSite=Lax, enviado só em POST same-site
+     * para /api/v1/auth/*.
      */
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -28,7 +43,27 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint((request, response, ex) ->
+                                errorWriter.write(request, response, 401, "UNAUTHORIZED", "Não autenticado"))
+                        .accessDeniedHandler((request, response, ex) ->
+                                errorWriter.write(request, response, 403, "FORBIDDEN", "Acesso negado"))
+                )
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.GET, "/api/v1/health").permitAll()
+                        .requestMatchers(
+                                "/api/v1/auth/register",
+                                "/api/v1/auth/login",
+                                "/api/v1/auth/refresh",
+                                "/api/v1/auth/logout",
+                                "/api/v1/auth/forgot-password",
+                                "/api/v1/auth/reset-password"
+                        ).permitAll()
+                        .requestMatchers("/api/v1/admin/**").hasRole("SUPER_ADMIN")
+                        .requestMatchers("/api/v1/**").authenticated()
+                        .anyRequest().permitAll()
+                )
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 
@@ -37,14 +72,17 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    /**
-     * Evita o usuário in-memory padrão do Spring Security.
-     * A FASE 2 substitui este bean pela carga real a partir do banco.
-     */
     @Bean
     UserDetailsService userDetailsService() {
         return username -> {
-            throw new UsernameNotFoundException("Autenticação JWT ainda não está ativa");
+            throw new UsernameNotFoundException("Use autenticação JWT");
         };
+    }
+
+    @Bean
+    FilterRegistrationBean<JwtAuthenticationFilter> jwtFilterRegistration(JwtAuthenticationFilter filter) {
+        FilterRegistrationBean<JwtAuthenticationFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
     }
 }

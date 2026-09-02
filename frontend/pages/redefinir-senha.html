@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Redefinir senha — Folha</title>
+    <meta name="description" content="Defina uma nova senha para a sua conta Folha.">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,650&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/reset.css">
+    <link rel="stylesheet" href="/css/layout.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/pages/auth.css">
+</head>
+<body class="page-shell">
+    <header class="site-header">
+        <div class="container header-inner">
+            <a class="brand" href="/">
+                <img class="brand-mark" src="/assets/icons/logo.svg" alt="">
+                <span class="brand-name">Folha</span>
+            </a>
+        </div>
+    </header>
+    <main class="auth-main">
+        <section class="card auth-card">
+            <h1>Nova senha</h1>
+            <p class="muted">Cole o token recebido e escolha uma senha nova.</p>
+            <div class="alert" hidden></div>
+            <form id="reset-form" class="auth-form">
+                <div class="field">
+                    <label for="token">Token</label>
+                    <input id="token" name="token" type="text" required>
+                </div>
+                <div class="field">
+                    <label for="password">Nova senha</label>
+                    <input id="password" name="password" type="password" autocomplete="new-password" minlength="8" required>
+                </div>
+                <button class="btn btn-primary btn-block" type="submit">Salvar senha</button>
+            </form>
+            <div class="auth-links">
+                <a href="/login">Voltar ao login</a>
+            </div>
+        </section>
+    </main>
+    <script type="module" src="/js/pages/auth.js?v=2"></script>
+</body>
+</html>

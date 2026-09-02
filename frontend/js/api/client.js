@@ -1,3 +1,5 @@
+import { clearSession, getAccessToken, saveAuth, setAccessToken, setStoredUser } from "../auth/session.js";
+
 export class ApiError extends Error {
     constructor(payload, status) {
         super(payload?.message || "Erro inesperado");
@@ -7,24 +9,51 @@ export class ApiError extends Error {
     }
 }
 
-const TOKEN_KEY = "folha.accessToken";
+let refreshPromise = null;
 
-export function getAccessToken() {
-    return sessionStorage.getItem(TOKEN_KEY);
-}
-
-export function setAccessToken(token) {
-    if (token) {
-        sessionStorage.setItem(TOKEN_KEY, token);
-        return;
+export async function api(path, { method = "GET", body, headers, retry = true } = {}) {
+    const response = await request(path, { method, body, headers });
+    if (response.status === 401 && retry && !path.startsWith("/auth/")) {
+        const refreshed = await refreshAccessToken();
+        if (refreshed) {
+            return api(path, { method, body, headers, retry: false });
+        }
+        clearSession();
     }
-    sessionStorage.removeItem(TOKEN_KEY);
+    const payload = await readJson(response);
+    if (!response.ok) {
+        throw new ApiError(payload, response.status);
+    }
+    return payload;
 }
 
-export async function api(path, { method = "GET", body, headers } = {}) {
+export async function refreshAccessToken() {
+    if (!refreshPromise) {
+        refreshPromise = fetch("/api/v1/auth/refresh", {
+            method: "POST",
+            headers: { Accept: "application/json" },
+            credentials: "same-origin"
+        })
+            .then(async (response) => {
+                if (!response.ok) {
+                    return false;
+                }
+                const payload = await readJson(response);
+                saveAuth(payload);
+                return true;
+            })
+            .finally(() => {
+                refreshPromise = null;
+            });
+    }
+    return refreshPromise;
+}
+
+function request(path, { method, body, headers }) {
     const token = getAccessToken();
-    const response = await fetch(`/api/v1${path}`, {
+    return fetch(`/api/v1${path}`, {
         method,
+        credentials: "same-origin",
         headers: {
             Accept: "application/json",
             ...(body ? { "Content-Type": "application/json" } : {}),
@@ -33,10 +62,14 @@ export async function api(path, { method = "GET", body, headers } = {}) {
         },
         body: body ? JSON.stringify(body) : undefined
     });
-
-    const payload = await response.json().catch(() => null);
-    if (!response.ok) {
-        throw new ApiError(payload, response.status);
-    }
-    return payload;
 }
+
+async function readJson(response) {
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+        return null;
+    }
+    return response.json().catch(() => null);
+}
+
+export { setAccessToken, setStoredUser };
