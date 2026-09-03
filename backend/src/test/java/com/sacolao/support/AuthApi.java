@@ -68,6 +68,14 @@ public final class AuthApi {
         return JsonPath.read(result.getResponse().getContentAsString(), "$.user.establishmentId");
     }
 
+    public static String establishmentSlug(MvcResult result) throws Exception {
+        return JsonPath.read(result.getResponse().getContentAsString(), "$.establishment.slug");
+    }
+
+    public static String read(MvcResult result, String path) throws Exception {
+        return JsonPath.read(result.getResponse().getContentAsString(), path);
+    }
+
     public static String bearer(String accessToken) {
         return "Bearer " + accessToken;
     }

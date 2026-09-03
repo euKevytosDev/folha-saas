@@ -1,5 +1,6 @@
 import { api } from "../api/client.js";
-import { clearSession, getAccessToken, getStoredUser, saveAuth } from "./session.js";
+import { clearSession, getAccessToken, getRefreshToken, getStoredUser, saveAuth } from "./session.js";
+import { pageUrl } from "../utils/nav.js";
 
 export async function login(email, password) {
     const payload = await api("/auth/login", {
@@ -23,16 +24,20 @@ export async function registerAccount(input) {
 
 export async function logout() {
     try {
-        await api("/auth/logout", { method: "POST", retry: false });
+        await api("/auth/logout", {
+            method: "POST",
+            retry: false,
+            body: getRefreshToken() ? { refreshToken: getRefreshToken() } : undefined
+        });
     } catch {
         // O cookie/token pode já estar inválido.
     }
     clearSession();
-    window.location.href = "/login";
+    window.location.href = pageUrl("login");
 }
 
 export function redirectAfterLogin(user = getStoredUser()) {
-    window.location.href = user?.role === "SUPER_ADMIN" ? "/superadmin" : "/admin";
+    window.location.href = pageUrl(user?.role === "SUPER_ADMIN" ? "superadmin" : "admin");
 }
 
 export async function requirePageAuth(allowedRoles) {
@@ -49,7 +54,7 @@ export async function requirePageAuth(allowedRoles) {
         return me;
     } catch {
         clearSession();
-        window.location.href = "/login";
+        window.location.href = pageUrl("login");
         return null;
     }
 }

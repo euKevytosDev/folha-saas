@@ -1,6 +1,7 @@
 import { api } from "../api/client.js";
 import { logout, requirePageAuth } from "../auth/api.js";
 import { $ } from "../utils/dom.js";
+import { storeUrl } from "../utils/nav.js";
 
 const me = await requirePageAuth(["SUPER_ADMIN"]);
 if (!me) {
@@ -29,7 +30,11 @@ if (!establishments.length) {
         meta.className = "muted";
         meta.textContent = `/${item.slug} · ${item.planCode} · ${item.active ? "ativo" : "inativo"}`;
         identity.append(name, meta);
-        row.append(identity);
+        const link = document.createElement("a");
+        link.className = "btn btn-secondary";
+        link.href = storeUrl(item.slug);
+        link.textContent = "Ver loja";
+        row.append(identity, link);
         list.append(row);
     });
 }

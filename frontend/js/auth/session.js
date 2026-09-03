@@ -1,5 +1,8 @@
+import { isCrossOriginApi } from "../config.js";
+
 const ACCESS_KEY = "folha.accessToken";
 const USER_KEY = "folha.user";
+const REFRESH_KEY = "folha.refreshToken";
 
 export function getAccessToken() {
     return sessionStorage.getItem(ACCESS_KEY);
@@ -11,6 +14,18 @@ export function setAccessToken(token) {
         return;
     }
     sessionStorage.removeItem(ACCESS_KEY);
+}
+
+export function getRefreshToken() {
+    return sessionStorage.getItem(REFRESH_KEY);
+}
+
+export function setRefreshToken(token) {
+    if (token) {
+        sessionStorage.setItem(REFRESH_KEY, token);
+        return;
+    }
+    sessionStorage.removeItem(REFRESH_KEY);
 }
 
 export function getStoredUser() {
@@ -36,9 +51,20 @@ export function setStoredUser(user) {
 export function clearSession() {
     sessionStorage.removeItem(ACCESS_KEY);
     sessionStorage.removeItem(USER_KEY);
+    sessionStorage.removeItem(REFRESH_KEY);
 }
 
 export function saveAuth(payload) {
-    setAccessToken(payload.accessToken);
-    setStoredUser(payload.user);
+    if (!payload) {
+        return;
+    }
+    if (payload.accessToken) {
+        setAccessToken(payload.accessToken);
+    }
+    if (payload.user) {
+        setStoredUser(payload.user);
+    }
+    if (payload.refreshToken && isCrossOriginApi()) {
+        setRefreshToken(payload.refreshToken);
+    }
 }

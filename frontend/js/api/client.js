@@ -1,4 +1,5 @@
-import { clearSession, getAccessToken, saveAuth, setAccessToken, setStoredUser } from "../auth/session.js";
+import { apiUrl, isCrossOriginApi } from "../config.js";
+import { clearSession, getAccessToken, getRefreshToken, saveAuth } from "../auth/session.js";
 
 export class ApiError extends Error {
     constructor(payload, status) {
@@ -29,10 +30,14 @@ export async function api(path, { method = "GET", body, headers, retry = true } 
 
 export async function refreshAccessToken() {
     if (!refreshPromise) {
-        refreshPromise = fetch("/api/v1/auth/refresh", {
+        refreshPromise = fetch(apiUrl("/auth/refresh"), {
             method: "POST",
-            headers: { Accept: "application/json" },
-            credentials: "same-origin"
+            headers: {
+                Accept: "application/json",
+                ...(getRefreshToken() ? { "Content-Type": "application/json" } : {})
+            },
+            credentials: isCrossOriginApi() ? "include" : "same-origin",
+            body: getRefreshToken() ? JSON.stringify({ refreshToken: getRefreshToken() }) : undefined
         })
             .then(async (response) => {
                 if (!response.ok) {
@@ -50,10 +55,14 @@ export async function refreshAccessToken() {
 }
 
 function request(path, { method, body, headers }) {
-    const token = getAccessToken();
-    return fetch(`/api/v1${path}`, {
+    const publicAuth = path === "/auth/login"
+        || path === "/auth/register"
+        || path === "/auth/forgot-password"
+        || path === "/auth/reset-password";
+    const token = publicAuth ? null : getAccessToken();
+    return fetch(apiUrl(path), {
         method,
-        credentials: "same-origin",
+        credentials: isCrossOriginApi() ? "include" : "same-origin",
         headers: {
             Accept: "application/json",
             ...(body ? { "Content-Type": "application/json" } : {}),
@@ -71,5 +80,3 @@ async function readJson(response) {
     }
     return response.json().catch(() => null);
 }
-
-export { setAccessToken, setStoredUser };

@@ -9,11 +9,11 @@ Cada estabelecimento recebe a própria loja pública no celular do cliente, um p
 Monólito modular em Spring Boot. Um único deploy, pacotes separados por domínio.
 
 ```
-backend/   API REST, segurança, persistência e páginas estáticas
-frontend/  HTML, CSS e JavaScript puro (mobile first)
+backend/   API REST, segurança, persistência e (opcionalmente) páginas estáticas
+frontend/  HTML, CSS e JavaScript puro (mobile first), pronto para GitHub Pages
 ```
 
-A API vive em `/api/v1`. O frontend é servido pelo próprio Spring Boot.
+A API vive em `/api/v1`. Em desenvolvimento o frontend é servido pelo Spring Boot. Em produção o frontend pode ir para o **GitHub Pages**; backend e banco serão definidos depois.
 
 ### Multi-tenant
 
@@ -126,7 +126,12 @@ Fase 1 (`V1__baseline.sql`):
 
 A Fase 2 reutiliza esse schema. Nenhuma migration extra foi necessária.
 
-IDs são UUID. Datas em `timestamptz` (UTC).
+Fase 3 (`V2__catalog.sql`):
+
+- `categories`
+- `products`
+
+Preços em `NUMERIC(12,2)`. Quantidades em `NUMERIC(12,3)`. IDs são UUID. Datas em `timestamptz` (UTC).
 
 ## Usuários iniciais
 
@@ -153,8 +158,34 @@ No perfil `dev`, um `SUPER_ADMIN` pode ser criado pelas variáveis `BOOTSTRAP_SU
 | `PATCH` | `/api/v1/establishments/{id}/status` | OWNER do próprio tenant ou SUPER_ADMIN |
 | `GET/POST` | `/api/v1/users` | OWNER, ADMIN do próprio tenant |
 | `GET` | `/api/v1/admin/establishments` | SUPER_ADMIN |
+| `GET/POST/PUT/DELETE` | `/api/v1/categories` | OWNER, ADMIN, STAFF |
+| `GET/POST/PUT/DELETE` | `/api/v1/products` | OWNER, ADMIN, STAFF |
+| `PATCH` | `/api/v1/products/{id}/availability` | OWNER, ADMIN, STAFF |
+| `PATCH` | `/api/v1/products/{id}/featured` | OWNER, ADMIN, STAFF |
+| `GET` | `/api/v1/store/{slug}` | público |
+| `GET` | `/api/v1/store/{slug}/catalog` | público |
+| `GET` | `/api/v1/store/{slug}/products/{id}` | público |
+| `POST` | `/api/v1/store/{slug}/cart/quote` | público (recalcula preços no servidor) |
 
 Páginas: `/`, `/login`, `/cadastro`, `/recuperar-senha`, `/redefinir-senha`, `/admin`, `/superadmin`, `/loja/{slug}`.
+
+## GitHub Pages
+
+O frontend é estático e pode ser publicado no GitHub Pages sem o Spring.
+
+1. Ative **Pages** no repositório (source: GitHub Actions).
+2. Configure as variáveis do repositório:
+   - `FOLHA_API_URL` — URL pública da API, quando o backend estiver hospedado. Ex.: `https://api.seudominio.com`
+   - `FOLHA_BASE_PATH` — se o site for `usuario.github.io/nome-do-repo`, use `/nome-do-repo`. Em domínio raiz, deixe vazio.
+3. Inclua a origem do Pages em `CORS_ALLOWED_ORIGINS` no backend.
+
+O workflow `.github/workflows/pages.yml` gera a pasta `site/` com `scripts/build-pages.sh`.
+
+Enquanto o backend não estiver no ar, o Pages sobe só a interface. Login, catálogo e loja passam a funcionar quando `FOLHA_API_URL` apontar para a API.
+
+No GitHub Pages o refresh token fica no `sessionStorage` (o cookie HttpOnly não atravessa origem diferente). Access token também no `sessionStorage`.
+
+Localmente o carrinho usa `localStorage` por estabelecimento; os totais vêm de `POST /cart/quote`. Checkout/pedido ficam para a Fase 4.
 
 ## Testes
 
@@ -170,8 +201,8 @@ O teste mais importante é `TenantIsolationIT`: usuário do tenant A não lê ne
 ## Fases
 
 1. Fundação — projeto executável, schema base, frontend e health
-2. Auth, JWT e isolamento multi-tenant (esta)
-3. Categorias, produtos, loja e carrinho
+2. Auth, JWT e isolamento multi-tenant
+3. Categorias, produtos, loja e carrinho (esta)
 4. Checkout, pedidos e dashboard
 5. Pagamentos, webhooks e idempotência
 6. Entrega, cupons, avaliações e estoque

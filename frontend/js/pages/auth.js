@@ -2,6 +2,7 @@ import { $, on } from "../utils/dom.js";
 import { ApiError } from "../api/client.js";
 import { login, redirectAfterLogin, registerAccount } from "../auth/api.js";
 import { api } from "../api/client.js";
+import { pageUrl } from "../utils/nav.js";
 
 function showAlert(type, message) {
     const alertBox = $(".alert");
@@ -88,7 +89,7 @@ on($("#reset-form"), "submit", async (event) => {
         });
         showAlert("success", "Senha atualizada. Você já pode entrar.");
         window.setTimeout(() => {
-            window.location.href = "/login";
+            window.location.href = pageUrl("login");
         }, 1200);
     } catch (error) {
         showAlert("error", error instanceof ApiError ? error.message : "Não foi possível redefinir a senha.");

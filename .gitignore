@@ -27,6 +27,9 @@ backend/target/
 .DS_Store
 Thumbs.db
 
+# GitHub Pages build
+/site/
+
 # Maven wrapper leftovers
 backend/.mvn/wrapper/maven-wrapper.jar.md5
 

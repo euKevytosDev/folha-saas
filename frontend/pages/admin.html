@@ -14,6 +14,8 @@
     <link rel="stylesheet" href="/css/layout.css">
     <link rel="stylesheet" href="/css/components.css">
     <link rel="stylesheet" href="/css/pages/placeholder.css">
+    <link rel="stylesheet" href="/css/pages/store.css">
+    <script src="/js/env.js"></script>
 </head>
 <body class="page-shell">
     <header class="site-header">
@@ -32,7 +34,7 @@
         <div class="container">
             <span class="badge" id="user-role">Painel</span>
             <h1>Sua loja</h1>
-            <p class="muted">Pedidos e catálogo entram nas próximas fases. A autenticação e o isolamento do estabelecimento já estão ativos.</p>
+            <p class="muted">Gerencie o catálogo da loja. Pedidos entram na próxima fase.</p>
             <div class="panel-grid">
                 <section class="card placeholder-card">
                     <h2>Estabelecimento</h2>
@@ -69,8 +71,66 @@
                     </form>
                 </section>
             </div>
+            <div class="panel-grid" style="margin-top: 1.25rem;">
+                <section class="card placeholder-card">
+                    <h2>Categorias</h2>
+                    <div id="categories-list"></div>
+                    <div class="alert" id="category-alert" hidden></div>
+                    <form id="category-form" class="auth-form" style="margin-top: 1rem;">
+                        <div class="field">
+                            <label for="category-name">Nome</label>
+                            <input id="category-name" name="name" type="text" required>
+                        </div>
+                        <div class="field">
+                            <label for="category-order">Ordem</label>
+                            <input id="category-order" name="sortOrder" type="number" value="0">
+                        </div>
+                        <button class="btn btn-primary" type="submit">Salvar categoria</button>
+                    </form>
+                </section>
+                <section class="card placeholder-card">
+                    <h2>Produtos</h2>
+                    <div id="products-list"></div>
+                    <div class="alert" id="product-alert" hidden></div>
+                    <form id="product-form" class="auth-form" style="margin-top: 1rem;">
+                        <div class="field">
+                            <label for="product-name">Nome</label>
+                            <input id="product-name" name="name" type="text" required>
+                        </div>
+                        <div class="field">
+                            <label for="product-category">Categoria</label>
+                            <select id="product-category" name="categoryId" required></select>
+                        </div>
+                        <div class="field">
+                            <label for="product-price">Preço</label>
+                            <input id="product-price" name="price" type="number" min="0.01" step="0.01" required>
+                        </div>
+                        <div class="field">
+                            <label for="product-unit">Unidade</label>
+                            <select id="product-unit" name="unit">
+                                <option value="UN">UN</option>
+                                <option value="KG">KG</option>
+                                <option value="G">G</option>
+                                <option value="L">L</option>
+                                <option value="ML">ML</option>
+                                <option value="CX">CX</option>
+                                <option value="PCT">PCT</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label for="product-image">Imagem (URL)</label>
+                            <input id="product-image" name="imageUrl" type="url">
+                        </div>
+                        <label class="muted" style="display:flex;gap:0.5rem;align-items:center;">
+                            <input id="product-featured" name="featured" type="checkbox">
+                            Destacar na vitrine
+                        </label>
+                        <button class="btn btn-primary" type="submit">Salvar produto</button>
+                    </form>
+                </section>
+            </div>
         </div>
     </main>
-    <script type="module" src="/js/pages/admin.js?v=2"></script>
+    <script type="module" src="/js/pages/admin.js?v=3"></script>
 </body>
 </html>
