@@ -35,6 +35,7 @@ Spring Security + JWT HS256.
 - Cookie HttpOnly `folha_refresh` (SameSite=Lax, Path=`/api/v1/auth`) para o browser
 - O JSON de login/refresh também devolve o refresh token para clientes de API/testes; o frontend **não** grava esse valor
 - Access token no `sessionStorage` (exposto a XSS; TTL curto. Não usar `localStorage` para refresh)
+- Recuperação de senha: a API responde sempre a mesma mensagem genérica e persiste só o hash do token. Envio de e-mail fica para uma fase posterior; no perfil `dev` o link `/redefinir-senha?token=...` aparece no log da aplicação.
 - Senhas com BCrypt
 - Roles: `SUPER_ADMIN`, `OWNER`, `ADMIN`, `STAFF`
 

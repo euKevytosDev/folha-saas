@@ -14,6 +14,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -39,6 +40,28 @@ class PasswordResetIT extends IntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value(
                         "Se o e-mail estiver cadastrado, enviaremos instruções para recuperação."));
+    }
+
+    @Test
+    void forgotPasswordPersistsOnlyTheTokenHash() throws Exception {
+        String email = AuthApi.uniqueEmail("forgot-hash");
+        AuthApi.register(mockMvc, "Loja Forgot", "Nara", email, "senha12345");
+        var user = userRepository.findByEmail(email).orElseThrow();
+
+        mockMvc.perform(post("/api/v1/auth/forgot-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"%s"}
+                                """.formatted(email)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value(
+                        "Se o e-mail estiver cadastrado, enviaremos instruções para recuperação."))
+                .andExpect(jsonPath("$.token").doesNotExist());
+
+        assertThat(passwordResetTokenRepository.countByUser_Id(user.getId())).isEqualTo(1);
+        PasswordResetToken stored = passwordResetTokenRepository.findByUser_Id(user.getId()).getFirst();
+        assertThat(stored.getTokenHash()).hasSize(64);
+        assertThat(stored.getTokenHash()).matches("[0-9a-f]{64}");
     }
 
     @Test

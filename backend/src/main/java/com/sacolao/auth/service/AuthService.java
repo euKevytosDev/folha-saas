@@ -31,6 +31,7 @@ import com.sacolao.user.repository.UserRepository;
 import com.sacolao.user.service.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.env.Environment;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,6 +54,7 @@ public class AuthService {
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final SecureTokenFactory tokenFactory;
     private final AppProperties properties;
+    private final Environment environment;
 
     public AuthService(
             UserRepository userRepository,
@@ -63,7 +65,8 @@ public class AuthService {
             RefreshTokenRepository refreshTokenRepository,
             PasswordResetTokenRepository passwordResetTokenRepository,
             SecureTokenFactory tokenFactory,
-            AppProperties properties
+            AppProperties properties,
+            Environment environment
     ) {
         this.userRepository = userRepository;
         this.userService = userService;
@@ -74,6 +77,7 @@ public class AuthService {
         this.passwordResetTokenRepository = passwordResetTokenRepository;
         this.tokenFactory = tokenFactory;
         this.properties = properties;
+        this.environment = environment;
     }
 
     @Transactional
@@ -148,12 +152,16 @@ public class AuthService {
         userRepository.findByEmail(email).ifPresent(user -> {
             Instant now = Instant.now();
             passwordResetTokenRepository.expireUnused(user.getId(), now);
+            String rawToken = tokenFactory.generate();
             PasswordResetToken reset = new PasswordResetToken();
             reset.setUser(user);
-            reset.setTokenHash(TokenHash.sha256(tokenFactory.generate()));
+            reset.setTokenHash(TokenHash.sha256(rawToken));
             reset.setExpiresAt(now.plusMillis(properties.auth().passwordResetExpirationMs()));
             passwordResetTokenRepository.save(reset);
             log.info("Recuperação de senha solicitada userId={}", user.getId());
+            if (environment.matchesProfiles("dev")) {
+                log.info("Link de recuperação (somente dev): /redefinir-senha?token={}", rawToken);
+            }
         });
         return new MessageResponse(GENERIC_RESET);
     }
