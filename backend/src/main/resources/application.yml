@@ -37,7 +37,7 @@ app:
   name: Folha
   frontend-dir: ${FRONTEND_DIR:}
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:8080}
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:8080,https://eukevytosdev.github.io}
   jwt:
     secret: ${JWT_SECRET:change-me-dev-only-not-for-production-use-32b}
     access-token-expiration-ms: ${JWT_ACCESS_EXPIRATION_MS:900000}

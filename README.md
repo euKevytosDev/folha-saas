@@ -103,7 +103,7 @@ Saúde: [http://localhost:8080/api/v1/health](http://localhost:8080/api/v1/healt
 | `DATABASE_URL` | JDBC do PostgreSQL |
 | `DATABASE_USERNAME` | Usuário do banco |
 | `DATABASE_PASSWORD` | Senha do banco |
-| `CORS_ALLOWED_ORIGINS` | Origens permitidas, separadas por vírgula |
+| `CORS_ALLOWED_ORIGINS` | Origens permitidas, separadas por vírgula (inclua `https://eukevytosdev.github.io` para o Pages) |
 | `JWT_SECRET` | Segredo HMAC do JWT (mínimo 32 bytes) |
 | `JWT_ACCESS_EXPIRATION_MS` | TTL do access token (padrão 15 min) |
 | `JWT_REFRESH_EXPIRATION_MS` | TTL do refresh token (padrão 7 dias) |
@@ -206,6 +206,8 @@ O frontend é estático e pode ser publicado no GitHub Pages sem o Spring.
 3. Inclua a origem do Pages em `CORS_ALLOWED_ORIGINS` no backend.
 
 O workflow `.github/workflows/pages.yml` gera a pasta `site/` com `scripts/build-pages.sh`.
+
+Site publicado: https://eukevytosdev.github.io/folha-saas/ (API: `https://folha-saas.onrender.com`).
 
 No GitHub Pages o refresh token fica no `sessionStorage` (o cookie HttpOnly não atravessa origem diferente). Access token também no `sessionStorage`.
 
