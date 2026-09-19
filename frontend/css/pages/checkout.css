@@ -141,6 +141,26 @@
     gap: 0.4rem;
 }
 
+.payment-box {
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--color-border);
+    display: grid;
+    gap: 0.65rem;
+}
+
+.pix-code {
+    width: 100%;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.82rem;
+    line-height: 1.35;
+    padding: 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    background: var(--color-surface-muted, #f6f7f4);
+    resize: vertical;
+}
+
 @media (min-width: 720px) {
     .stat-grid {
         grid-template-columns: repeat(4, minmax(0, 1fr));

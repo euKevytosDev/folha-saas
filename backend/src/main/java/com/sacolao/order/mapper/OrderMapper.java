@@ -3,6 +3,7 @@ package com.sacolao.order.mapper;
 import com.sacolao.order.dto.OrderResponse;
 import com.sacolao.order.entity.Order;
 import com.sacolao.order.entity.OrderItem;
+import com.sacolao.payment.dto.PaymentResponse;
 
 import java.util.List;
 
@@ -12,6 +13,10 @@ public final class OrderMapper {
     }
 
     public static OrderResponse toResponse(Order order) {
+        return toResponse(order, null);
+    }
+
+    public static OrderResponse toResponse(Order order, PaymentResponse payment) {
         List<OrderResponse.OrderItemResponse> items = order.getItems().stream()
                 .map(OrderMapper::toItem)
                 .toList();
@@ -39,6 +44,7 @@ public final class OrderMapper {
                 order.getDeliveryFee(),
                 order.getTotal(),
                 items,
+                payment,
                 order.getCreatedAt(),
                 order.getUpdatedAt()
         );

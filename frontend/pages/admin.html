@@ -51,6 +51,33 @@
                     <p>Status: <strong id="store-status"></strong></p>
                     <p style="margin-top: 1rem;"><a class="btn btn-secondary" id="store-link" href="/">Ver loja pública</a></p>
                 </section>
+                <section class="card placeholder-card" id="payment-settings-card">
+                    <h2>Pagamentos</h2>
+                    <p class="muted">Conecte a conta do estabelecimento (Mercado Pago). Em mock, o PIX é simulado.</p>
+                    <div class="alert" id="payment-settings-alert" hidden></div>
+                    <form id="payment-settings-form" class="auth-form" style="margin-top: 1rem;">
+                        <div class="field">
+                            <label for="payment-provider">Provedor</label>
+                            <select id="payment-provider" name="provider">
+                                <option value="MERCADO_PAGO">Mercado Pago</option>
+                                <option value="MOCK">Mock</option>
+                                <option value="MANUAL">Manual</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label for="payment-token">Access token</label>
+                            <input id="payment-token" name="accessToken" type="password" autocomplete="off" placeholder="Cole o token (opcional em mock)">
+                        </div>
+                        <div class="field">
+                            <label><input id="payment-mock" name="mockMode" type="checkbox" checked> Modo mock</label>
+                        </div>
+                        <div class="field">
+                            <label><input id="payment-pix" name="pixEnabled" type="checkbox" checked> PIX habilitado</label>
+                        </div>
+                        <button class="btn btn-primary" type="submit">Salvar pagamentos</button>
+                    </form>
+                    <p class="muted" id="payment-token-hint" style="margin-top:0.75rem;"></p>
+                </section>
                 <section class="card placeholder-card" id="users-card">
                     <h2>Equipe</h2>
                     <div id="users-list"></div>

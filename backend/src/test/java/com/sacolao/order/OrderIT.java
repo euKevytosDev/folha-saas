@@ -42,7 +42,9 @@ class OrderIT extends CatalogSupport {
                 .andExpect(jsonPath("$.total").value(7.50))
                 .andExpect(jsonPath("$.items", hasSize(1)))
                 .andExpect(jsonPath("$.items[0].unitPrice").value(5.00))
-                .andExpect(jsonPath("$.items[0].productName").value("Mamão"));
+                .andExpect(jsonPath("$.items[0].productName").value("Mamão"))
+                .andExpect(jsonPath("$.payment.status").value("PENDING"))
+                .andExpect(jsonPath("$.payment.pixCopyPaste").isNotEmpty());
 
         mockMvc.perform(get("/api/v1/customers")
                         .header("Authorization", AuthApi.bearer(token)))

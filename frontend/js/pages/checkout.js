@@ -158,9 +158,11 @@ on(form, "submit", async (event) => {
             payload.addressCity = form.addressCity.value.trim();
             payload.addressState = form.addressState.value.trim().toUpperCase();
         }
+        const idempotencyKey = crypto.randomUUID();
         const order = await api(`/store/${encodeURIComponent(slug)}/orders`, {
             method: "POST",
-            body: payload
+            body: payload,
+            headers: { "Idempotency-Key": idempotencyKey }
         });
         clearCart(state.store.id);
         window.location.href = orderUrl(slug, order.publicCode);

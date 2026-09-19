@@ -172,15 +172,28 @@ No perfil `dev`, um `SUPER_ADMIN` pode ser criado pelas variáveis `BOOTSTRAP_SU
 | `GET` | `/api/v1/store/{slug}/catalog` | público |
 | `GET` | `/api/v1/store/{slug}/products/{id}` | público |
 | `POST` | `/api/v1/store/{slug}/cart/quote` | público (recalcula preços no servidor) |
-| `POST` | `/api/v1/store/{slug}/orders` | público (checkout; cria cliente + pedido) |
+| `POST` | `/api/v1/store/{slug}/orders` | público (checkout; header opcional `Idempotency-Key`) |
 | `GET` | `/api/v1/store/{slug}/orders/{publicCode}` | público (acompanhar pedido) |
+| `GET` | `/api/v1/store/{slug}/orders/{publicCode}/payment` | público |
+| `POST` | `/api/v1/store/{slug}/orders/{publicCode}/payment/simulate` | público (somente mock) |
 | `GET` | `/api/v1/orders` | OWNER, ADMIN, STAFF |
 | `GET` | `/api/v1/orders/summary` | OWNER, ADMIN, STAFF |
 | `GET` | `/api/v1/orders/{id}` | OWNER, ADMIN, STAFF |
 | `PATCH` | `/api/v1/orders/{id}/status` | OWNER, ADMIN, STAFF |
+| `GET` | `/api/v1/orders/{id}/payment` | OWNER, ADMIN, STAFF |
+| `POST` | `/api/v1/orders/{id}/payment/confirm` | OWNER, ADMIN, STAFF (dinheiro / na entrega / mock) |
+| `GET/PUT` | `/api/v1/payments/settings` | OWNER, ADMIN |
+| `POST` | `/api/v1/webhooks/mercadopago` | público (gateway) |
+| `POST` | `/api/v1/webhooks/mock` | público (dev/mock) |
 | `GET` | `/api/v1/customers` | OWNER, ADMIN, STAFF |
 
 Páginas: `/`, `/login`, `/cadastro`, `/recuperar-senha`, `/redefinir-senha`, `/admin`, `/superadmin`, `/loja/{slug}`, `/loja/{slug}/checkout`, `/pedido/{slug}/{publicCode}`.
+
+## Pagamentos (Fase 5)
+
+Cada estabelecimento usa a **própria conta** no gateway (modelo recomendado: Mercado Pago). O Folha cria a cobrança nessa conta; o **webhook** confirma o pagamento e atualiza o pedido. Em desenvolvimento o padrão é **mock** (PIX simulado + botão “Simular pagamento”).
+
+Idempotência: envie `Idempotency-Key` no checkout para evitar pedido duplicado em retry.
 
 ## GitHub Pages
 
@@ -188,13 +201,11 @@ O frontend é estático e pode ser publicado no GitHub Pages sem o Spring.
 
 1. Ative **Pages** no repositório (source: GitHub Actions).
 2. Configure as variáveis do repositório:
-   - `FOLHA_API_URL` — URL pública da API, quando o backend estiver hospedado. Ex.: `https://api.seudominio.com`
+   - `FOLHA_API_URL` — URL pública da API. Ex.: `https://folha-saas.onrender.com`
    - `FOLHA_BASE_PATH` — se o site for `usuario.github.io/nome-do-repo`, use `/nome-do-repo`. Em domínio raiz, deixe vazio.
 3. Inclua a origem do Pages em `CORS_ALLOWED_ORIGINS` no backend.
 
 O workflow `.github/workflows/pages.yml` gera a pasta `site/` com `scripts/build-pages.sh`.
-
-Enquanto o backend não estiver no ar, o Pages sobe só a interface. Login, catálogo e loja passam a funcionar quando `FOLHA_API_URL` apontar para a API.
 
 No GitHub Pages o refresh token fica no `sessionStorage` (o cookie HttpOnly não atravessa origem diferente). Access token também no `sessionStorage`.
 
@@ -209,15 +220,15 @@ cd backend
 ./mvnw test
 ```
 
-O teste mais importante é `TenantIsolationIT`: usuário do tenant A não lê nem altera dados do tenant B. Pedidos também têm `OrderIsolationIT`.
+O teste mais importante é `TenantIsolationIT`: usuário do tenant A não lê nem altera dados do tenant B. Pedidos também têm `OrderIsolationIT` e pagamentos `PaymentIT`.
 
 ## Fases
 
 1. Fundação — projeto executável, schema base, frontend e health
 2. Auth, JWT e isolamento multi-tenant
 3. Categorias, produtos, loja e carrinho
-4. Checkout, pedidos e dashboard (esta)
-5. Pagamentos, webhooks e idempotência
+4. Checkout, pedidos e dashboard
+5. Pagamentos, webhooks e idempotência (esta)
 6. Entrega, cupons, avaliações e estoque
 7. Relatórios, auditoria e fiscal
 8. Planos, assinaturas e SUPER ADMIN

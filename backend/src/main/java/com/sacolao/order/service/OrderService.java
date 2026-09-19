@@ -1,5 +1,6 @@
 package com.sacolao.order.service;
 
+import com.sacolao.common.exception.ConflictException;
 import com.sacolao.common.exception.ResourceNotFoundException;
 import com.sacolao.common.exception.UnprocessableException;
 import com.sacolao.common.util.Money;
@@ -17,11 +18,20 @@ import com.sacolao.order.entity.OrderItem;
 import com.sacolao.order.entity.OrderStatus;
 import com.sacolao.order.mapper.OrderMapper;
 import com.sacolao.order.repository.OrderRepository;
+import com.sacolao.payment.dto.PaymentResponse;
+import com.sacolao.payment.entity.IdempotencyKey;
+import com.sacolao.payment.entity.Payment;
+import com.sacolao.payment.mapper.PaymentMapper;
+import com.sacolao.payment.repository.PaymentRepository;
+import com.sacolao.payment.service.IdempotencyService;
+import com.sacolao.payment.service.PaymentService;
 import com.sacolao.product.entity.Product;
 import com.sacolao.product.repository.ProductRepository;
 import com.sacolao.tenant.TenantContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -42,26 +52,52 @@ public class OrderService {
     private final ProductRepository productRepository;
     private final EstablishmentRepository establishmentRepository;
     private final CustomerService customerService;
+    private final PaymentService paymentService;
+    private final PaymentRepository paymentRepository;
+    private final IdempotencyService idempotencyService;
+    private final JsonMapper jsonMapper;
 
     public OrderService(
             OrderRepository orderRepository,
             ProductRepository productRepository,
             EstablishmentRepository establishmentRepository,
-            CustomerService customerService
+            CustomerService customerService,
+            PaymentService paymentService,
+            PaymentRepository paymentRepository,
+            IdempotencyService idempotencyService,
+            JsonMapper jsonMapper
     ) {
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
         this.establishmentRepository = establishmentRepository;
         this.customerService = customerService;
+        this.paymentService = paymentService;
+        this.paymentRepository = paymentRepository;
+        this.idempotencyService = idempotencyService;
+        this.jsonMapper = jsonMapper;
     }
 
     @Transactional
-    public OrderResponse checkout(String slug, CheckoutRequest request) {
+    public OrderResponse checkout(String slug, CheckoutRequest request, String idempotencyKey) {
         Establishment store = requireActiveStore(slug);
         validateFulfillment(request);
         Map<UUID, BigDecimal> quantities = mergeQuantities(request.items());
         if (quantities.isEmpty()) {
             throw new UnprocessableException("EMPTY_CART", "Carrinho vazio");
+        }
+
+        String requestPayload = toJson(request);
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            var existing = idempotencyService.find(store.getId(), IdempotencyService.SCOPE_CHECKOUT, idempotencyKey);
+            if (existing.isPresent()) {
+                IdempotencyKey key = existing.get();
+                if (!key.getRequestHash().equals(IdempotencyService.sha256(requestPayload))) {
+                    throw new ConflictException("IDEMPOTENCY_CONFLICT", "Chave de idempotência reutilizada com payload diferente");
+                }
+                if (key.getResourceId() != null) {
+                    return toResponse(requireById(key.getResourceId(), store.getId()));
+                }
+            }
         }
 
         Customer customer = customerService.findOrCreate(
@@ -112,27 +148,41 @@ public class OrderService {
         order.setDeliveryFee(deliveryFee);
         order.setTotal(subtotal.add(deliveryFee).subtract(discount));
 
-        return OrderMapper.toResponse(orderRepository.save(order));
+        Order saved = orderRepository.save(order);
+        Payment payment = paymentService.createForOrder(saved, idempotencyKey);
+        OrderResponse response = OrderMapper.toResponse(saved, PaymentMapper.toResponse(payment));
+
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            idempotencyService.save(
+                    store,
+                    IdempotencyService.SCOPE_CHECKOUT,
+                    idempotencyKey,
+                    requestPayload,
+                    toJson(response),
+                    saved.getId(),
+                    201
+            );
+        }
+        return response;
     }
 
     @Transactional(readOnly = true)
     public OrderResponse getPublic(String slug, String publicCode) {
         Establishment store = requireActiveStore(slug);
-        return orderRepository.findDetailedByPublicCodeAndEstablishmentId(normalizeCode(publicCode), store.getId())
-                .map(OrderMapper::toResponse)
-                .orElseThrow(this::notFound);
+        return toResponse(orderRepository.findDetailedByPublicCodeAndEstablishmentId(normalizeCode(publicCode), store.getId())
+                .orElseThrow(this::notFound));
     }
 
     @Transactional(readOnly = true)
     public List<OrderResponse> list(OrderStatus status) {
         return orderRepository.findAllDetailedInTenant(TenantContext.require(), status).stream()
-                .map(OrderMapper::toResponse)
+                .map(this::toResponse)
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public OrderResponse get(UUID id) {
-        return OrderMapper.toResponse(requireInTenant(id));
+        return toResponse(requireInTenant(id));
     }
 
     @Transactional
@@ -146,7 +196,7 @@ public class OrderService {
             );
         }
         order.setStatus(next);
-        return OrderMapper.toResponse(order);
+        return toResponse(order);
     }
 
     @Transactional(readOnly = true)
@@ -161,6 +211,18 @@ public class OrderService {
                 orderRepository.countByEstablishment_IdAndStatus(tenantId, OrderStatus.DELIVERED),
                 orderRepository.countByEstablishment_IdAndStatus(tenantId, OrderStatus.CANCELLED)
         );
+    }
+
+    private OrderResponse toResponse(Order order) {
+        PaymentResponse payment = paymentRepository.findByOrder_IdAndEstablishment_Id(order.getId(), order.getEstablishmentId())
+                .map(PaymentMapper::toResponse)
+                .orElse(null);
+        return OrderMapper.toResponse(order, payment);
+    }
+
+    private Order requireById(UUID id, UUID establishmentId) {
+        return orderRepository.findDetailedByIdAndEstablishmentId(id, establishmentId)
+                .orElseThrow(this::notFound);
     }
 
     private Order requireInTenant(UUID id) {
@@ -248,6 +310,14 @@ public class OrderService {
 
     private String normalizeCode(String publicCode) {
         return publicCode == null ? "" : publicCode.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private String toJson(Object value) {
+        try {
+            return jsonMapper.writeValueAsString(value);
+        } catch (JacksonException ex) {
+            return String.valueOf(value);
+        }
     }
 
     private static boolean isBlank(String value) {

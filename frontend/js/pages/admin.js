@@ -24,6 +24,35 @@ const orderState = { status: "OPEN" };
 renderOrderFilters();
 await refreshOrders();
 
+const paymentSettingsCard = $("#payment-settings-card");
+if (user.role === "STAFF") {
+    paymentSettingsCard?.setAttribute("hidden", "");
+} else {
+    await loadPaymentSettings();
+    $("#payment-settings-form")?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const alertBox = $("#payment-settings-alert");
+        try {
+            const body = {
+                provider: form.provider.value,
+                pixEnabled: form.pixEnabled.checked,
+                mockMode: form.mockMode.checked,
+                onlineEnabled: false
+            };
+            if (form.accessToken.value.trim()) {
+                body.accessToken = form.accessToken.value.trim();
+            }
+            await api("/payments/settings", { method: "PUT", body });
+            form.accessToken.value = "";
+            hideAlert(alertBox);
+            await loadPaymentSettings();
+        } catch (error) {
+            showFormAlert(alertBox, error, "Não foi possível salvar pagamentos.");
+        }
+    });
+}
+
 const usersCard = $("#users-card");
 if (user.role === "STAFF") {
     usersCard?.setAttribute("hidden", "");
@@ -325,7 +354,11 @@ function renderOrders(orders) {
 
         const meta = document.createElement("p");
         meta.className = "muted";
-        meta.textContent = `${formatBRL(order.total)} · ${fulfillmentLabel(order.fulfillmentType)} · ${order.customerPhone}`;
+        const payment = order.payment;
+        const payLabel = payment
+            ? ` · Pagamento ${paymentStatusLabel(payment.status)}`
+            : "";
+        meta.textContent = `${formatBRL(order.total)} · ${fulfillmentLabel(order.fulfillmentType)} · ${order.customerPhone}${payLabel}`;
 
         const items = document.createElement("ul");
         items.className = "order-item-list";
@@ -346,6 +379,14 @@ function renderOrders(orders) {
         const next = nextStatus(order.status);
         const actions = document.createElement("div");
         actions.className = "order-admin-actions";
+        if (payment && payment.status !== "PAID" && ["CASH", "ON_DELIVERY"].includes(payment.method)) {
+            const confirmPay = document.createElement("button");
+            confirmPay.type = "button";
+            confirmPay.className = "btn btn-secondary";
+            confirmPay.textContent = "Confirmar pagamento";
+            confirmPay.addEventListener("click", () => confirmPayment(order.id));
+            actions.append(confirmPay);
+        }
         if (next) {
             const advance = document.createElement("button");
             advance.type = "button";
@@ -367,6 +408,37 @@ function renderOrders(orders) {
         }
         list.append(row);
     });
+}
+
+async function loadPaymentSettings() {
+    try {
+        const settings = await api("/payments/settings");
+        const form = $("#payment-settings-form");
+        if (!form) {
+            return;
+        }
+        form.provider.value = settings.provider || "MERCADO_PAGO";
+        form.mockMode.checked = !!settings.mockMode;
+        form.pixEnabled.checked = !!settings.pixEnabled;
+        const hint = $("#payment-token-hint");
+        if (hint) {
+            hint.textContent = settings.accessTokenConfigured
+                ? "Token já configurado. Deixe em branco para manter."
+                : "Nenhum token configurado — mock ativo por padrão.";
+        }
+    } catch (error) {
+        showFormAlert($("#payment-settings-alert"), error, "Não foi possível carregar pagamentos.");
+    }
+}
+
+async function confirmPayment(orderId) {
+    try {
+        await api(`/orders/${orderId}/payment/confirm`, { method: "POST" });
+        hideAlert($("#orders-alert"));
+        await refreshOrders();
+    } catch (error) {
+        showFormAlert($("#orders-alert"), error, "Não foi possível confirmar o pagamento.");
+    }
 }
 
 async function updateOrderStatus(orderId, status) {
@@ -417,5 +489,17 @@ function actionLabel(status) {
 
 function fulfillmentLabel(value) {
     return value === "PICKUP" ? "Retirada" : "Entrega";
+}
+
+function paymentStatusLabel(status) {
+    return ({
+        PENDING: "aguardando",
+        AUTHORIZED: "autorizado",
+        PAID: "pago",
+        FAILED: "falhou",
+        REFUNDED: "estornado",
+        CANCELLED: "cancelado",
+        EXPIRED: "expirado"
+    })[status] || status;
 }
 

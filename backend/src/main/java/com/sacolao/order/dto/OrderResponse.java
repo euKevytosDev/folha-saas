@@ -3,6 +3,7 @@ package com.sacolao.order.dto;
 import com.sacolao.order.entity.FulfillmentType;
 import com.sacolao.order.entity.OrderStatus;
 import com.sacolao.order.entity.PaymentMethod;
+import com.sacolao.payment.dto.PaymentResponse;
 import com.sacolao.product.entity.ProductUnit;
 
 import java.math.BigDecimal;
@@ -34,6 +35,7 @@ public record OrderResponse(
         BigDecimal deliveryFee,
         BigDecimal total,
         List<OrderItemResponse> items,
+        PaymentResponse payment,
         Instant createdAt,
         Instant updatedAt
 ) {
