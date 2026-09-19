@@ -131,6 +131,12 @@ Fase 3 (`V2__catalog.sql`):
 - `categories`
 - `products`
 
+Fase 4 (`V3__orders.sql`):
+
+- `customers`
+- `orders`
+- `order_items`
+
 Preços em `NUMERIC(12,2)`. Quantidades em `NUMERIC(12,3)`. IDs são UUID. Datas em `timestamptz` (UTC).
 
 ## Usuários iniciais
@@ -166,8 +172,15 @@ No perfil `dev`, um `SUPER_ADMIN` pode ser criado pelas variáveis `BOOTSTRAP_SU
 | `GET` | `/api/v1/store/{slug}/catalog` | público |
 | `GET` | `/api/v1/store/{slug}/products/{id}` | público |
 | `POST` | `/api/v1/store/{slug}/cart/quote` | público (recalcula preços no servidor) |
+| `POST` | `/api/v1/store/{slug}/orders` | público (checkout; cria cliente + pedido) |
+| `GET` | `/api/v1/store/{slug}/orders/{publicCode}` | público (acompanhar pedido) |
+| `GET` | `/api/v1/orders` | OWNER, ADMIN, STAFF |
+| `GET` | `/api/v1/orders/summary` | OWNER, ADMIN, STAFF |
+| `GET` | `/api/v1/orders/{id}` | OWNER, ADMIN, STAFF |
+| `PATCH` | `/api/v1/orders/{id}/status` | OWNER, ADMIN, STAFF |
+| `GET` | `/api/v1/customers` | OWNER, ADMIN, STAFF |
 
-Páginas: `/`, `/login`, `/cadastro`, `/recuperar-senha`, `/redefinir-senha`, `/admin`, `/superadmin`, `/loja/{slug}`.
+Páginas: `/`, `/login`, `/cadastro`, `/recuperar-senha`, `/redefinir-senha`, `/admin`, `/superadmin`, `/loja/{slug}`, `/loja/{slug}/checkout`, `/pedido/{slug}/{publicCode}`.
 
 ## GitHub Pages
 
@@ -185,7 +198,7 @@ Enquanto o backend não estiver no ar, o Pages sobe só a interface. Login, cat�
 
 No GitHub Pages o refresh token fica no `sessionStorage` (o cookie HttpOnly não atravessa origem diferente). Access token também no `sessionStorage`.
 
-Localmente o carrinho usa `localStorage` por estabelecimento; os totais vêm de `POST /cart/quote`. Checkout/pedido ficam para a Fase 4.
+Localmente o carrinho usa `localStorage` por estabelecimento; os totais vêm de `POST /cart/quote`. O checkout cria o pedido em `POST /orders` com preços recalculados no servidor.
 
 ## Testes
 
@@ -196,14 +209,14 @@ cd backend
 ./mvnw test
 ```
 
-O teste mais importante é `TenantIsolationIT`: usuário do tenant A não lê nem altera dados do tenant B.
+O teste mais importante é `TenantIsolationIT`: usuário do tenant A não lê nem altera dados do tenant B. Pedidos também têm `OrderIsolationIT`.
 
 ## Fases
 
 1. Fundação — projeto executável, schema base, frontend e health
 2. Auth, JWT e isolamento multi-tenant
-3. Categorias, produtos, loja e carrinho (esta)
-4. Checkout, pedidos e dashboard
+3. Categorias, produtos, loja e carrinho
+4. Checkout, pedidos e dashboard (esta)
 5. Pagamentos, webhooks e idempotência
 6. Entrega, cupons, avaliações e estoque
 7. Relatórios, auditoria e fiscal

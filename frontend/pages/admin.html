@@ -15,6 +15,7 @@
     <link rel="stylesheet" href="/css/components.css">
     <link rel="stylesheet" href="/css/pages/placeholder.css">
     <link rel="stylesheet" href="/css/pages/store.css">
+    <link rel="stylesheet" href="/css/pages/checkout.css">
     <script src="/js/env.js"></script>
 </head>
 <body class="page-shell">
@@ -34,7 +35,14 @@
         <div class="container">
             <span class="badge" id="user-role">Painel</span>
             <h1>Sua loja</h1>
-            <p class="muted">Gerencie o catálogo da loja. Pedidos entram na próxima fase.</p>
+            <p class="muted">Pedidos, catálogo e equipe do estabelecimento.</p>
+            <section class="card placeholder-card" style="margin-bottom:1.25rem;">
+                <h2>Pedidos</h2>
+                <div class="stat-grid" id="order-summary"></div>
+                <div class="chip-row" id="order-filters" style="padding-bottom:0.75rem;"></div>
+                <div id="orders-list"></div>
+                <div class="alert" id="orders-alert" hidden></div>
+            </section>
             <div class="panel-grid">
                 <section class="card placeholder-card">
                     <h2>Estabelecimento</h2>
@@ -131,6 +139,6 @@
             </div>
         </div>
     </main>
-    <script type="module" src="/js/pages/admin.js?v=3"></script>
+    <script type="module" src="/js/pages/admin.js?v=4"></script>
 </body>
 </html>

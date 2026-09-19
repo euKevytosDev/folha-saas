@@ -1,5 +1,5 @@
 import { api, ApiError } from "../api/client.js";
-import { currentStoreSlug } from "../utils/nav.js";
+import { currentStoreSlug, checkoutUrl } from "../utils/nav.js";
 import { $, on } from "../utils/dom.js";
 import { formatBRL, formatQuantity, unitStep } from "../utils/format.js";
 import { addToCart, cartCount, clearCart, loadCart, setCartQuantity } from "../store/cart.js";
@@ -224,6 +224,7 @@ function renderCartBar() {
     const items = loadCart(state.store.id);
     const hidden = items.length === 0;
     els.cartBar.hidden = hidden;
+    syncCheckoutLink();
     if (hidden) {
         return;
     }
@@ -250,6 +251,7 @@ function renderCart() {
     $("#quote-subtotal").textContent = formatBRL(state.quote?.subtotal || 0);
     $("#quote-discount").textContent = formatBRL(state.quote?.discount || 0);
     $("#quote-total").textContent = formatBRL(state.quote?.total || 0);
+    syncCheckoutLink();
 }
 
 function cartLine(line) {
@@ -301,6 +303,19 @@ function showAlert(message) {
     els.alert.textContent = message;
 }
 
+function syncCheckoutLink() {
+    const link = $("#go-checkout");
+    if (!link || !state.store) {
+        return;
+    }
+    const items = loadCart(state.store.id);
+    const enabled = items.length > 0;
+    link.href = enabled ? checkoutUrl(slug) : "#";
+    link.setAttribute("aria-disabled", enabled ? "false" : "true");
+    link.style.pointerEvents = enabled ? "" : "none";
+    link.style.opacity = enabled ? "" : "0.6";
+}
+
 let searchTimer = 0;
 on(els.search, "input", () => {
     window.clearTimeout(searchTimer);
@@ -325,3 +340,4 @@ on($("#clear-cart"), "click", async () => {
     clearCart(state.store.id);
     await refreshQuote();
 });
+

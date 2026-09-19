@@ -44,6 +44,8 @@ replacements = [
     ('href="/redefinir-senha"', f'href="{base_path}/redefinir-senha.html"' if base_path else 'href="redefinir-senha.html"'),
     ('href="/admin"', f'href="{base_path}/admin.html"' if base_path else 'href="admin.html"'),
     ('href="/superadmin"', f'href="{base_path}/superadmin.html"' if base_path else 'href="superadmin.html"'),
+    ('href="/checkout"', f'href="{base_path}/checkout.html"' if base_path else 'href="checkout.html"'),
+    ('href="/pedido"', f'href="{base_path}/pedido.html"' if base_path else 'href="pedido.html"'),
     ('href="/"', f'href="{base_path}/index.html"' if base_path else 'href="index.html"'),
 ]
 

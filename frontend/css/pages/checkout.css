@@ -1,0 +1,138 @@
+.checkout-layout {
+    max-width: 640px;
+    padding-bottom: 3rem;
+}
+
+.checkout-form {
+    display: grid;
+    gap: var(--space-5);
+}
+
+.checkout-section {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-5);
+}
+
+.checkout-section h2 {
+    font-size: 1.05rem;
+    margin: 0 0 var(--space-4);
+    letter-spacing: -0.02em;
+}
+
+.choice-row {
+    display: flex;
+    gap: 0.6rem;
+    margin-bottom: var(--space-4);
+}
+
+.choice-wrap {
+    flex-wrap: wrap;
+}
+
+.choice {
+    flex: 1;
+    min-width: 7rem;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 0.7rem 0.85rem;
+    background: var(--color-background);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.choice:has(input:checked) {
+    border-color: var(--color-primary);
+    background: var(--color-primary-light);
+}
+
+.address-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-3);
+}
+
+.field-span {
+    grid-column: 1 / -1;
+}
+
+.checkout-summary .btn {
+    margin-top: var(--space-4);
+}
+
+.order-title {
+    font-family: var(--font-display);
+    font-size: 1.7rem;
+    letter-spacing: -0.03em;
+    margin: var(--space-3) 0 var(--space-2);
+}
+
+.order-details {
+    margin-top: var(--space-5);
+    display: grid;
+    gap: 0.35rem;
+    font-size: 0.95rem;
+}
+
+.summary-line,
+.order-item-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.45rem 0;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.summary-line:last-child,
+.order-item-row:last-child {
+    border-bottom: 0;
+}
+
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin-bottom: var(--space-5);
+}
+
+.stat-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 0.85rem 1rem;
+}
+
+.stat-card strong {
+    display: block;
+    font-size: 1.35rem;
+    letter-spacing: -0.03em;
+}
+
+.order-admin-row {
+    display: grid;
+    gap: 0.45rem;
+    padding: 0.85rem 0;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.order-admin-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+@media (min-width: 720px) {
+    .stat-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 520px) {
+    .address-grid {
+        grid-template-columns: 1fr;
+    }
+}

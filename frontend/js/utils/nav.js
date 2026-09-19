@@ -18,6 +18,20 @@ export function storeUrl(slug) {
     return `/loja/${slug}`;
 }
 
+export function checkoutUrl(slug) {
+    if (config.staticHost) {
+        return `${withBase("checkout.html")}?slug=${encodeURIComponent(slug)}`;
+    }
+    return `/loja/${slug}/checkout`;
+}
+
+export function orderUrl(slug, publicCode) {
+    if (config.staticHost) {
+        return `${withBase("pedido.html")}?slug=${encodeURIComponent(slug)}&code=${encodeURIComponent(publicCode)}`;
+    }
+    return `/pedido/${encodeURIComponent(slug)}/${encodeURIComponent(publicCode)}`;
+}
+
 export function currentStoreSlug() {
     const params = new URLSearchParams(window.location.search);
     if (params.get("slug")) {

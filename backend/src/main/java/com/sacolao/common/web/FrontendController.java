@@ -36,6 +36,16 @@ public class FrontendController {
         return "forward:/pages/loja.html";
     }
 
+    @GetMapping("/loja/{slug}/checkout")
+    public String checkout() {
+        return "forward:/pages/checkout.html";
+    }
+
+    @GetMapping("/pedido/{slug}/{publicCode}")
+    public String orderTracking() {
+        return "forward:/pages/pedido.html";
+    }
+
     @GetMapping("/admin")
     public String admin() {
         return "forward:/pages/admin.html";
