@@ -13,13 +13,17 @@ FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
 
 RUN useradd --system --uid 10001 --create-home folha
-USER folha
 
 COPY --from=build /app/app.jar /app/app.jar
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh \
+    && chown -R folha:folha /app
+
+USER folha
 
 ENV SPRING_PROFILES_ACTIVE=prod
 ENV JAVA_OPTS="-XX:MaxRAMPercentage=75 -Djava.security.egd=file:/dev/./urandom"
 
 EXPOSE 8080
 
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/app.jar"]
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
