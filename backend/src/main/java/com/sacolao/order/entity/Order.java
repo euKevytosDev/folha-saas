@@ -98,6 +98,12 @@ public class Order {
     @Column(name = "delivery_fee", nullable = false, precision = 12, scale = 2)
     private BigDecimal deliveryFee = BigDecimal.ZERO;
 
+    @Column(name = "coupon_id")
+    private UUID couponId;
+
+    @Column(name = "coupon_code", length = 40)
+    private String couponCode;
+
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal total;
 
@@ -295,6 +301,22 @@ public class Order {
 
     public void setDeliveryFee(BigDecimal deliveryFee) {
         this.deliveryFee = deliveryFee;
+    }
+
+    public UUID getCouponId() {
+        return couponId;
+    }
+
+    public void setCouponId(UUID couponId) {
+        this.couponId = couponId;
+    }
+
+    public String getCouponCode() {
+        return couponCode;
+    }
+
+    public void setCouponCode(String couponCode) {
+        this.couponCode = couponCode;
     }
 
     public BigDecimal getTotal() {

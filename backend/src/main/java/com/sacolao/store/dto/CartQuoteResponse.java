@@ -8,6 +8,8 @@ public record CartQuoteResponse(
         BigDecimal subtotal,
         BigDecimal discount,
         BigDecimal deliveryFee,
-        BigDecimal total
+        BigDecimal total,
+        String couponCode,
+        String couponMessage
 ) {
 }

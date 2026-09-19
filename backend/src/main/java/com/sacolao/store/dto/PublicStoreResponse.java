@@ -1,5 +1,7 @@
 package com.sacolao.store.dto;
 
+import com.sacolao.delivery.dto.DeliverySettingsResponse;
+
 import java.util.UUID;
 
 public record PublicStoreResponse(
@@ -12,6 +14,7 @@ public record PublicStoreResponse(
         String address,
         String city,
         String state,
-        boolean active
+        boolean active,
+        DeliverySettingsResponse delivery
 ) {
 }

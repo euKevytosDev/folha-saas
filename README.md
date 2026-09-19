@@ -183,6 +183,9 @@ No perfil `dev`, um `SUPER_ADMIN` pode ser criado pelas variáveis `BOOTSTRAP_SU
 | `GET` | `/api/v1/orders/{id}/payment` | OWNER, ADMIN, STAFF |
 | `POST` | `/api/v1/orders/{id}/payment/confirm` | OWNER, ADMIN, STAFF (dinheiro / na entrega / mock) |
 | `GET/PUT` | `/api/v1/payments/settings` | OWNER, ADMIN |
+| `GET/PUT` | `/api/v1/delivery/settings` | OWNER, ADMIN (taxa fixa, frete grátis, entrega/retirada) |
+| `GET/POST/PUT/DELETE` | `/api/v1/coupons` | OWNER, ADMIN |
+| `PATCH` | `/api/v1/products/{id}/stock` | OWNER, ADMIN, STAFF (ajusta estoque) |
 | `POST` | `/api/v1/webhooks/mercadopago` | público (gateway) |
 | `POST` | `/api/v1/webhooks/mock` | público (dev/mock) |
 | `GET` | `/api/v1/customers` | OWNER, ADMIN, STAFF |
@@ -194,6 +197,12 @@ Páginas: `/`, `/login`, `/cadastro`, `/recuperar-senha`, `/redefinir-senha`, `/
 Cada estabelecimento usa a **própria conta** no gateway (modelo recomendado: Mercado Pago). O Folha cria a cobrança nessa conta; o **webhook** confirma o pagamento e atualiza o pedido. Em desenvolvimento o padrão é **mock** (PIX simulado + botão “Simular pagamento”).
 
 Idempotência: envie `Idempotency-Key` no checkout para evitar pedido duplicado em retry.
+
+## Entrega, estoque e cupons (Fase 6)
+
+- **Frete fixo** configurável no painel (`/delivery/settings`), com opção de frete grátis acima de um valor.
+- **Estoque**: marque “Controlar estoque” no produto; a venda baixa a quantidade e zera a disponibilidade ao acabar. Ajuste via `PATCH /products/{id}/stock`.
+- **Cupons**: percentual ou valor fixo; aplicados no quote/checkout com código.
 
 ## GitHub Pages
 
@@ -230,8 +239,8 @@ O teste mais importante é `TenantIsolationIT`: usuário do tenant A não lê ne
 2. Auth, JWT e isolamento multi-tenant
 3. Categorias, produtos, loja e carrinho
 4. Checkout, pedidos e dashboard
-5. Pagamentos, webhooks e idempotência (esta)
-6. Entrega, cupons, avaliações e estoque
+5. Pagamentos, webhooks e idempotência
+6. Entrega, cupons, avaliações e estoque (esta — frete fixo, cupons e estoque; avaliações ficam para depois)
 7. Relatórios, auditoria e fiscal
 8. Planos, assinaturas e SUPER ADMIN
 9. Testes, segurança, otimização e produção

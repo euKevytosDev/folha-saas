@@ -91,6 +91,17 @@
                     </div>
                 </section>
                 <section class="checkout-section">
+                    <h2>Cupom</h2>
+                    <div class="field" style="display:flex;gap:0.5rem;align-items:flex-end;">
+                        <div style="flex:1;">
+                            <label for="coupon-code">Código</label>
+                            <input id="coupon-code" name="couponCode" type="text" maxlength="40" placeholder="Ex.: FRETE10" style="text-transform:uppercase">
+                        </div>
+                        <button class="btn btn-secondary" id="apply-coupon" type="button">Aplicar</button>
+                    </div>
+                    <p class="muted" id="coupon-hint" style="font-size:0.85rem;"></p>
+                </section>
+                <section class="checkout-section">
                     <h2>Pagamento</h2>
                     <div class="choice-row choice-wrap">
                         <label class="choice"><input type="radio" name="paymentMethod" value="PIX" checked><span>PIX</span></label>
@@ -98,7 +109,7 @@
                         <label class="choice"><input type="radio" name="paymentMethod" value="CARD"><span>Cartão</span></label>
                         <label class="choice"><input type="radio" name="paymentMethod" value="ON_DELIVERY"><span>Na entrega</span></label>
                     </div>
-                    <p class="muted">O pagamento ainda não é processado online — a loja confirma o pedido e combina a cobrança.</p>
+                    <p class="muted">PIX pode ser gerado na hora (mock ou Mercado Pago). Dinheiro e na entrega são confirmados pela loja.</p>
                 </section>
                 <section class="checkout-section">
                     <h2>Observações</h2>
@@ -121,6 +132,6 @@
             </form>
         </div>
     </main>
-    <script type="module" src="/js/pages/checkout.js?v=2"></script>
+    <script type="module" src="/js/pages/checkout.js?v=3"></script>
 </body>
 </html>

@@ -53,6 +53,59 @@ if (user.role === "STAFF") {
     });
 }
 
+if (user.role !== "STAFF") {
+    await loadDeliverySettings();
+    await refreshCoupons();
+    $("#delivery-settings-form")?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const alertBox = $("#delivery-settings-alert");
+        try {
+            const freeAbove = form.freeAboveAmount.value;
+            const eta = form.estimatedMinutes.value;
+            await api("/delivery/settings", {
+                method: "PUT",
+                body: {
+                    deliveryEnabled: form.deliveryEnabled.checked,
+                    pickupEnabled: form.pickupEnabled.checked,
+                    fixedFee: Number(form.fixedFee.value || 0),
+                    freeAboveAmount: freeAbove === "" ? null : Number(freeAbove),
+                    estimatedMinutes: eta === "" ? null : Number(eta)
+                }
+            });
+            hideAlert(alertBox);
+            await loadDeliverySettings();
+        } catch (error) {
+            showFormAlert(alertBox, error, "Não foi possível salvar frete.");
+        }
+    });
+    $("#coupon-form")?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        try {
+            const min = form.minOrderAmount.value;
+            await api("/coupons", {
+                method: "POST",
+                body: {
+                    code: form.code.value.trim(),
+                    discountType: form.discountType.value,
+                    discountValue: Number(form.discountValue.value),
+                    minOrderAmount: min === "" ? null : Number(min),
+                    active: true
+                }
+            });
+            form.reset();
+            hideAlert($("#coupon-alert"));
+            await refreshCoupons();
+        } catch (error) {
+            showFormAlert($("#coupon-alert"), error, "Não foi possível criar o cupom.");
+        }
+    });
+} else {
+    $("#delivery-settings-card")?.setAttribute("hidden", "");
+    $("#coupons-card")?.setAttribute("hidden", "");
+}
+
 const usersCard = $("#users-card");
 if (user.role === "STAFF") {
     usersCard?.setAttribute("hidden", "");
@@ -108,6 +161,8 @@ $("#product-form")?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
     try {
+        const stockControlled = form.stockControlled.checked;
+        const stockRaw = form.stockQuantity.value;
         await api("/products", {
             method: "POST",
             body: {
@@ -118,6 +173,8 @@ $("#product-form")?.addEventListener("submit", async (event) => {
                 imageUrl: form.imageUrl.value || null,
                 featured: form.featured.checked,
                 available: true,
+                stockControlled,
+                stockQuantity: stockControlled ? Number(stockRaw || 0) : null,
                 minimumQuantity: form.unit.value === "KG" ? 0.2 : 1
             }
         });
@@ -220,7 +277,10 @@ function renderProducts(products) {
         title.textContent = item.name;
         const meta = document.createElement("p");
         meta.className = "muted";
-        meta.textContent = `${item.categoryName} · ${formatBRL(item.price)} / ${item.unit} · ${item.available ? "à venda" : "oculto"}`;
+        const stockLabel = item.stockControlled
+            ? ` · estoque ${item.stockQuantity ?? 0}`
+            : "";
+        meta.textContent = `${item.categoryName} · ${formatBRL(item.price)} / ${item.unit} · ${item.available ? "à venda" : "oculto"}${stockLabel}`;
         const actions = document.createElement("div");
         actions.style.display = "flex";
         actions.style.gap = "0.4rem";
@@ -228,6 +288,28 @@ function renderProducts(products) {
             flagButton(item.available ? "Pausar" : "Publicar", `/products/${item.id}/availability`, !item.available),
             flagButton(item.featured ? "Tirar destaque" : "Destacar", `/products/${item.id}/featured`, !item.featured)
         );
+        if (item.stockControlled) {
+            const stockBtn = document.createElement("button");
+            stockBtn.type = "button";
+            stockBtn.className = "btn btn-ghost";
+            stockBtn.textContent = "Ajustar estoque";
+            stockBtn.addEventListener("click", async () => {
+                const raw = window.prompt("Nova quantidade em estoque", String(item.stockQuantity ?? 0));
+                if (raw == null || raw === "") {
+                    return;
+                }
+                try {
+                    await api(`/products/${item.id}/stock`, {
+                        method: "PATCH",
+                        body: { quantity: Number(raw) }
+                    });
+                    await refreshCatalog();
+                } catch (error) {
+                    showFormAlert($("#product-alert"), error, "Não foi possível ajustar o estoque.");
+                }
+            });
+            actions.append(stockBtn);
+        }
         row.append(title, meta, actions);
         list.append(row);
     });
@@ -428,6 +510,69 @@ async function loadPaymentSettings() {
         }
     } catch (error) {
         showFormAlert($("#payment-settings-alert"), error, "Não foi possível carregar pagamentos.");
+    }
+}
+
+async function loadDeliverySettings() {
+    try {
+        const settings = await api("/delivery/settings");
+        const form = $("#delivery-settings-form");
+        if (!form) {
+            return;
+        }
+        form.deliveryEnabled.checked = !!settings.deliveryEnabled;
+        form.pickupEnabled.checked = !!settings.pickupEnabled;
+        form.fixedFee.value = settings.fixedFee ?? 0;
+        form.freeAboveAmount.value = settings.freeAboveAmount ?? "";
+        form.estimatedMinutes.value = settings.estimatedMinutes ?? "";
+    } catch (error) {
+        showFormAlert($("#delivery-settings-alert"), error, "Não foi possível carregar frete.");
+    }
+}
+
+async function refreshCoupons() {
+    const list = $("#coupons-list");
+    if (!list) {
+        return;
+    }
+    try {
+        const coupons = await api("/coupons");
+        list.replaceChildren();
+        if (!coupons.length) {
+            const empty = document.createElement("p");
+            empty.className = "muted";
+            empty.textContent = "Nenhum cupom ainda.";
+            list.append(empty);
+            return;
+        }
+        coupons.forEach((coupon) => {
+            const row = document.createElement("div");
+            row.className = "product-admin-row";
+            const title = document.createElement("strong");
+            title.textContent = coupon.code;
+            const meta = document.createElement("p");
+            meta.className = "muted";
+            const valueLabel = coupon.discountType === "PERCENT"
+                ? `${coupon.discountValue}%`
+                : formatBRL(coupon.discountValue);
+            meta.textContent = `${valueLabel} · usos ${coupon.usedCount}${coupon.usageLimit ? `/${coupon.usageLimit}` : ""} · ${coupon.active ? "ativo" : "inativo"}`;
+            const del = document.createElement("button");
+            del.type = "button";
+            del.className = "btn btn-ghost";
+            del.textContent = "Remover";
+            del.addEventListener("click", async () => {
+                try {
+                    await api(`/coupons/${coupon.id}`, { method: "DELETE" });
+                    await refreshCoupons();
+                } catch (error) {
+                    showFormAlert($("#coupon-alert"), error, "Não foi possível remover o cupom.");
+                }
+            });
+            row.append(title, meta, del);
+            list.append(row);
+        });
+    } catch (error) {
+        showFormAlert($("#coupon-alert"), error, "Não foi possível carregar cupons.");
     }
 }
 

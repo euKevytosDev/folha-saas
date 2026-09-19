@@ -4,13 +4,18 @@ import com.sacolao.category.dto.CategoryResponse;
 import com.sacolao.category.mapper.CategoryMapper;
 import com.sacolao.category.repository.CategoryRepository;
 import com.sacolao.common.exception.ResourceNotFoundException;
+import com.sacolao.common.exception.UnprocessableException;
+import com.sacolao.common.util.Money;
+import com.sacolao.coupon.service.CouponService;
+import com.sacolao.delivery.entity.EstablishmentDeliverySettings;
+import com.sacolao.delivery.service.DeliveryService;
 import com.sacolao.establishment.entity.Establishment;
 import com.sacolao.establishment.repository.EstablishmentRepository;
+import com.sacolao.order.entity.FulfillmentType;
 import com.sacolao.product.dto.ProductResponse;
+import com.sacolao.product.entity.Product;
 import com.sacolao.product.mapper.ProductMapper;
 import com.sacolao.product.repository.ProductRepository;
-import com.sacolao.common.util.Money;
-import com.sacolao.product.entity.Product;
 import com.sacolao.store.dto.CartQuoteItemRequest;
 import com.sacolao.store.dto.CartQuoteLineResponse;
 import com.sacolao.store.dto.CartQuoteRequest;
@@ -33,15 +38,21 @@ public class StoreCatalogService {
     private final EstablishmentRepository establishmentRepository;
     private final CategoryRepository categoryRepository;
     private final ProductRepository productRepository;
+    private final DeliveryService deliveryService;
+    private final CouponService couponService;
 
     public StoreCatalogService(
             EstablishmentRepository establishmentRepository,
             CategoryRepository categoryRepository,
-            ProductRepository productRepository
+            ProductRepository productRepository,
+            DeliveryService deliveryService,
+            CouponService couponService
     ) {
         this.establishmentRepository = establishmentRepository;
         this.categoryRepository = categoryRepository;
         this.productRepository = productRepository;
+        this.deliveryService = deliveryService;
+        this.couponService = couponService;
     }
 
     @Transactional(readOnly = true)
@@ -77,9 +88,15 @@ public class StoreCatalogService {
                 .orElseThrow(() -> new ResourceNotFoundException("Recurso não encontrado"));
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public CartQuoteResponse quote(String slug, CartQuoteRequest request) {
         Establishment store = requireActiveStore(slug);
+        EstablishmentDeliverySettings deliverySettings = deliveryService.requireSettings(store.getId());
+        FulfillmentType fulfillment = request.fulfillmentType() == null
+                ? FulfillmentType.PICKUP
+                : request.fulfillmentType();
+        deliveryService.assertFulfillmentAllowed(deliverySettings, fulfillment);
+
         List<CartQuoteLineResponse> lines = new ArrayList<>();
         BigDecimal subtotal = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
         for (CartQuoteItemRequest item : request.items()) {
@@ -108,9 +125,33 @@ public class StoreCatalogService {
                     issue
             ));
         }
+
         BigDecimal discount = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
-        BigDecimal deliveryFee = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
-        return new CartQuoteResponse(lines, subtotal, discount, deliveryFee, subtotal.add(deliveryFee).subtract(discount));
+        String couponCode = null;
+        String couponMessage = null;
+        if (request.couponCode() != null && !request.couponCode().isBlank()) {
+            try {
+                CouponService.AppliedCoupon applied = couponService.apply(store.getId(), request.couponCode(), subtotal);
+                discount = applied.discount();
+                if (applied.present()) {
+                    couponCode = applied.coupon().getCode();
+                    couponMessage = "Cupom aplicado";
+                }
+            } catch (UnprocessableException ex) {
+                couponMessage = ex.getMessage();
+            }
+        }
+
+        BigDecimal deliveryFee = deliveryService.calculateFee(deliverySettings, fulfillment, subtotal);
+        return new CartQuoteResponse(
+                lines,
+                subtotal,
+                discount,
+                deliveryFee,
+                subtotal.add(deliveryFee).subtract(discount),
+                couponCode,
+                couponMessage
+        );
     }
 
     private String validateQuantity(Product product, BigDecimal quantity) {
@@ -139,6 +180,7 @@ public class StoreCatalogService {
     }
 
     private PublicStoreResponse toPublicStore(Establishment establishment) {
+        EstablishmentDeliverySettings settings = deliveryService.findOrDefaults(establishment.getId());
         return new PublicStoreResponse(
                 establishment.getId(),
                 establishment.getName(),
@@ -149,7 +191,8 @@ public class StoreCatalogService {
                 establishment.getAddress(),
                 establishment.getCity(),
                 establishment.getState(),
-                establishment.isActive()
+                establishment.isActive(),
+                DeliveryService.toResponse(settings)
         );
     }
 }

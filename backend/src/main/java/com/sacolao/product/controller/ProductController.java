@@ -5,6 +5,8 @@ import com.sacolao.product.dto.ProductFlagRequest;
 import com.sacolao.product.dto.ProductResponse;
 import com.sacolao.product.dto.UpdateProductRequest;
 import com.sacolao.product.service.ProductService;
+import com.sacolao.stock.dto.AdjustStockRequest;
+import com.sacolao.stock.service.StockService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -28,9 +30,11 @@ import java.util.UUID;
 public class ProductController {
 
     private final ProductService productService;
+    private final StockService stockService;
 
-    public ProductController(ProductService productService) {
+    public ProductController(ProductService productService, StockService stockService) {
         this.productService = productService;
+        this.stockService = stockService;
     }
 
     @PostMapping
@@ -62,6 +66,11 @@ public class ProductController {
     @PatchMapping("/{id}/featured")
     public ProductResponse featured(@PathVariable UUID id, @Valid @RequestBody ProductFlagRequest request) {
         return productService.setFeatured(id, request.value());
+    }
+
+    @PatchMapping("/{id}/stock")
+    public ProductResponse adjustStock(@PathVariable UUID id, @Valid @RequestBody AdjustStockRequest request) {
+        return stockService.adjust(id, request);
     }
 
     @DeleteMapping("/{id}")

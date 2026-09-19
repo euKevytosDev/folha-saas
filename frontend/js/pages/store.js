@@ -293,6 +293,11 @@ function renderCart() {
     }
     $("#quote-subtotal").textContent = formatBRL(state.quote?.subtotal || 0);
     $("#quote-discount").textContent = formatBRL(state.quote?.discount || 0);
+    const fee = Number(state.store?.delivery?.fixedFee || 0);
+    const deliveryEl = $("#quote-delivery");
+    if (deliveryEl) {
+        deliveryEl.textContent = fee > 0 ? `a partir de ${formatBRL(fee)}` : "Grátis / a calcular";
+    }
     $("#quote-total").textContent = formatBRL(state.quote?.total || 0);
     const note = $("#cart-note");
     if (note) {

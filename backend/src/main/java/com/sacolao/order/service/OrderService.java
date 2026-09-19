@@ -4,8 +4,11 @@ import com.sacolao.common.exception.ConflictException;
 import com.sacolao.common.exception.ResourceNotFoundException;
 import com.sacolao.common.exception.UnprocessableException;
 import com.sacolao.common.util.Money;
+import com.sacolao.coupon.service.CouponService;
 import com.sacolao.customer.entity.Customer;
 import com.sacolao.customer.service.CustomerService;
+import com.sacolao.delivery.entity.EstablishmentDeliverySettings;
+import com.sacolao.delivery.service.DeliveryService;
 import com.sacolao.establishment.entity.Establishment;
 import com.sacolao.establishment.repository.EstablishmentRepository;
 import com.sacolao.order.dto.CheckoutRequest;
@@ -27,6 +30,7 @@ import com.sacolao.payment.service.IdempotencyService;
 import com.sacolao.payment.service.PaymentService;
 import com.sacolao.product.entity.Product;
 import com.sacolao.product.repository.ProductRepository;
+import com.sacolao.stock.service.StockService;
 import com.sacolao.tenant.TenantContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -55,6 +59,9 @@ public class OrderService {
     private final PaymentService paymentService;
     private final PaymentRepository paymentRepository;
     private final IdempotencyService idempotencyService;
+    private final DeliveryService deliveryService;
+    private final CouponService couponService;
+    private final StockService stockService;
     private final JsonMapper jsonMapper;
 
     public OrderService(
@@ -65,6 +72,9 @@ public class OrderService {
             PaymentService paymentService,
             PaymentRepository paymentRepository,
             IdempotencyService idempotencyService,
+            DeliveryService deliveryService,
+            CouponService couponService,
+            StockService stockService,
             JsonMapper jsonMapper
     ) {
         this.orderRepository = orderRepository;
@@ -74,12 +84,17 @@ public class OrderService {
         this.paymentService = paymentService;
         this.paymentRepository = paymentRepository;
         this.idempotencyService = idempotencyService;
+        this.deliveryService = deliveryService;
+        this.couponService = couponService;
+        this.stockService = stockService;
         this.jsonMapper = jsonMapper;
     }
 
     @Transactional
     public OrderResponse checkout(String slug, CheckoutRequest request, String idempotencyKey) {
         Establishment store = requireActiveStore(slug);
+        EstablishmentDeliverySettings deliverySettings = deliveryService.requireSettings(store.getId());
+        deliveryService.assertFulfillmentAllowed(deliverySettings, request.fulfillmentType());
         validateFulfillment(request);
         Map<UUID, BigDecimal> quantities = mergeQuantities(request.items());
         if (quantities.isEmpty()) {
@@ -121,6 +136,7 @@ public class OrderService {
         applyAddress(order, request);
 
         BigDecimal subtotal = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        Map<Product, BigDecimal> stockConsumptions = new LinkedHashMap<>();
         for (Map.Entry<UUID, BigDecimal> entry : quantities.entrySet()) {
             Product product = productRepository.findPublicById(entry.getKey(), store.getId())
                     .orElseThrow(() -> new UnprocessableException("PRODUCT_UNAVAILABLE", "Produto indisponível"));
@@ -138,17 +154,28 @@ public class OrderService {
             item.setSubtotal(lineTotal);
             order.addItem(item);
             subtotal = subtotal.add(lineTotal);
-            decrementStock(product, quantity);
+            stockConsumptions.put(product, quantity);
         }
 
-        BigDecimal discount = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
-        BigDecimal deliveryFee = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        CouponService.AppliedCoupon applied = couponService.apply(store.getId(), request.couponCode(), subtotal);
+        BigDecimal discount = applied.discount();
+        BigDecimal deliveryFee = deliveryService.calculateFee(deliverySettings, request.fulfillmentType(), subtotal);
         order.setSubtotal(subtotal);
         order.setDiscount(discount);
         order.setDeliveryFee(deliveryFee);
         order.setTotal(subtotal.add(deliveryFee).subtract(discount));
+        if (applied.present()) {
+            order.setCouponId(applied.coupon().getId());
+            order.setCouponCode(applied.coupon().getCode());
+        }
 
         Order saved = orderRepository.save(order);
+        for (Map.Entry<Product, BigDecimal> entry : stockConsumptions.entrySet()) {
+            stockService.consumeForSale(entry.getKey(), saved, entry.getValue());
+        }
+        if (applied.present()) {
+            couponService.markUsed(applied.coupon());
+        }
         Payment payment = paymentService.createForOrder(saved, idempotencyKey);
         OrderResponse response = OrderMapper.toResponse(saved, PaymentMapper.toResponse(payment));
 
@@ -285,13 +312,6 @@ public class OrderService {
                 && quantity.compareTo(product.getStockQuantity()) > 0) {
             throw new UnprocessableException("OUT_OF_STOCK", "Estoque insuficiente para " + product.getName());
         }
-    }
-
-    private void decrementStock(Product product, BigDecimal quantity) {
-        if (!product.isStockControlled() || product.getStockQuantity() == null) {
-            return;
-        }
-        product.setStockQuantity(Money.quantity(product.getStockQuantity().subtract(quantity)));
     }
 
     private String nextPublicCode() {

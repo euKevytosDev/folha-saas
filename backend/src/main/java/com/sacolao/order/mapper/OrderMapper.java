@@ -45,6 +45,7 @@ public final class OrderMapper {
                 order.getTotal(),
                 items,
                 payment,
+                order.getCouponCode(),
                 order.getCreatedAt(),
                 order.getUpdatedAt()
         );

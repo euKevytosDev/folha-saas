@@ -36,6 +36,7 @@ public record OrderResponse(
         BigDecimal total,
         List<OrderItemResponse> items,
         PaymentResponse payment,
+        String couponCode,
         Instant createdAt,
         Instant updatedAt
 ) {
