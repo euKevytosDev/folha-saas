@@ -135,10 +135,37 @@
     font-size: 0.95rem;
 }
 
+.order-admin-address {
+    margin: 0;
+    font-size: 0.92rem;
+    color: var(--color-text);
+    line-height: 1.35;
+}
+
 .order-admin-actions {
     display: flex;
     flex-wrap: wrap;
     gap: 0.4rem;
+}
+
+.order-admin-actions .btn {
+    min-height: 44px;
+}
+
+.btn-whatsapp {
+    background: #1f7a45;
+    color: #fff;
+    border-color: #1f7a45;
+    text-decoration: none;
+}
+
+.btn-whatsapp:hover {
+    background: #166538;
+    color: #fff;
+}
+
+.order-admin-actions a.btn {
+    text-decoration: none;
 }
 
 .payment-box {
@@ -170,5 +197,14 @@
 @media (max-width: 520px) {
     .address-grid {
         grid-template-columns: 1fr;
+    }
+
+    .order-admin-actions .btn {
+        flex: 1 1 calc(50% - 0.4rem);
+    }
+
+    .order-admin-actions .btn-whatsapp,
+    .order-admin-actions .btn-primary {
+        flex: 1 1 100%;
     }
 }

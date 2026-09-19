@@ -421,6 +421,7 @@ function renderOrders(orders) {
         list.append(empty);
         return;
     }
+    const storeName = establishment?.name ?? "nossa loja";
     orders.forEach((order) => {
         const row = document.createElement("div");
         row.className = "order-admin-row";
@@ -440,7 +441,7 @@ function renderOrders(orders) {
         const payLabel = payment
             ? ` · Pagamento ${paymentStatusLabel(payment.status)}`
             : "";
-        meta.textContent = `${formatBRL(order.total)} · ${fulfillmentLabel(order.fulfillmentType)} · ${order.customerPhone}${payLabel}`;
+        meta.textContent = `${formatBRL(order.total)} · ${fulfillmentLabel(order.fulfillmentType)} · ${formatPhoneDisplay(order.customerPhone)}${payLabel}`;
 
         const items = document.createElement("ul");
         items.className = "order-item-list";
@@ -451,6 +452,15 @@ function renderOrders(orders) {
         });
 
         row.append(head, meta, items);
+
+        const addressLine = formatOrderAddress(order);
+        if (addressLine) {
+            const address = document.createElement("p");
+            address.className = "order-admin-address";
+            address.textContent = addressLine;
+            row.append(address);
+        }
+
         if (order.notes) {
             const notes = document.createElement("p");
             notes.className = "muted";
@@ -461,6 +471,32 @@ function renderOrders(orders) {
         const next = nextStatus(order.status);
         const actions = document.createElement("div");
         actions.className = "order-admin-actions";
+
+        const waGeneral = whatsappLink(
+            order.customerPhone,
+            `Olá ${order.customerName}! Aqui é da ${storeName}. Sobre o pedido ${order.publicCode}:`
+        );
+        if (waGeneral) {
+            const waBtn = document.createElement("a");
+            waBtn.className = "btn btn-whatsapp";
+            waBtn.href = waGeneral;
+            waBtn.target = "_blank";
+            waBtn.rel = "noopener noreferrer";
+            waBtn.textContent = "WhatsApp";
+            actions.append(waBtn);
+
+            const waMissing = document.createElement("a");
+            waMissing.className = "btn btn-secondary";
+            waMissing.href = whatsappLink(
+                order.customerPhone,
+                `Olá ${order.customerName}! Sobre o pedido ${order.publicCode} da ${storeName}: um item ficou indisponível. Podemos trocar ou ajustar o pedido?`
+            );
+            waMissing.target = "_blank";
+            waMissing.rel = "noopener noreferrer";
+            waMissing.textContent = "Avisar falta";
+            actions.append(waMissing);
+        }
+
         if (payment && payment.status !== "PAID" && ["CASH", "ON_DELIVERY"].includes(payment.method)) {
             const confirmPay = document.createElement("button");
             confirmPay.type = "button";
@@ -490,6 +526,54 @@ function renderOrders(orders) {
         }
         list.append(row);
     });
+}
+
+function toWhatsAppNumber(phone) {
+    const digits = String(phone || "").replace(/\D+/g, "");
+    if (!digits) {
+        return null;
+    }
+    if (digits.startsWith("55") && digits.length >= 12) {
+        return digits;
+    }
+    if (digits.length >= 10 && digits.length <= 11) {
+        return `55${digits}`;
+    }
+    return digits;
+}
+
+function whatsappLink(phone, text) {
+    const number = toWhatsAppNumber(phone);
+    if (!number) {
+        return null;
+    }
+    const query = text ? `?text=${encodeURIComponent(text)}` : "";
+    return `https://wa.me/${number}${query}`;
+}
+
+function formatPhoneDisplay(phone) {
+    const digits = String(phone || "").replace(/\D+/g, "");
+    if (digits.length === 11) {
+        return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+    }
+    if (digits.length === 10) {
+        return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+    }
+    return phone || "";
+}
+
+function formatOrderAddress(order) {
+    if (order.fulfillmentType !== "DELIVERY") {
+        return null;
+    }
+    const parts = [
+        [order.addressStreet, order.addressNumber].filter(Boolean).join(", "),
+        order.addressComplement,
+        order.addressNeighborhood,
+        [order.addressCity, order.addressState].filter(Boolean).join(" - "),
+        order.addressZipCode
+    ].filter(Boolean);
+    return parts.length ? `Entrega: ${parts.join(" · ")}` : null;
 }
 
 async function loadPaymentSettings() {
