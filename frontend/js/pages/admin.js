@@ -1,4 +1,4 @@
-import { api, ApiError } from "../api/client.js";
+import { api, apiUpload, ApiError } from "../api/client.js";
 import { logout, requirePageAuth } from "../auth/api.js";
 import { $ } from "../utils/dom.js";
 import { formatBRL, formatQuantity } from "../utils/format.js";
@@ -19,6 +19,10 @@ $("#store-status").textContent = establishment?.active ? "Ativo" : "Inativo";
 $("#store-link").href = establishment ? storeUrl(establishment.slug) : "/";
 
 $("#logout-button")?.addEventListener("click", () => logout());
+
+const mediaState = { enabled: false, uploading: false };
+await loadMediaConfig();
+wireProductImageControls();
 
 const orderState = { status: "OPEN" };
 renderOrderFilters();
@@ -160,6 +164,10 @@ $("#category-form")?.addEventListener("submit", async (event) => {
 $("#product-form")?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
+    if (mediaState.uploading) {
+        showFormAlert($("#product-alert"), null, "Aguarde o envio da imagem.");
+        return;
+    }
     try {
         const stockControlled = form.stockControlled.checked;
         const stockRaw = form.stockQuantity.value;
@@ -179,12 +187,99 @@ $("#product-form")?.addEventListener("submit", async (event) => {
             }
         });
         form.reset();
+        clearProductImagePreview();
         hideAlert($("#product-alert"));
         await refreshCatalog();
     } catch (error) {
         showFormAlert($("#product-alert"), error, "Não foi possível salvar o produto.");
     }
 });
+
+async function loadMediaConfig() {
+    try {
+        const config = await api("/media/config");
+        mediaState.enabled = !!config.enabled;
+        const fileInput = $("#product-image-file");
+        const hint = $("#product-image-hint");
+        if (!mediaState.enabled) {
+            if (fileInput) {
+                fileInput.disabled = true;
+            }
+            if (hint) {
+                hint.textContent = "Upload ainda não configurado — cole uma URL da imagem. Configure Cloudinary no servidor para enviar arquivo.";
+            }
+        } else if (hint) {
+            hint.textContent = "Envie um arquivo (JPG/PNG/WEBP, até 5 MB) ou cole uma URL.";
+        }
+    } catch {
+        mediaState.enabled = false;
+    }
+}
+
+function wireProductImageControls() {
+    const fileInput = $("#product-image-file");
+    const urlInput = $("#product-image");
+    fileInput?.addEventListener("change", async () => {
+        const file = fileInput.files?.[0];
+        if (!file) {
+            return;
+        }
+        if (!mediaState.enabled) {
+            showFormAlert($("#product-alert"), null, "Upload não configurado. Cole a URL da imagem.");
+            fileInput.value = "";
+            return;
+        }
+        mediaState.uploading = true;
+        try {
+            const formData = new FormData();
+            formData.append("file", file);
+            const uploaded = await apiUpload("/media/upload", formData);
+            if (urlInput) {
+                urlInput.value = uploaded.url;
+            }
+            setProductImagePreview(uploaded.url);
+            hideAlert($("#product-alert"));
+        } catch (error) {
+            showFormAlert($("#product-alert"), error, "Falha ao enviar a imagem.");
+            fileInput.value = "";
+        } finally {
+            mediaState.uploading = false;
+        }
+    });
+    urlInput?.addEventListener("input", () => {
+        const value = urlInput.value.trim();
+        if (value) {
+            setProductImagePreview(value);
+        } else {
+            clearProductImagePreview();
+        }
+    });
+}
+
+function setProductImagePreview(url) {
+    const box = $("#product-image-preview");
+    const img = $("#product-image-preview-img");
+    if (!box || !img || !url) {
+        return;
+    }
+    img.src = url;
+    box.hidden = false;
+}
+
+function clearProductImagePreview() {
+    const box = $("#product-image-preview");
+    const img = $("#product-image-preview-img");
+    const fileInput = $("#product-image-file");
+    if (img) {
+        img.removeAttribute("src");
+    }
+    if (box) {
+        box.hidden = true;
+    }
+    if (fileInput) {
+        fileInput.value = "";
+    }
+}
 
 async function renderUsers() {
     const list = $("#users-list");

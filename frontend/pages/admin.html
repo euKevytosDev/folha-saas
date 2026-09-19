@@ -208,8 +208,16 @@
                             </select>
                         </div>
                         <div class="field">
+                            <label for="product-image-file">Foto do produto</label>
+                            <input id="product-image-file" name="imageFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif">
+                            <p class="muted" id="product-image-hint" style="margin-top:0.35rem;">Envie um arquivo ou cole uma URL abaixo.</p>
+                        </div>
+                        <div class="product-image-preview" id="product-image-preview" hidden>
+                            <img id="product-image-preview-img" alt="Prévia do produto">
+                        </div>
+                        <div class="field">
                             <label for="product-image">Imagem (URL)</label>
-                            <input id="product-image" name="imageUrl" type="url">
+                            <input id="product-image" name="imageUrl" type="url" placeholder="https://...">
                         </div>
                         <label class="muted" style="display:flex;gap:0.5rem;align-items:center;">
                             <input id="product-stock-controlled" name="stockControlled" type="checkbox">
@@ -229,6 +237,6 @@
             </div>
         </div>
     </main>
-    <script type="module" src="/js/pages/admin.js?v=6"></script>
+    <script type="module" src="/js/pages/admin.js?v=7"></script>
 </body>
 </html>

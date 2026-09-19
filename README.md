@@ -120,6 +120,10 @@ Saúde: [http://localhost:8080/api/v1/health](http://localhost:8080/api/v1/healt
 | `RATE_LIMIT_LOGIN_WINDOW_SECONDS` | Janela do rate limit de login (padrão 300) |
 | `RATE_LIMIT_REGISTER_MAX` | Tentativas de cadastro por janela (padrão 10) |
 | `RATE_LIMIT_REGISTER_WINDOW_SECONDS` | Janela do rate limit de cadastro (padrão 300) |
+| `CLOUDINARY_CLOUD_NAME` | Cloud name da conta Cloudinary (upload de imagens) |
+| `CLOUDINARY_API_KEY` | API Key do Cloudinary |
+| `CLOUDINARY_API_SECRET` | API Secret do Cloudinary (só no servidor) |
+| `CLOUDINARY_FOLDER` | Pasta base no Cloudinary (padrão `folha`) |
 
 ## Banco e migrations
 
@@ -223,6 +227,10 @@ Confirme no Render: `SPRING_PROFILES_ACTIVE=prod` e `JWT_SECRET` forte.
 - **Frete fixo** configurável no painel (`/delivery/settings`), com opção de frete grátis acima de um valor.
 - **Estoque**: marque “Controlar estoque” no produto; a venda baixa a quantidade e zera a disponibilidade ao acabar. Ajuste via `PATCH /products/{id}/stock`.
 - **Cupons**: percentual ou valor fixo; aplicados no quote/checkout com código.
+
+### Imagens de produto
+
+O admin aceita **upload de arquivo** (Cloudinary) ou **URL**. Configure `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` e `CLOUDINARY_API_SECRET` no Render/`.env`. Sem isso, só a URL fica disponível. Endpoint: `POST /api/v1/media/upload` (autenticado).
 
 ## GitHub Pages
 

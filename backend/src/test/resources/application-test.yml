@@ -33,3 +33,9 @@ app:
       login-window-seconds: 60
       register-max-attempts: 100
       register-window-seconds: 60
+  cloudinary:
+    cloud-name:
+    api-key:
+    api-secret:
+    folder: folha-test
+    max-bytes: 5242880

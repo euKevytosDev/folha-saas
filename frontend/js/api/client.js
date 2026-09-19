@@ -28,6 +28,23 @@ export async function api(path, { method = "GET", body, headers, retry = true } 
     return payload;
 }
 
+/** Upload multipart (não define Content-Type — o browser envia o boundary). */
+export async function apiUpload(path, formData, { retry = true } = {}) {
+    const response = await request(path, { method: "POST", body: formData, multipart: true });
+    if (response.status === 401 && retry) {
+        const refreshed = await refreshAccessToken();
+        if (refreshed) {
+            return apiUpload(path, formData, { retry: false });
+        }
+        clearSession();
+    }
+    const payload = await readJson(response);
+    if (!response.ok) {
+        throw new ApiError(payload, response.status);
+    }
+    return payload;
+}
+
 export async function refreshAccessToken() {
     if (!refreshPromise) {
         refreshPromise = fetch(apiUrl("/auth/refresh"), {
@@ -54,22 +71,23 @@ export async function refreshAccessToken() {
     return refreshPromise;
 }
 
-function request(path, { method, body, headers }) {
+function request(path, { method, body, headers, multipart = false }) {
     const publicAuth = path === "/auth/login"
         || path === "/auth/register"
         || path === "/auth/forgot-password"
         || path === "/auth/reset-password";
     const token = publicAuth ? null : getAccessToken();
+    const isFormData = multipart || (typeof FormData !== "undefined" && body instanceof FormData);
     return fetch(apiUrl(path), {
         method,
         credentials: isCrossOriginApi() ? "include" : "same-origin",
         headers: {
             Accept: "application/json",
-            ...(body ? { "Content-Type": "application/json" } : {}),
+            ...(body && !isFormData ? { "Content-Type": "application/json" } : {}),
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
             ...headers
         },
-        body: body ? JSON.stringify(body) : undefined
+        body: body ? (isFormData ? body : JSON.stringify(body)) : undefined
     });
 }
 

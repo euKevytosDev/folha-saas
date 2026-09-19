@@ -13,7 +13,8 @@ public record AppProperties(
         Auth auth,
         Bootstrap bootstrap,
         Payments payments,
-        Security security
+        Security security,
+        Cloudinary cloudinary
 ) {
     public record Cors(List<String> allowedOrigins) {
     }
@@ -53,5 +54,14 @@ public record AppProperties(
                 int registerWindowSeconds
         ) {
         }
+    }
+
+    public record Cloudinary(
+            String cloudName,
+            String apiKey,
+            String apiSecret,
+            String folder,
+            long maxBytes
+    ) {
     }
 }
