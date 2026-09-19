@@ -1,25 +1,23 @@
-# Preferir o Dockerfile da raiz do repositório na Render
-# (Dockerfile Path: Dockerfile) para incluir o frontend no JAR.
-#
-# Este arquivo fica como fallback se o build context for só backend/.
-
+# Build context: raiz do repositório (Render Dockerfile Path = Dockerfile)
 FROM maven:3.9.9-eclipse-temurin-21 AS build
 WORKDIR /app
 
-COPY pom.xml mvnw ./
-COPY .mvn .mvn
-COPY src ./src
-# Sem ../frontend no context: páginas HTML não entram no JAR.
+COPY backend/pom.xml backend/mvnw ./
+COPY backend/.mvn .mvn
+COPY backend/src ./src
+COPY frontend /frontend
+
 RUN chmod +x mvnw && ./mvnw -B -DskipTests package \
     && cp target/folha-platform-*.jar /app/app.jar
 
+# Runtime
 FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
 
 RUN useradd --system --uid 10001 --create-home folha
 
 COPY --from=build /app/app.jar /app/app.jar
-COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+COPY backend/docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN chmod +x /app/docker-entrypoint.sh \
     && chown -R folha:folha /app
 
