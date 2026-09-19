@@ -112,6 +112,14 @@ Saúde: [http://localhost:8080/api/v1/health](http://localhost:8080/api/v1/healt
 | `BOOTSTRAP_SUPERADMIN_EMAIL` | Cria SUPER_ADMIN no perfil `dev` se ainda não existir |
 | `BOOTSTRAP_SUPERADMIN_PASSWORD` | Senha do SUPER_ADMIN inicial |
 | `FRONTEND_DIR` | Pasta do frontend em desenvolvimento |
+| `PAYMENTS_SIMULATE_ENABLED` | Permite `POST .../payment/simulate` (off em `prod`) |
+| `PAYMENTS_MOCK_WEBHOOKS_ENABLED` | Aceita `/webhooks/mock` (off em `prod`) |
+| `PAYMENTS_REQUIRE_WEBHOOK_SECRET` | Exige assinatura/`X-Webhook-Secret` (on em `prod`) |
+| `PAYMENTS_MOCK_WEBHOOK_SECRET` | Segredo compartilhado para webhooks mock |
+| `RATE_LIMIT_LOGIN_MAX` | Tentativas de login por janela (padrão 20) |
+| `RATE_LIMIT_LOGIN_WINDOW_SECONDS` | Janela do rate limit de login (padrão 300) |
+| `RATE_LIMIT_REGISTER_MAX` | Tentativas de cadastro por janela (padrão 10) |
+| `RATE_LIMIT_REGISTER_WINDOW_SECONDS` | Janela do rate limit de cadastro (padrão 300) |
 
 ## Banco e migrations
 
@@ -197,6 +205,18 @@ Páginas: `/`, `/login`, `/cadastro`, `/recuperar-senha`, `/redefinir-senha`, `/
 Cada estabelecimento usa a **própria conta** no gateway (modelo recomendado: Mercado Pago). O Folha cria a cobrança nessa conta; o **webhook** confirma o pagamento e atualiza o pedido. Em desenvolvimento o padrão é **mock** (PIX simulado + botão “Simular pagamento”).
 
 Idempotência: envie `Idempotency-Key` no checkout para evitar pedido duplicado em retry.
+
+### Segurança de pagamentos e login
+
+Com `SPRING_PROFILES_ACTIVE=prod` (Render):
+
+- **Simulate** desligado (`app.payments.simulate-enabled=false`)
+- **Webhook mock** desligado; webhooks exigem segredo/assinatura (`require-webhook-secret=true`)
+- Mercado Pago: valide `x-signature` + `X-Request-Id` (HMAC) ou header `X-Webhook-Secret` do tenant
+- Mock (só em dev/test): envie `X-Webhook-Secret` igual a `PAYMENTS_MOCK_WEBHOOK_SECRET`
+- **Rate limit** leve no login/cadastro/forgot (~20 tentativas / 5 min por IP+email)
+
+Confirme no Render: `SPRING_PROFILES_ACTIVE=prod` e `JWT_SECRET` forte.
 
 ## Entrega, estoque e cupons (Fase 6)
 

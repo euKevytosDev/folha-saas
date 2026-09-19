@@ -1,7 +1,9 @@
 package com.sacolao.payment.service;
 
 import com.sacolao.common.exception.ResourceNotFoundException;
+import com.sacolao.common.exception.UnauthorizedException;
 import com.sacolao.common.exception.UnprocessableException;
+import com.sacolao.config.AppProperties;
 import com.sacolao.establishment.entity.Establishment;
 import com.sacolao.establishment.repository.EstablishmentRepository;
 import com.sacolao.order.entity.Order;
@@ -24,6 +26,7 @@ import com.sacolao.payment.mapper.PaymentMapper;
 import com.sacolao.payment.repository.EstablishmentPaymentSettingsRepository;
 import com.sacolao.payment.repository.PaymentRepository;
 import com.sacolao.payment.repository.PaymentWebhookEventRepository;
+import com.sacolao.payment.webhook.WebhookSignatureVerifier;
 import com.sacolao.tenant.TenantContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,6 +49,7 @@ public class PaymentService {
     private final MockPaymentGateway mockPaymentGateway;
     private final ManualPaymentGateway manualPaymentGateway;
     private final JsonMapper jsonMapper;
+    private final AppProperties properties;
 
     public PaymentService(
             PaymentRepository paymentRepository,
@@ -56,7 +60,8 @@ public class PaymentService {
             MercadoPagoPaymentGateway mercadoPagoPaymentGateway,
             MockPaymentGateway mockPaymentGateway,
             ManualPaymentGateway manualPaymentGateway,
-            JsonMapper jsonMapper
+            JsonMapper jsonMapper,
+            AppProperties properties
     ) {
         this.paymentRepository = paymentRepository;
         this.settingsRepository = settingsRepository;
@@ -67,6 +72,7 @@ public class PaymentService {
         this.mockPaymentGateway = mockPaymentGateway;
         this.manualPaymentGateway = manualPaymentGateway;
         this.jsonMapper = jsonMapper;
+        this.properties = properties;
     }
 
     @Transactional
@@ -138,6 +144,9 @@ public class PaymentService {
 
     @Transactional
     public PaymentResponse simulatePaid(String slug, String publicCode) {
+        if (!properties.payments().simulateEnabled()) {
+            throw new UnprocessableException("SIMULATE_DISABLED", "Simulação de pagamento desabilitada neste ambiente");
+        }
         Establishment store = requireActiveStore(slug);
         Payment payment = paymentRepository.findByOrderPublicCodeAndEstablishmentId(
                         publicCode.trim().toUpperCase(Locale.ROOT),
@@ -151,7 +160,43 @@ public class PaymentService {
     }
 
     @Transactional
-    public void handleWebhook(PaymentProviderType provider, String providerEventId, String payload) {
+    public void handleWebhook(
+            PaymentProviderType provider,
+            String providerEventId,
+            String payload,
+            String xSignature,
+            String xRequestId,
+            String sharedSecretHeader
+    ) {
+        if (provider == PaymentProviderType.MOCK || provider == PaymentProviderType.MANUAL) {
+            if (!properties.payments().mockWebhooksEnabled()) {
+                throw new UnauthorizedException("Webhook mock desabilitado neste ambiente");
+            }
+        }
+
+        JsonNode json;
+        try {
+            json = jsonMapper.readTree(payload == null ? "{}" : payload);
+        } catch (Exception ex) {
+            throw new UnprocessableException("WEBHOOK_INVALID", "Webhook inválido");
+        }
+
+        String externalId = firstNonBlank(
+                text(json, "data.id"),
+                text(json, "data.payment.id"),
+                text(json, "id"),
+                text(json, "externalId")
+        );
+
+        Payment payment = null;
+        if (externalId != null) {
+            payment = paymentRepository.findByProviderAndExternalId(provider, externalId)
+                    .or(() -> paymentRepository.findByExternalId(externalId))
+                    .orElse(null);
+        }
+
+        assertWebhookAuthorized(provider, payment, externalId, xSignature, xRequestId, sharedSecretHeader);
+
         if (providerEventId == null || providerEventId.isBlank()) {
             providerEventId = IdempotencyService.sha256(payload);
         }
@@ -165,24 +210,11 @@ public class PaymentService {
         event.setPayload(payload);
 
         try {
-            JsonNode json = jsonMapper.readTree(payload == null ? "{}" : payload);
-            String externalId = firstNonBlank(
-                    text(json, "data.id"),
-                    text(json, "data.payment.id"),
-                    text(json, "id"),
-                    text(json, "externalId")
-            );
             String status = firstNonBlank(
                     text(json, "action"),
                     text(json, "data.status"),
                     text(json, "status")
             );
-            Payment payment = null;
-            if (externalId != null) {
-                payment = paymentRepository.findByProviderAndExternalId(provider, externalId)
-                        .or(() -> paymentRepository.findByExternalId(externalId))
-                        .orElse(null);
-            }
             if (payment != null) {
                 event.setPayment(payment);
                 event.setEstablishment(payment.getEstablishment());
@@ -193,10 +225,47 @@ public class PaymentService {
             event.setProcessed(true);
             event.setProcessedAt(Instant.now());
             webhookEventRepository.save(event);
+        } catch (UnauthorizedException | UnprocessableException ex) {
+            throw ex;
         } catch (Exception ex) {
             event.setProcessed(false);
             webhookEventRepository.save(event);
             throw new UnprocessableException("WEBHOOK_INVALID", "Webhook inválido");
+        }
+    }
+
+    private void assertWebhookAuthorized(
+            PaymentProviderType provider,
+            Payment payment,
+            String dataId,
+            String xSignature,
+            String xRequestId,
+            String sharedSecretHeader
+    ) {
+        String tenantSecret = null;
+        if (payment != null) {
+            tenantSecret = settingsRepository.findById(payment.getEstablishmentId())
+                    .map(EstablishmentPaymentSettings::getWebhookSecret)
+                    .orElse(null);
+        }
+        String mockSecret = properties.payments().mockWebhookSecret();
+        boolean sharedOk = WebhookSignatureVerifier.matchesSharedSecret(tenantSecret, sharedSecretHeader)
+                || (provider == PaymentProviderType.MOCK
+                && WebhookSignatureVerifier.matchesSharedSecret(mockSecret, sharedSecretHeader));
+        boolean mpOk = provider == PaymentProviderType.MERCADO_PAGO
+                && WebhookSignatureVerifier.isValidMercadoPago(tenantSecret, dataId, xRequestId, xSignature);
+
+        if (sharedOk || mpOk) {
+            return;
+        }
+
+        boolean hasConfiguredSecret = (tenantSecret != null && !tenantSecret.isBlank())
+                || (provider == PaymentProviderType.MOCK
+                && mockSecret != null
+                && !mockSecret.isBlank());
+
+        if (properties.payments().requireWebhookSecret() || hasConfiguredSecret) {
+            throw new UnauthorizedException("Assinatura ou segredo do webhook inválido");
         }
     }
 

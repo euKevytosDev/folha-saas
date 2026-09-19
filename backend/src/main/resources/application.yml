@@ -48,6 +48,17 @@ app:
   bootstrap:
     superadmin-email: ${BOOTSTRAP_SUPERADMIN_EMAIL:}
     superadmin-password: ${BOOTSTRAP_SUPERADMIN_PASSWORD:}
+  payments:
+    simulate-enabled: ${PAYMENTS_SIMULATE_ENABLED:true}
+    mock-webhooks-enabled: ${PAYMENTS_MOCK_WEBHOOKS_ENABLED:true}
+    require-webhook-secret: ${PAYMENTS_REQUIRE_WEBHOOK_SECRET:false}
+    mock-webhook-secret: ${PAYMENTS_MOCK_WEBHOOK_SECRET:folha-dev-webhook-secret}
+  security:
+    rate-limit:
+      login-max-attempts: ${RATE_LIMIT_LOGIN_MAX:20}
+      login-window-seconds: ${RATE_LIMIT_LOGIN_WINDOW_SECONDS:300}
+      register-max-attempts: ${RATE_LIMIT_REGISTER_MAX:10}
+      register-window-seconds: ${RATE_LIMIT_REGISTER_WINDOW_SECONDS:300}
 
 logging:
   pattern:

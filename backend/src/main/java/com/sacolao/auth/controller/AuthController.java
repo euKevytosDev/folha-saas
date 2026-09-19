@@ -11,6 +11,8 @@ import com.sacolao.auth.dto.RegisterRequest;
 import com.sacolao.auth.dto.ResetPasswordRequest;
 import com.sacolao.auth.service.AuthService;
 import com.sacolao.security.AuthCookieService;
+import com.sacolao.security.AuthRateLimiter;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
@@ -30,17 +32,25 @@ public class AuthController {
 
     private final AuthService authService;
     private final AuthCookieService authCookieService;
+    private final AuthRateLimiter authRateLimiter;
 
-    public AuthController(AuthService authService, AuthCookieService authCookieService) {
+    public AuthController(
+            AuthService authService,
+            AuthCookieService authCookieService,
+            AuthRateLimiter authRateLimiter
+    ) {
         this.authService = authService;
         this.authCookieService = authCookieService;
+        this.authRateLimiter = authRateLimiter;
     }
 
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(
             @Valid @RequestBody RegisterRequest request,
+            HttpServletRequest httpRequest,
             HttpServletResponse response
     ) {
+        authRateLimiter.checkRegister(clientKey(httpRequest, request.email()));
         AuthResponse body = authService.register(request);
         addRefreshCookie(response, body.refreshToken());
         return ResponseEntity.status(HttpStatus.CREATED).body(body);
@@ -49,8 +59,10 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(
             @Valid @RequestBody LoginRequest request,
+            HttpServletRequest httpRequest,
             HttpServletResponse response
     ) {
+        authRateLimiter.checkLogin(clientKey(httpRequest, request.email()));
         AuthResponse body = authService.login(request);
         addRefreshCookie(response, body.refreshToken());
         return ResponseEntity.ok(body);
@@ -80,7 +92,11 @@ public class AuthController {
     }
 
     @PostMapping("/forgot-password")
-    public MessageResponse forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+    public MessageResponse forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        authRateLimiter.checkForgotPassword(clientKey(httpRequest, request.email()));
         return authService.forgotPassword(request);
     }
 
@@ -104,6 +120,14 @@ public class AuthController {
             return body.refreshToken();
         }
         return cookieToken;
+    }
+
+    private static String clientKey(HttpServletRequest request, String email) {
+        String forwarded = request.getHeader("X-Forwarded-For");
+        String ip = forwarded != null && !forwarded.isBlank()
+                ? forwarded.split(",")[0].trim()
+                : request.getRemoteAddr();
+        return ip + "|" + (email == null ? "" : email);
     }
 
     private void addRefreshCookie(HttpServletResponse response, String rawToken) {

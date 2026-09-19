@@ -11,7 +11,9 @@ public record AppProperties(
         Cors cors,
         Jwt jwt,
         Auth auth,
-        Bootstrap bootstrap
+        Bootstrap bootstrap,
+        Payments payments,
+        Security security
 ) {
     public record Cors(List<String> allowedOrigins) {
     }
@@ -33,5 +35,23 @@ public record AppProperties(
             String superadminEmail,
             String superadminPassword
     ) {
+    }
+
+    public record Payments(
+            boolean simulateEnabled,
+            boolean mockWebhooksEnabled,
+            boolean requireWebhookSecret,
+            String mockWebhookSecret
+    ) {
+    }
+
+    public record Security(RateLimit rateLimit) {
+        public record RateLimit(
+                int loginMaxAttempts,
+                int loginWindowSeconds,
+                int registerMaxAttempts,
+                int registerWindowSeconds
+        ) {
+        }
     }
 }

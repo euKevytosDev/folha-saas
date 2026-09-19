@@ -32,10 +32,19 @@ public class PaymentWebhookController {
     public Map<String, String> mercadoPago(
             @RequestBody(required = false) JsonNode body,
             @RequestHeader(value = "X-Request-Id", required = false) String requestId,
-            @RequestHeader(value = "X-Idempotency-Key", required = false) String idempotencyKey
+            @RequestHeader(value = "X-Idempotency-Key", required = false) String idempotencyKey,
+            @RequestHeader(value = "x-signature", required = false) String signature,
+            @RequestHeader(value = "X-Webhook-Secret", required = false) String webhookSecret
     ) {
         String eventId = firstNonBlank(requestId, idempotencyKey);
-        paymentService.handleWebhook(PaymentProviderType.MERCADO_PAGO, eventId, toPayload(body));
+        paymentService.handleWebhook(
+                PaymentProviderType.MERCADO_PAGO,
+                eventId,
+                toPayload(body),
+                signature,
+                requestId,
+                webhookSecret
+        );
         return Map.of("status", "ok");
     }
 
@@ -43,9 +52,17 @@ public class PaymentWebhookController {
     @ResponseStatus(HttpStatus.OK)
     public Map<String, String> mock(
             @RequestBody(required = false) JsonNode body,
-            @RequestHeader(value = "X-Event-Id", required = false) String eventId
+            @RequestHeader(value = "X-Event-Id", required = false) String eventId,
+            @RequestHeader(value = "X-Webhook-Secret", required = false) String webhookSecret
     ) {
-        paymentService.handleWebhook(PaymentProviderType.MOCK, eventId, toPayload(body));
+        paymentService.handleWebhook(
+                PaymentProviderType.MOCK,
+                eventId,
+                toPayload(body),
+                null,
+                null,
+                webhookSecret
+        );
         return Map.of("status", "ok");
     }
 
@@ -54,14 +71,17 @@ public class PaymentWebhookController {
     public Map<String, String> generic(
             @PathVariable String provider,
             @RequestBody(required = false) JsonNode body,
-            @RequestHeader(value = "X-Event-Id", required = false) String eventId
+            @RequestHeader(value = "X-Event-Id", required = false) String eventId,
+            @RequestHeader(value = "x-signature", required = false) String signature,
+            @RequestHeader(value = "X-Request-Id", required = false) String requestId,
+            @RequestHeader(value = "X-Webhook-Secret", required = false) String webhookSecret
     ) {
         PaymentProviderType type = switch (provider.toLowerCase()) {
             case "mercado-pago", "mercadopago", "mp" -> PaymentProviderType.MERCADO_PAGO;
             case "manual" -> PaymentProviderType.MANUAL;
             default -> PaymentProviderType.MOCK;
         };
-        paymentService.handleWebhook(type, eventId, toPayload(body));
+        paymentService.handleWebhook(type, eventId, toPayload(body), signature, requestId, webhookSecret);
         return Map.of("status", "ok");
     }
 

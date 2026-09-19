@@ -22,3 +22,14 @@ app:
   bootstrap:
     superadmin-email:
     superadmin-password:
+  payments:
+    simulate-enabled: true
+    mock-webhooks-enabled: true
+    require-webhook-secret: false
+    mock-webhook-secret: folha-test-webhook-secret
+  security:
+    rate-limit:
+      login-max-attempts: 100
+      login-window-seconds: 60
+      register-max-attempts: 100
+      register-window-seconds: 60

@@ -114,6 +114,7 @@ class PaymentIT extends CatalogSupport {
         mockMvc.perform(post("/api/v1/webhooks/mock")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("X-Event-Id", eventId)
+                        .header("X-Webhook-Secret", "folha-test-webhook-secret")
                         .content("""
                                 {"id":"%s","status":"approved"}
                                 """.formatted(externalId)))
@@ -122,6 +123,7 @@ class PaymentIT extends CatalogSupport {
         mockMvc.perform(post("/api/v1/webhooks/mock")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("X-Event-Id", eventId)
+                        .header("X-Webhook-Secret", "folha-test-webhook-secret")
                         .content("""
                                 {"id":"%s","status":"approved"}
                                 """.formatted(externalId)))

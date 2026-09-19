@@ -2,6 +2,20 @@ spring:
   jpa:
     show-sql: false
 
+app:
+  payments:
+    simulate-enabled: false
+    mock-webhooks-enabled: false
+    require-webhook-secret: true
+  auth:
+    cookie-secure: true
+  security:
+    rate-limit:
+      login-max-attempts: 20
+      login-window-seconds: 300
+      register-max-attempts: 10
+      register-window-seconds: 300
+
 logging:
   level:
     root: WARN
