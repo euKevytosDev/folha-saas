@@ -11,6 +11,7 @@ import com.sacolao.delivery.entity.EstablishmentDeliverySettings;
 import com.sacolao.delivery.service.DeliveryService;
 import com.sacolao.establishment.entity.Establishment;
 import com.sacolao.establishment.repository.EstablishmentRepository;
+import com.sacolao.establishment.service.StoreAvailabilityService;
 import com.sacolao.order.dto.CheckoutRequest;
 import com.sacolao.order.dto.OrderResponse;
 import com.sacolao.order.dto.OrderSummaryResponse;
@@ -62,6 +63,7 @@ public class OrderService {
     private final DeliveryService deliveryService;
     private final CouponService couponService;
     private final StockService stockService;
+    private final StoreAvailabilityService availabilityService;
     private final JsonMapper jsonMapper;
 
     public OrderService(
@@ -75,6 +77,7 @@ public class OrderService {
             DeliveryService deliveryService,
             CouponService couponService,
             StockService stockService,
+            StoreAvailabilityService availabilityService,
             JsonMapper jsonMapper
     ) {
         this.orderRepository = orderRepository;
@@ -87,12 +90,16 @@ public class OrderService {
         this.deliveryService = deliveryService;
         this.couponService = couponService;
         this.stockService = stockService;
+        this.availabilityService = availabilityService;
         this.jsonMapper = jsonMapper;
     }
 
     @Transactional
     public OrderResponse checkout(String slug, CheckoutRequest request, String idempotencyKey) {
         Establishment store = requireActiveStore(slug);
+        if (!availabilityService.isAcceptingOrders(store)) {
+            throw new UnprocessableException("STORE_CLOSED", "Loja fechada no momento");
+        }
         EstablishmentDeliverySettings deliverySettings = deliveryService.requireSettings(store.getId());
         deliveryService.assertFulfillmentAllowed(deliverySettings, request.fulfillmentType());
         validateFulfillment(request);
@@ -156,6 +163,8 @@ public class OrderService {
             subtotal = subtotal.add(lineTotal);
             stockConsumptions.put(product, quantity);
         }
+
+        deliveryService.assertMinOrder(deliverySettings, subtotal);
 
         CouponService.AppliedCoupon applied = couponService.apply(store.getId(), request.couponCode(), subtotal);
         BigDecimal discount = applied.discount();

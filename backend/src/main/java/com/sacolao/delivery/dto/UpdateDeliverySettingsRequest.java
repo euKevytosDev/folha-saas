@@ -12,6 +12,9 @@ public record UpdateDeliverySettingsRequest(
         @NotNull Boolean pickupEnabled,
         @NotNull @DecimalMin("0.00") @Digits(integer = 10, fraction = 2) BigDecimal fixedFee,
         @DecimalMin("0.00") @Digits(integer = 10, fraction = 2) BigDecimal freeAboveAmount,
-        @Min(0) Integer estimatedMinutes
+        @Min(0) Integer estimatedMinutes,
+        @DecimalMin("0.00") @Digits(integer = 10, fraction = 2) BigDecimal minOrderAmount,
+        @Min(0) Integer pickupEtaMinutes,
+        @Min(0) Integer deliveryEtaMinutes
 ) {
 }

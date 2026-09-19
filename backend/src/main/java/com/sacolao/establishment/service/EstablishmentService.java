@@ -8,6 +8,7 @@ import com.sacolao.establishment.dto.EstablishmentResponse;
 import com.sacolao.establishment.dto.UpdateEstablishmentRequest;
 import com.sacolao.establishment.entity.Establishment;
 import com.sacolao.establishment.entity.PlanCode;
+import com.sacolao.establishment.entity.StoreOpenMode;
 import com.sacolao.establishment.mapper.EstablishmentMapper;
 import com.sacolao.establishment.repository.EstablishmentRepository;
 import com.sacolao.security.AuthenticatedUser;
@@ -24,9 +25,14 @@ import java.util.UUID;
 public class EstablishmentService {
 
     private final EstablishmentRepository establishmentRepository;
+    private final StoreAvailabilityService availabilityService;
 
-    public EstablishmentService(EstablishmentRepository establishmentRepository) {
+    public EstablishmentService(
+            EstablishmentRepository establishmentRepository,
+            StoreAvailabilityService availabilityService
+    ) {
         this.establishmentRepository = establishmentRepository;
+        this.availabilityService = availabilityService;
     }
 
     @Transactional
@@ -36,39 +42,42 @@ public class EstablishmentService {
         establishment.setSlug(uniqueSlug(name));
         establishment.setPlanCode(PlanCode.BASIC);
         establishment.setActive(true);
+        establishment.setStoreOpenMode(StoreOpenMode.AUTO);
+        establishment.setTimezone("America/Sao_Paulo");
+        establishment.setOpeningHours(availabilityService.serializeHours(StoreAvailabilityService.defaultHours()));
         return establishmentRepository.save(establishment);
     }
 
     @Transactional
     public EstablishmentResponse createBySuperAdmin(CreateEstablishmentRequest request) {
         requireSuperAdmin();
-        return EstablishmentMapper.toResponse(createForSignup(request.name()));
+        return toResponse(createForSignup(request.name()));
     }
 
     @Transactional(readOnly = true)
     public EstablishmentResponse getById(UUID id) {
         AuthenticatedUser current = SecurityUtils.requireUser();
         if (current.role() == UserRole.SUPER_ADMIN) {
-            return EstablishmentMapper.toResponse(findOrNotFound(id));
+            return toResponse(findOrNotFound(id));
         }
         UUID tenantId = TenantContext.get().orElseThrow(this::notFound);
         if (!tenantId.equals(id)) {
             throw notFound();
         }
-        return EstablishmentMapper.toResponse(findOrNotFound(id));
+        return toResponse(findOrNotFound(id));
     }
 
     @Transactional(readOnly = true)
     public EstablishmentResponse getCurrent() {
         UUID tenantId = TenantContext.require();
-        return EstablishmentMapper.toResponse(findOrNotFound(tenantId));
+        return toResponse(findOrNotFound(tenantId));
     }
 
     @Transactional(readOnly = true)
     public List<EstablishmentResponse> listAllForSuperAdmin() {
         requireSuperAdmin();
         return establishmentRepository.findAll().stream()
-                .map(EstablishmentMapper::toResponse)
+                .map(this::toResponse)
                 .toList();
     }
 
@@ -92,6 +101,9 @@ public class EstablishmentService {
         if (request.logoUrl() != null) {
             establishment.setLogoUrl(blankToNull(request.logoUrl()));
         }
+        if (request.coverUrl() != null) {
+            establishment.setCoverUrl(blankToNull(request.coverUrl()));
+        }
         if (request.description() != null) {
             establishment.setDescription(blankToNull(request.description()));
         }
@@ -113,7 +125,16 @@ public class EstablishmentService {
         if (request.zipCode() != null) {
             establishment.setZipCode(blankToNull(request.zipCode()));
         }
-        return EstablishmentMapper.toResponse(establishment);
+        if (request.storeOpenMode() != null) {
+            establishment.setStoreOpenMode(request.storeOpenMode());
+        }
+        if (request.timezone() != null) {
+            establishment.setTimezone(request.timezone());
+        }
+        if (request.openingHours() != null) {
+            establishment.setOpeningHours(availabilityService.serializeHours(request.openingHours()));
+        }
+        return toResponse(establishment);
     }
 
     @Transactional
@@ -122,7 +143,7 @@ public class EstablishmentService {
         if (current.role() == UserRole.SUPER_ADMIN) {
             Establishment establishment = findOrNotFound(id);
             establishment.setActive(active);
-            return EstablishmentMapper.toResponse(establishment);
+            return toResponse(establishment);
         }
         if (current.role() != UserRole.OWNER) {
             throw new ForbiddenException("Acesso negado");
@@ -133,7 +154,11 @@ public class EstablishmentService {
         }
         Establishment establishment = findOrNotFound(id);
         establishment.setActive(active);
-        return EstablishmentMapper.toResponse(establishment);
+        return toResponse(establishment);
+    }
+
+    private EstablishmentResponse toResponse(Establishment establishment) {
+        return EstablishmentMapper.toResponse(establishment, availabilityService);
     }
 
     private Establishment findOrNotFound(UUID id) {

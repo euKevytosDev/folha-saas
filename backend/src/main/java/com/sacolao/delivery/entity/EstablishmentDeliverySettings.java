@@ -34,6 +34,15 @@ public class EstablishmentDeliverySettings {
     @Column(name = "estimated_minutes")
     private Integer estimatedMinutes;
 
+    @Column(name = "min_order_amount", precision = 12, scale = 2)
+    private BigDecimal minOrderAmount;
+
+    @Column(name = "pickup_eta_minutes")
+    private Integer pickupEtaMinutes;
+
+    @Column(name = "delivery_eta_minutes")
+    private Integer deliveryEtaMinutes;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -98,6 +107,30 @@ public class EstablishmentDeliverySettings {
 
     public void setEstimatedMinutes(Integer estimatedMinutes) {
         this.estimatedMinutes = estimatedMinutes;
+    }
+
+    public BigDecimal getMinOrderAmount() {
+        return minOrderAmount;
+    }
+
+    public void setMinOrderAmount(BigDecimal minOrderAmount) {
+        this.minOrderAmount = minOrderAmount;
+    }
+
+    public Integer getPickupEtaMinutes() {
+        return pickupEtaMinutes;
+    }
+
+    public void setPickupEtaMinutes(Integer pickupEtaMinutes) {
+        this.pickupEtaMinutes = pickupEtaMinutes;
+    }
+
+    public Integer getDeliveryEtaMinutes() {
+        return deliveryEtaMinutes;
+    }
+
+    public void setDeliveryEtaMinutes(Integer deliveryEtaMinutes) {
+        this.deliveryEtaMinutes = deliveryEtaMinutes;
     }
 
     public Instant getCreatedAt() {

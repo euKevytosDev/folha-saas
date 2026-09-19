@@ -7,6 +7,9 @@ public record DeliverySettingsResponse(
         boolean pickupEnabled,
         BigDecimal fixedFee,
         BigDecimal freeAboveAmount,
-        Integer estimatedMinutes
+        Integer estimatedMinutes,
+        BigDecimal minOrderAmount,
+        Integer pickupEtaMinutes,
+        Integer deliveryEtaMinutes
 ) {
 }

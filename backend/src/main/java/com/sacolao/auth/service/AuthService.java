@@ -22,6 +22,7 @@ import com.sacolao.establishment.dto.EstablishmentResponse;
 import com.sacolao.establishment.entity.Establishment;
 import com.sacolao.establishment.mapper.EstablishmentMapper;
 import com.sacolao.establishment.service.EstablishmentService;
+import com.sacolao.establishment.service.StoreAvailabilityService;
 import com.sacolao.security.AuthenticatedUser;
 import com.sacolao.security.JwtService;
 import com.sacolao.security.SecurityUtils;
@@ -55,6 +56,7 @@ public class AuthService {
     private final SecureTokenFactory tokenFactory;
     private final AppProperties properties;
     private final Environment environment;
+    private final StoreAvailabilityService availabilityService;
 
     public AuthService(
             UserRepository userRepository,
@@ -66,7 +68,8 @@ public class AuthService {
             PasswordResetTokenRepository passwordResetTokenRepository,
             SecureTokenFactory tokenFactory,
             AppProperties properties,
-            Environment environment
+            Environment environment,
+            StoreAvailabilityService availabilityService
     ) {
         this.userRepository = userRepository;
         this.userService = userService;
@@ -78,6 +81,7 @@ public class AuthService {
         this.tokenFactory = tokenFactory;
         this.properties = properties;
         this.environment = environment;
+        this.availabilityService = availabilityService;
     }
 
     @Transactional
@@ -201,7 +205,7 @@ public class AuthService {
                 .orElseThrow(() -> new UnauthorizedException("Não autenticado"));
         EstablishmentResponse establishment = user.getEstablishment() == null
                 ? null
-                : EstablishmentMapper.toResponse(user.getEstablishment());
+                : EstablishmentMapper.toResponse(user.getEstablishment(), availabilityService);
         return new MeResponse(UserMapper.toResponse(user), establishment);
     }
 
@@ -215,7 +219,7 @@ public class AuthService {
         refreshTokenRepository.save(refreshToken);
         EstablishmentResponse establishment = user.getEstablishment() == null
                 ? null
-                : EstablishmentMapper.toResponse(user.getEstablishment());
+                : EstablishmentMapper.toResponse(user.getEstablishment(), availabilityService);
         return new AuthResponse(
                 accessToken,
                 "Bearer",

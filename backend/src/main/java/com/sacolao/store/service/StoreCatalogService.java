@@ -11,6 +11,7 @@ import com.sacolao.delivery.entity.EstablishmentDeliverySettings;
 import com.sacolao.delivery.service.DeliveryService;
 import com.sacolao.establishment.entity.Establishment;
 import com.sacolao.establishment.repository.EstablishmentRepository;
+import com.sacolao.establishment.service.StoreAvailabilityService;
 import com.sacolao.order.entity.FulfillmentType;
 import com.sacolao.product.dto.ProductResponse;
 import com.sacolao.product.entity.Product;
@@ -40,19 +41,22 @@ public class StoreCatalogService {
     private final ProductRepository productRepository;
     private final DeliveryService deliveryService;
     private final CouponService couponService;
+    private final StoreAvailabilityService availabilityService;
 
     public StoreCatalogService(
             EstablishmentRepository establishmentRepository,
             CategoryRepository categoryRepository,
             ProductRepository productRepository,
             DeliveryService deliveryService,
-            CouponService couponService
+            CouponService couponService,
+            StoreAvailabilityService availabilityService
     ) {
         this.establishmentRepository = establishmentRepository;
         this.categoryRepository = categoryRepository;
         this.productRepository = productRepository;
         this.deliveryService = deliveryService;
         this.couponService = couponService;
+        this.availabilityService = availabilityService;
     }
 
     @Transactional(readOnly = true)
@@ -150,7 +154,9 @@ public class StoreCatalogService {
                 deliveryFee,
                 subtotal.add(deliveryFee).subtract(discount),
                 couponCode,
-                couponMessage
+                couponMessage,
+                availabilityService.isAcceptingOrders(store),
+                deliverySettings.getMinOrderAmount()
         );
     }
 
@@ -186,12 +192,21 @@ public class StoreCatalogService {
                 establishment.getName(),
                 establishment.getSlug(),
                 establishment.getLogoUrl(),
+                establishment.getCoverUrl(),
                 establishment.getDescription(),
                 establishment.getPhone(),
                 establishment.getAddress(),
                 establishment.getCity(),
                 establishment.getState(),
                 establishment.isActive(),
+                availabilityService.isAcceptingOrders(establishment),
+                establishment.getStoreOpenMode() == null
+                        ? com.sacolao.establishment.entity.StoreOpenMode.AUTO
+                        : establishment.getStoreOpenMode(),
+                establishment.getTimezone(),
+                availabilityService.parseHours(establishment.getOpeningHours()),
+                establishment.getRatingAvg(),
+                establishment.getRatingCount(),
                 DeliveryService.toResponse(settings)
         );
     }

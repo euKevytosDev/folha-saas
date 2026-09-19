@@ -9,7 +9,8 @@ if (!me) {
     throw new Error("redirect");
 }
 
-const { user, establishment } = me;
+const { user } = me;
+let establishment = me.establishment;
 $("#user-name").textContent = user.name;
 $("#user-role").textContent = user.role;
 $("#store-name").textContent = establishment?.name ?? "Estabelecimento";
@@ -17,12 +18,34 @@ $("#store-slug").textContent = establishment ? storeUrl(establishment.slug) : ""
 $("#store-plan").textContent = establishment?.planCode ?? "";
 $("#store-status").textContent = establishment?.active ? "Ativo" : "Inativo";
 $("#store-link").href = establishment ? storeUrl(establishment.slug) : "/";
+$("#store-link-top")?.setAttribute("href", establishment ? storeUrl(establishment.slug) : "/");
 
 $("#logout-button")?.addEventListener("click", () => logout());
 
 const mediaState = { enabled: false, uploading: false };
 await loadMediaConfig();
 wireProductImageControls();
+renderStoreOpsCard();
+wireStoreProfileForm();
+$("#refresh-orders-btn")?.addEventListener("click", async () => {
+    const btn = $("#refresh-orders-btn");
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Atualizando…";
+    }
+    try {
+        await refreshOrders();
+        establishment = await api("/establishments/me");
+        renderStoreOpsCard();
+    } catch (error) {
+        showFormAlert($("#orders-alert"), error, "Não foi possível atualizar os pedidos.");
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = "Atualizar pedidos";
+        }
+    }
+});
 
 const orderState = { status: "OPEN" };
 renderOrderFilters();
@@ -31,6 +54,7 @@ await refreshOrders();
 const paymentSettingsCard = $("#payment-settings-card");
 if (user.role === "STAFF") {
     paymentSettingsCard?.setAttribute("hidden", "");
+    $("#store-profile-form")?.setAttribute("hidden", "");
 } else {
     await loadPaymentSettings();
     $("#payment-settings-form")?.addEventListener("submit", async (event) => {
@@ -66,7 +90,9 @@ if (user.role !== "STAFF") {
         const alertBox = $("#delivery-settings-alert");
         try {
             const freeAbove = form.freeAboveAmount.value;
-            const eta = form.estimatedMinutes.value;
+            const pickupEta = form.pickupEtaMinutes.value;
+            const deliveryEta = form.deliveryEtaMinutes.value;
+            const minOrder = form.minOrderAmount.value;
             await api("/delivery/settings", {
                 method: "PUT",
                 body: {
@@ -74,11 +100,15 @@ if (user.role !== "STAFF") {
                     pickupEnabled: form.pickupEnabled.checked,
                     fixedFee: Number(form.fixedFee.value || 0),
                     freeAboveAmount: freeAbove === "" ? null : Number(freeAbove),
-                    estimatedMinutes: eta === "" ? null : Number(eta)
+                    pickupEtaMinutes: pickupEta === "" ? null : Number(pickupEta),
+                    deliveryEtaMinutes: deliveryEta === "" ? null : Number(deliveryEta),
+                    estimatedMinutes: deliveryEta === "" ? null : Number(deliveryEta),
+                    minOrderAmount: minOrder === "" ? null : Number(minOrder)
                 }
             });
             hideAlert(alertBox);
             await loadDeliverySettings();
+            renderStoreOpsCard();
         } catch (error) {
             showFormAlert(alertBox, error, "Não foi possível salvar frete.");
         }
@@ -703,10 +733,236 @@ async function loadDeliverySettings() {
         form.pickupEnabled.checked = !!settings.pickupEnabled;
         form.fixedFee.value = settings.fixedFee ?? 0;
         form.freeAboveAmount.value = settings.freeAboveAmount ?? "";
-        form.estimatedMinutes.value = settings.estimatedMinutes ?? "";
+        form.minOrderAmount.value = settings.minOrderAmount ?? "";
+        form.pickupEtaMinutes.value = settings.pickupEtaMinutes ?? "";
+        form.deliveryEtaMinutes.value = settings.deliveryEtaMinutes ?? settings.estimatedMinutes ?? "";
+        window.__deliverySettings = settings;
+        renderStoreOpsCard();
     } catch (error) {
         showFormAlert($("#delivery-settings-alert"), error, "Não foi possível carregar frete.");
     }
+}
+
+function renderStoreOpsCard() {
+    const nameEl = $("#store-ops-name");
+    const badge = $("#store-ops-open-badge");
+    const meta = $("#store-ops-meta");
+    const stats = $("#store-ops-stats");
+    const cover = $("#store-ops-cover");
+    const logo = $("#store-ops-logo");
+    if (!nameEl || !establishment) {
+        return;
+    }
+    nameEl.textContent = establishment.name ?? "Loja";
+    $("#store-name").textContent = establishment.name ?? "Estabelecimento";
+    const open = !!establishment.acceptingOrders;
+    if (badge) {
+        badge.textContent = open ? "Aberta" : "Fechada";
+        badge.className = `store-status-badge ${open ? "is-open" : "is-closed"}`;
+    }
+    if (meta) {
+        meta.textContent = [
+            establishment.address,
+            [establishment.city, establishment.state].filter(Boolean).join("/")
+        ].filter(Boolean).join(" · ") || storeUrl(establishment.slug);
+    }
+    if (cover) {
+        if (establishment.coverUrl) {
+            cover.style.backgroundImage = `url("${establishment.coverUrl}")`;
+            cover.classList.add("has-image");
+        } else {
+            cover.style.backgroundImage = "";
+            cover.classList.remove("has-image");
+        }
+    }
+    if (logo) {
+        if (establishment.logoUrl) {
+            logo.src = establishment.logoUrl;
+            logo.alt = establishment.name ?? "";
+            logo.hidden = false;
+        } else {
+            logo.hidden = true;
+        }
+    }
+    if (stats) {
+        stats.replaceChildren();
+        const delivery = window.__deliverySettings || {};
+        const chips = [];
+        if (establishment.ratingCount > 0 && establishment.ratingAvg != null) {
+            chips.push(["Avaliação", `${establishment.ratingAvg} ★`]);
+        }
+        if (delivery.pickupEtaMinutes != null) {
+            chips.push(["Retirada", `${delivery.pickupEtaMinutes} min`]);
+        }
+        if (delivery.deliveryEtaMinutes != null) {
+            chips.push(["Entrega", `${delivery.deliveryEtaMinutes} min`]);
+        }
+        if (delivery.minOrderAmount != null) {
+            chips.push(["Pedido mín.", formatBRL(delivery.minOrderAmount)]);
+        }
+        chips.forEach(([label, value]) => {
+            const item = document.createElement("div");
+            item.className = "store-ops-stat";
+            const strong = document.createElement("strong");
+            strong.textContent = value;
+            const span = document.createElement("span");
+            span.className = "muted";
+            span.textContent = label;
+            item.append(strong, span);
+            stats.append(item);
+        });
+    }
+}
+
+function wireStoreProfileForm() {
+    const form = $("#store-profile-form");
+    if (!form || !establishment) {
+        return;
+    }
+    fillStoreProfileForm(establishment);
+    wireStoreMediaUploads();
+    form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const alertBox = $("#store-profile-alert");
+        try {
+            const body = {
+                name: form.name.value,
+                phone: form.phone.value || null,
+                address: form.address.value || null,
+                logoUrl: form.logoUrl.value || null,
+                coverUrl: form.coverUrl.value || null,
+                storeOpenMode: form.storeOpenMode.value,
+                openingHours: readOpeningHoursFromEditor()
+            };
+            establishment = await api(`/establishments/${establishment.id}`, {
+                method: "PUT",
+                body
+            });
+            fillStoreProfileForm(establishment);
+            renderStoreOpsCard();
+            hideAlert(alertBox);
+        } catch (error) {
+            showFormAlert(alertBox, error, "Não foi possível salvar a loja.");
+        }
+    });
+}
+
+function fillStoreProfileForm(store) {
+    const form = $("#store-profile-form");
+    if (!form || !store) {
+        return;
+    }
+    form.name.value = store.name ?? "";
+    form.phone.value = store.phone ?? "";
+    form.address.value = store.address ?? "";
+    form.logoUrl.value = store.logoUrl ?? "";
+    form.coverUrl.value = store.coverUrl ?? "";
+    form.storeOpenMode.value = store.storeOpenMode ?? "AUTO";
+    renderOpeningHoursEditor(store.openingHours);
+}
+
+const DAY_LABELS = {
+    mon: "Seg",
+    tue: "Ter",
+    wed: "Qua",
+    thu: "Qui",
+    fri: "Sex",
+    sat: "Sáb",
+    sun: "Dom"
+};
+
+function renderOpeningHoursEditor(hours) {
+    const box = $("#opening-hours-editor");
+    if (!box) {
+        return;
+    }
+    box.replaceChildren();
+    const source = hours || {};
+    Object.keys(DAY_LABELS).forEach((day) => {
+        const intervals = source[day] || [];
+        const first = intervals[0];
+        const row = document.createElement("div");
+        row.className = "hours-row";
+        row.dataset.day = day;
+        const label = document.createElement("span");
+        label.textContent = DAY_LABELS[day];
+        const openInput = document.createElement("input");
+        openInput.type = "time";
+        openInput.name = `${day}-open`;
+        openInput.value = first?.open ?? "08:00";
+        const closeInput = document.createElement("input");
+        closeInput.type = "time";
+        closeInput.name = `${day}-close`;
+        closeInput.value = first?.close ?? "18:00";
+        const closed = document.createElement("label");
+        closed.className = "muted";
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.name = `${day}-closed`;
+        checkbox.checked = !first;
+        checkbox.addEventListener("change", () => {
+            openInput.disabled = checkbox.checked;
+            closeInput.disabled = checkbox.checked;
+        });
+        openInput.disabled = checkbox.checked;
+        closeInput.disabled = checkbox.checked;
+        closed.append(checkbox, document.createTextNode(" Fechado"));
+        row.append(label, openInput, closeInput, closed);
+        box.append(row);
+    });
+}
+
+function readOpeningHoursFromEditor() {
+    const box = $("#opening-hours-editor");
+    const result = {};
+    if (!box) {
+        return result;
+    }
+    box.querySelectorAll(".hours-row").forEach((row) => {
+        const day = row.dataset.day;
+        const closed = row.querySelector(`input[name="${day}-closed"]`)?.checked;
+        if (closed) {
+            result[day] = [];
+            return;
+        }
+        const open = row.querySelector(`input[name="${day}-open"]`)?.value || "08:00";
+        const close = row.querySelector(`input[name="${day}-close"]`)?.value || "18:00";
+        result[day] = [{ open, close }];
+    });
+    return result;
+}
+
+function wireStoreMediaUploads() {
+    bindMediaUpload("#store-logo-file", "#store-logo-url");
+    bindMediaUpload("#store-cover-file", "#store-cover-url");
+}
+
+function bindMediaUpload(fileSelector, urlSelector) {
+    const fileInput = $(fileSelector);
+    const urlInput = $(urlSelector);
+    fileInput?.addEventListener("change", async () => {
+        const file = fileInput.files?.[0];
+        if (!file) {
+            return;
+        }
+        if (!mediaState.enabled) {
+            showFormAlert($("#store-profile-alert"), null, "Configure Cloudinary para enviar arquivo.");
+            fileInput.value = "";
+            return;
+        }
+        try {
+            const formData = new FormData();
+            formData.append("file", file);
+            const uploaded = await apiUpload("/media/upload", formData);
+            if (urlInput) {
+                urlInput.value = uploaded.url;
+            }
+            hideAlert($("#store-profile-alert"));
+        } catch (error) {
+            showFormAlert($("#store-profile-alert"), error, "Falha ao enviar imagem.");
+            fileInput.value = "";
+        }
+    });
 }
 
 async function refreshCoupons() {

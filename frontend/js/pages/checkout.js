@@ -29,6 +29,12 @@ async function boot() {
         $("#store-name").textContent = state.store.name;
         $("#back-store").href = storeUrl(slug);
 
+        if (state.store.acceptingOrders === false) {
+            showError("Loja fechada. Não é possível finalizar o pedido agora.");
+            form.hidden = true;
+            return;
+        }
+
         const items = loadCart(state.store.id);
         if (!items.length) {
             showError("Seu carrinho está vazio.");
@@ -38,6 +44,17 @@ async function boot() {
 
         applyFulfillmentOptions(state.store.delivery);
         await refreshQuote();
+        if (state.quote?.acceptingOrders === false) {
+            showError("Loja fechada. Não é possível finalizar o pedido agora.");
+            form.hidden = true;
+            return;
+        }
+        const minOrder = Number(state.quote?.minOrderAmount ?? state.store.delivery?.minOrderAmount ?? 0);
+        if (minOrder > 0 && Number(state.quote.subtotal) < minOrder) {
+            showError(`Pedido mínimo de ${formatBRL(minOrder)}. Adicione mais itens para continuar.`);
+            form.hidden = true;
+            return;
+        }
         const valid = (state.quote?.items || []).filter((line) => !line.issue);
         if (!valid.length) {
             showError("Nenhum item disponível no carrinho.");

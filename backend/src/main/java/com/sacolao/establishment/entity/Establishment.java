@@ -10,7 +10,10 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -30,6 +33,9 @@ public class Establishment {
 
     @Column(name = "logo_url", length = 500)
     private String logoUrl;
+
+    @Column(name = "cover_url", length = 500)
+    private String coverUrl;
 
     @Column(columnDefinition = "text")
     private String description;
@@ -51,6 +57,23 @@ public class Establishment {
 
     @Column(name = "zip_code", length = 16)
     private String zipCode;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "opening_hours", columnDefinition = "jsonb")
+    private String openingHours;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "store_open_mode", nullable = false, length = 16)
+    private StoreOpenMode storeOpenMode = StoreOpenMode.AUTO;
+
+    @Column(nullable = false, length = 64)
+    private String timezone = "America/Sao_Paulo";
+
+    @Column(name = "rating_avg", precision = 3, scale = 2)
+    private BigDecimal ratingAvg;
+
+    @Column(name = "rating_count", nullable = false)
+    private int ratingCount = 0;
 
     @Column(nullable = false)
     private boolean active = true;
@@ -103,6 +126,14 @@ public class Establishment {
 
     public void setLogoUrl(String logoUrl) {
         this.logoUrl = logoUrl;
+    }
+
+    public String getCoverUrl() {
+        return coverUrl;
+    }
+
+    public void setCoverUrl(String coverUrl) {
+        this.coverUrl = coverUrl;
     }
 
     public String getDescription() {
@@ -159,6 +190,46 @@ public class Establishment {
 
     public void setZipCode(String zipCode) {
         this.zipCode = zipCode;
+    }
+
+    public String getOpeningHours() {
+        return openingHours;
+    }
+
+    public void setOpeningHours(String openingHours) {
+        this.openingHours = openingHours;
+    }
+
+    public StoreOpenMode getStoreOpenMode() {
+        return storeOpenMode;
+    }
+
+    public void setStoreOpenMode(StoreOpenMode storeOpenMode) {
+        this.storeOpenMode = storeOpenMode == null ? StoreOpenMode.AUTO : storeOpenMode;
+    }
+
+    public String getTimezone() {
+        return timezone;
+    }
+
+    public void setTimezone(String timezone) {
+        this.timezone = timezone == null || timezone.isBlank() ? "America/Sao_Paulo" : timezone;
+    }
+
+    public BigDecimal getRatingAvg() {
+        return ratingAvg;
+    }
+
+    public void setRatingAvg(BigDecimal ratingAvg) {
+        this.ratingAvg = ratingAvg;
+    }
+
+    public int getRatingCount() {
+        return ratingCount;
+    }
+
+    public void setRatingCount(int ratingCount) {
+        this.ratingCount = Math.max(0, ratingCount);
     }
 
     public boolean isActive() {

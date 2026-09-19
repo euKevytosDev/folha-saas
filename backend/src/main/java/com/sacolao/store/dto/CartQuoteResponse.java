@@ -10,6 +10,8 @@ public record CartQuoteResponse(
         BigDecimal deliveryFee,
         BigDecimal total,
         String couponCode,
-        String couponMessage
+        String couponMessage,
+        boolean acceptingOrders,
+        BigDecimal minOrderAmount
 ) {
 }

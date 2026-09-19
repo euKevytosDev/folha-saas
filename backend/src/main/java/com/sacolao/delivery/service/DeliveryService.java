@@ -50,7 +50,12 @@ public class DeliveryService {
         settings.setPickupEnabled(Boolean.TRUE.equals(request.pickupEnabled()));
         settings.setFixedFee(Money.of(request.fixedFee()));
         settings.setFreeAboveAmount(request.freeAboveAmount() == null ? null : Money.of(request.freeAboveAmount()));
-        settings.setEstimatedMinutes(request.estimatedMinutes());
+        Integer pickupEta = request.pickupEtaMinutes() != null ? request.pickupEtaMinutes() : request.estimatedMinutes();
+        Integer deliveryEta = request.deliveryEtaMinutes() != null ? request.deliveryEtaMinutes() : request.estimatedMinutes();
+        settings.setPickupEtaMinutes(pickupEta);
+        settings.setDeliveryEtaMinutes(deliveryEta);
+        settings.setEstimatedMinutes(deliveryEta != null ? deliveryEta : pickupEta);
+        settings.setMinOrderAmount(request.minOrderAmount() == null ? null : Money.of(request.minOrderAmount()));
         if (!settings.isDeliveryEnabled() && !settings.isPickupEnabled()) {
             throw new UnprocessableException("FULFILLMENT_REQUIRED", "Habilite entrega ou retirada");
         }
@@ -100,13 +105,35 @@ public class DeliveryService {
         return fee;
     }
 
+    public void assertMinOrder(EstablishmentDeliverySettings settings, BigDecimal subtotal) {
+        if (settings.getMinOrderAmount() == null) {
+            return;
+        }
+        BigDecimal min = Money.of(settings.getMinOrderAmount());
+        if (min.compareTo(BigDecimal.ZERO) > 0 && Money.of(subtotal).compareTo(min) < 0) {
+            throw new UnprocessableException(
+                    "MIN_ORDER",
+                    "Pedido mínimo de R$ " + min.toPlainString().replace('.', ',')
+            );
+        }
+    }
+
     public static DeliverySettingsResponse toResponse(EstablishmentDeliverySettings settings) {
+        Integer pickup = settings.getPickupEtaMinutes() != null
+                ? settings.getPickupEtaMinutes()
+                : settings.getEstimatedMinutes();
+        Integer delivery = settings.getDeliveryEtaMinutes() != null
+                ? settings.getDeliveryEtaMinutes()
+                : settings.getEstimatedMinutes();
         return new DeliverySettingsResponse(
                 settings.isDeliveryEnabled(),
                 settings.isPickupEnabled(),
                 settings.getFixedFee(),
                 settings.getFreeAboveAmount(),
-                settings.getEstimatedMinutes()
+                settings.getEstimatedMinutes(),
+                settings.getMinOrderAmount(),
+                pickup,
+                delivery
         );
     }
 
