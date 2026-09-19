@@ -12,6 +12,7 @@ const state = {
 
 const form = $("#checkout-form");
 const alertBox = $("#checkout-alert");
+const cepHint = $("#cep-hint");
 
 if (!slug) {
     showError("Loja não encontrada.");
@@ -34,6 +35,7 @@ async function boot() {
             return;
         }
 
+        // Única sync de preço com o servidor antes de pedir
         state.quote = await api(`/store/${encodeURIComponent(slug)}/cart/quote`, {
             method: "POST",
             body: { items }
@@ -79,9 +81,53 @@ function syncAddressVisibility() {
     });
 }
 
+async function lookupCep(raw) {
+    const cep = String(raw || "").replace(/\D/g, "");
+    if (cep.length !== 8) {
+        return;
+    }
+    if (cepHint) {
+        cepHint.textContent = "Buscando endereço…";
+    }
+    try {
+        const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+        if (!response.ok) {
+            throw new Error("CEP indisponível");
+        }
+        const data = await response.json();
+        if (data.erro) {
+            if (cepHint) {
+                cepHint.textContent = "CEP não encontrado.";
+            }
+            return;
+        }
+        form.addressStreet.value = data.logradouro || form.addressStreet.value;
+        form.addressNeighborhood.value = data.bairro || form.addressNeighborhood.value;
+        form.addressCity.value = data.localidade || form.addressCity.value;
+        form.addressState.value = (data.uf || form.addressState.value || "").toUpperCase();
+        form.addressZipCode.value = cep.replace(/(\d{5})(\d{3})/, "$1-$2");
+        if (cepHint) {
+            cepHint.textContent = "Endereço preenchido. Confira o número.";
+        }
+        form.addressNumber.focus();
+    } catch {
+        if (cepHint) {
+            cepHint.textContent = "Não foi possível buscar o CEP agora.";
+        }
+    }
+}
+
 on(form, "change", (event) => {
     if (event.target.name === "fulfillmentType") {
         syncAddressVisibility();
+    }
+});
+
+on(form.addressZipCode, "blur", () => lookupCep(form.addressZipCode.value));
+on(form.addressZipCode, "input", () => {
+    const digits = form.addressZipCode.value.replace(/\D/g, "");
+    if (digits.length === 8) {
+        lookupCep(digits);
     }
 });
 
@@ -104,7 +150,7 @@ on(form, "submit", async (event) => {
             notes: form.notes.value.trim() || null
         };
         if (payload.fulfillmentType === "DELIVERY") {
-            payload.addressZipCode = form.addressZipCode.value.trim() || null;
+            payload.addressZipCode = form.addressZipCode.value.replace(/\D/g, "") || null;
             payload.addressStreet = form.addressStreet.value.trim();
             payload.addressNumber = form.addressNumber.value.trim();
             payload.addressComplement = form.addressComplement.value.trim() || null;

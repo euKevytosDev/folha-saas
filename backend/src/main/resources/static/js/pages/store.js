@@ -10,6 +10,9 @@ const state = {
     catalog: null,
     categoryId: null,
     query: "",
+    /** @type {Map<string, any>} */
+    productMap: new Map(),
+    /** preview local do carrinho (sem bater no servidor a cada clique) */
     quote: null
 };
 
@@ -41,6 +44,8 @@ async function boot() {
     try {
         state.catalog = await api(`/store/${encodeURIComponent(slug)}/catalog`);
         state.store = state.catalog.store;
+        rememberProducts(state.catalog.products);
+        rememberProducts(state.catalog.featured);
         document.title = `${state.store.name} — Folha`;
         els.name.textContent = state.store.name;
         els.meta.textContent = [state.store.city, state.store.state].filter(Boolean).join(" · ") || "Pedido pelo celular";
@@ -52,10 +57,18 @@ async function boot() {
         }
         renderCategories();
         renderCatalog();
-        await refreshQuote();
+        refreshLocalCart();
     } catch (error) {
         showAlert(error instanceof ApiError ? error.message : "Não foi possível abrir a loja.");
     }
+}
+
+function rememberProducts(products) {
+    (products || []).forEach((product) => {
+        if (product?.id) {
+            state.productMap.set(product.id, product);
+        }
+    });
 }
 
 function renderCategories() {
@@ -93,8 +106,11 @@ async function reloadCatalog() {
     }
     const suffix = params.toString() ? `?${params}` : "";
     state.catalog = await api(`/store/${encodeURIComponent(slug)}/catalog${suffix}`);
+    rememberProducts(state.catalog.products);
+    rememberProducts(state.catalog.featured);
     renderCategories();
     renderCatalog();
+    refreshLocalCart();
 }
 
 function renderCatalog() {
@@ -181,9 +197,9 @@ function addControl(product) {
     add.className = "btn btn-primary";
     add.type = "button";
     add.textContent = "Adicionar";
-    add.addEventListener("click", async () => {
+    add.addEventListener("click", () => {
         addToCart(state.store.id, product.id, Number(input.value));
-        await refreshQuote();
+        refreshLocalCart();
     });
     actions.append(qty, add);
     return actions;
@@ -191,11 +207,11 @@ function addControl(product) {
 
 function nextQty(current, delta, product) {
     const min = Number(product.minimumQuantity || unitStep(product.unit));
-    const next = Math.max(min, Math.round((current + delta) * 1000) / 1000);
-    return next;
+    return Math.max(min, Math.round((current + delta) * 1000) / 1000);
 }
 
-async function refreshQuote() {
+/** Monta totais no cliente a partir do catálogo já carregado + localStorage. */
+function refreshLocalCart() {
     const items = loadCart(state.store.id);
     if (!items.length) {
         state.quote = null;
@@ -203,21 +219,48 @@ async function refreshQuote() {
         renderCart();
         return;
     }
-    state.quote = await api(`/store/${encodeURIComponent(slug)}/cart/quote`, {
-        method: "POST",
-        body: { items }
+    const lines = [];
+    let subtotal = 0;
+    items.forEach((item) => {
+        const product = state.productMap.get(item.productId);
+        const quantity = Number(item.quantity) || 0;
+        if (!product) {
+            lines.push({
+                productId: item.productId,
+                name: "Produto indisponível",
+                unit: null,
+                quantity,
+                unitPrice: 0,
+                subtotal: 0,
+                issue: "Atualize o carrinho no checkout"
+            });
+            return;
+        }
+        const unitPrice = Number(product.price) || 0;
+        const lineTotal = Math.round(unitPrice * quantity * 100) / 100;
+        subtotal += lineTotal;
+        lines.push({
+            productId: product.id,
+            name: product.name,
+            imageUrl: product.imageUrl,
+            unit: product.unit,
+            quantity,
+            unitPrice,
+            subtotal: lineTotal,
+            issue: null
+        });
     });
-    const valid = state.quote.items.filter((line) => !line.issue);
-    if (valid.length !== items.length) {
-        setCartFromQuote(valid);
-    }
+    subtotal = Math.round(subtotal * 100) / 100;
+    state.quote = {
+        items: lines,
+        subtotal,
+        discount: 0,
+        deliveryFee: 0,
+        total: subtotal,
+        local: true
+    };
     renderCartBar();
     renderCart();
-}
-
-function setCartFromQuote(lines) {
-    const items = lines.map((line) => ({ productId: line.productId, quantity: line.quantity }));
-    localStorage.setItem(`folha.cart.${state.store.id}`, JSON.stringify(items));
 }
 
 function renderCartBar() {
@@ -251,6 +294,10 @@ function renderCart() {
     $("#quote-subtotal").textContent = formatBRL(state.quote?.subtotal || 0);
     $("#quote-discount").textContent = formatBRL(state.quote?.discount || 0);
     $("#quote-total").textContent = formatBRL(state.quote?.total || 0);
+    const note = $("#cart-note");
+    if (note) {
+        note.textContent = "Totais estimados no aparelho. O preço final é confirmado pelo servidor no checkout.";
+    }
     syncCheckoutLink();
 }
 
@@ -283,18 +330,18 @@ function cartLine(line) {
     remove.className = "btn btn-ghost";
     remove.type = "button";
     remove.textContent = "Excluir";
-    remove.addEventListener("click", async () => {
+    remove.addEventListener("click", () => {
         setCartQuantity(state.store.id, line.productId, 0);
-        await refreshQuote();
+        refreshLocalCart();
     });
     actions.append(qty, price, remove);
     row.append(info, actions);
     return row;
 }
 
-async function changeLine(line, delta) {
+function changeLine(line, delta) {
     setCartQuantity(state.store.id, line.productId, Number(line.quantity) + delta);
-    await refreshQuote();
+    refreshLocalCart();
 }
 
 function showAlert(message) {
@@ -322,11 +369,12 @@ on(els.search, "input", () => {
     searchTimer = window.setTimeout(async () => {
         state.query = els.search.value.trim();
         await reloadCatalog();
-    }, 250);
+    }, 350);
 });
 
 on($("#open-cart"), "click", () => {
     els.drawer.hidden = false;
+    refreshLocalCart();
 });
 on($("#close-cart"), "click", () => {
     els.drawer.hidden = true;
@@ -336,8 +384,7 @@ on(els.drawer, "click", (event) => {
         els.drawer.hidden = true;
     }
 });
-on($("#clear-cart"), "click", async () => {
+on($("#clear-cart"), "click", () => {
     clearCart(state.store.id);
-    await refreshQuote();
+    refreshLocalCart();
 });
-

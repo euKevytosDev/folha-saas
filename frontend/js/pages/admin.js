@@ -1,7 +1,7 @@
 import { api, ApiError } from "../api/client.js";
 import { logout, requirePageAuth } from "../auth/api.js";
 import { $ } from "../utils/dom.js";
-import { formatBRL } from "../utils/format.js";
+import { formatBRL, formatQuantity } from "../utils/format.js";
 import { storeUrl } from "../utils/nav.js";
 
 const me = await requirePageAuth(["OWNER", "ADMIN", "STAFF"]);
@@ -20,9 +20,9 @@ $("#store-link").href = establishment ? storeUrl(establishment.slug) : "/";
 
 $("#logout-button")?.addEventListener("click", () => logout());
 
-const orderState = { status: null };
-await refreshOrders();
+const orderState = { status: "OPEN" };
 renderOrderFilters();
+await refreshOrders();
 
 const usersCard = $("#users-card");
 if (user.role === "STAFF") {
@@ -232,13 +232,19 @@ function hideAlert(alertBox) {
 }
 
 async function refreshOrders() {
-    const query = orderState.status ? `?status=${orderState.status}` : "";
+    const statusParam = orderState.status === "PENDING" ? "?status=PENDING" : "";
     const [summary, orders] = await Promise.all([
         api("/orders/summary"),
-        api(`/orders${query}`)
+        api(`/orders${statusParam}`)
     ]);
+    let filtered = orders;
+    if (orderState.status === "OPEN") {
+        filtered = orders.filter((order) => !["DELIVERED", "CANCELLED"].includes(order.status));
+    } else if (orderState.status === "DONE") {
+        filtered = orders.filter((order) => ["DELIVERED", "CANCELLED"].includes(order.status));
+    }
     renderOrderSummary(summary);
-    renderOrders(orders);
+    renderOrders(filtered);
 }
 
 function renderOrderFilters() {
@@ -248,13 +254,10 @@ function renderOrderFilters() {
     }
     row.replaceChildren();
     const filters = [
-        { label: "Todos", value: null },
+        { label: "Em andamento", value: "OPEN" },
         { label: "Pendentes", value: "PENDING" },
-        { label: "Confirmados", value: "CONFIRMED" },
-        { label: "Preparo", value: "PREPARING" },
-        { label: "Enviados", value: "DISPATCHED" },
-        { label: "Entregues", value: "DELIVERED" },
-        { label: "Cancelados", value: "CANCELLED" }
+        { label: "Finalizados", value: "DONE" },
+        { label: "Todos", value: null }
     ];
     filters.forEach((filter) => {
         const button = document.createElement("button");
@@ -310,46 +313,86 @@ function renderOrders(orders) {
     orders.forEach((order) => {
         const row = document.createElement("div");
         row.className = "order-admin-row";
+
+        const head = document.createElement("div");
+        head.className = "order-admin-head";
         const title = document.createElement("strong");
         title.textContent = `${order.publicCode} · ${order.customerName}`;
+        const badge = document.createElement("span");
+        badge.className = "badge";
+        badge.textContent = statusLabel(order.status);
+        head.append(title, badge);
+
         const meta = document.createElement("p");
         meta.className = "muted";
-        meta.textContent = `${statusLabel(order.status)} · ${formatBRL(order.total)} · ${fulfillmentLabel(order.fulfillmentType)} · ${order.customerPhone}`;
+        meta.textContent = `${formatBRL(order.total)} · ${fulfillmentLabel(order.fulfillmentType)} · ${order.customerPhone}`;
+
+        const items = document.createElement("ul");
+        items.className = "order-item-list";
+        (order.items || []).forEach((item) => {
+            const li = document.createElement("li");
+            li.textContent = `${formatQuantity(item.quantity, item.productUnit)} · ${item.productName}`;
+            items.append(li);
+        });
+
+        row.append(head, meta, items);
+        if (order.notes) {
+            const notes = document.createElement("p");
+            notes.className = "muted";
+            notes.textContent = `Obs.: ${order.notes}`;
+            row.append(notes);
+        }
+
+        const next = nextStatus(order.status);
         const actions = document.createElement("div");
         actions.className = "order-admin-actions";
-        nextStatuses(order.status).forEach((next) => {
-            const button = document.createElement("button");
-            button.type = "button";
-            button.className = next === "CANCELLED" ? "btn btn-secondary" : "btn btn-primary";
-            button.textContent = actionLabel(next);
-            button.addEventListener("click", async () => {
-                try {
-                    await api(`/orders/${order.id}/status`, {
-                        method: "PATCH",
-                        body: { status: next }
-                    });
-                    hideAlert($("#orders-alert"));
-                    await refreshOrders();
-                } catch (error) {
-                    showFormAlert($("#orders-alert"), error, "Não foi possível atualizar o status.");
-                }
-            });
-            actions.append(button);
-        });
-        row.append(title, meta, actions);
+        if (next) {
+            const advance = document.createElement("button");
+            advance.type = "button";
+            advance.className = "btn btn-primary";
+            advance.textContent = actionLabel(next);
+            advance.addEventListener("click", () => updateOrderStatus(order.id, next));
+            actions.append(advance);
+        }
+        if (canCancel(order.status)) {
+            const cancel = document.createElement("button");
+            cancel.type = "button";
+            cancel.className = "btn btn-ghost";
+            cancel.textContent = "Cancelar";
+            cancel.addEventListener("click", () => updateOrderStatus(order.id, "CANCELLED"));
+            actions.append(cancel);
+        }
+        if (actions.childNodes.length) {
+            row.append(actions);
+        }
         list.append(row);
     });
 }
 
-function nextStatuses(status) {
+async function updateOrderStatus(orderId, status) {
+    try {
+        await api(`/orders/${orderId}/status`, {
+            method: "PATCH",
+            body: { status }
+        });
+        hideAlert($("#orders-alert"));
+        await refreshOrders();
+    } catch (error) {
+        showFormAlert($("#orders-alert"), error, "Não foi possível atualizar o status.");
+    }
+}
+
+function nextStatus(status) {
     return ({
-        PENDING: ["CONFIRMED", "CANCELLED"],
-        CONFIRMED: ["PREPARING", "CANCELLED"],
-        PREPARING: ["DISPATCHED", "CANCELLED"],
-        DISPATCHED: ["DELIVERED"],
-        DELIVERED: [],
-        CANCELLED: []
-    })[status] || [];
+        PENDING: "CONFIRMED",
+        CONFIRMED: "PREPARING",
+        PREPARING: "DISPATCHED",
+        DISPATCHED: "DELIVERED"
+    })[status] || null;
+}
+
+function canCancel(status) {
+    return ["PENDING", "CONFIRMED", "PREPARING"].includes(status);
 }
 
 function statusLabel(status) {
@@ -357,7 +400,7 @@ function statusLabel(status) {
         PENDING: "Pendente",
         CONFIRMED: "Confirmado",
         PREPARING: "Em preparo",
-        DISPATCHED: "Enviado",
+        DISPATCHED: "Saiu",
         DELIVERED: "Entregue",
         CANCELLED: "Cancelado"
     })[status] || status;
@@ -365,11 +408,10 @@ function statusLabel(status) {
 
 function actionLabel(status) {
     return ({
-        CONFIRMED: "Confirmar",
-        PREPARING: "Preparar",
-        DISPATCHED: "Despachar",
-        DELIVERED: "Entregar",
-        CANCELLED: "Cancelar"
+        CONFIRMED: "Aceitar pedido",
+        PREPARING: "Iniciar preparo",
+        DISPATCHED: "Marcar como saiu",
+        DELIVERED: "Marcar entregue"
     })[status] || status;
 }
 
