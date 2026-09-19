@@ -15,7 +15,7 @@ import java.util.Map;
 
 /**
  * Aceita DATABASE_URL no formato postgres:// / postgresql:// (Render/Heroku)
- * e converte para jdbc:postgresql:// + username/password.
+ * e converte para jdbc:postgresql:// + username/password, com SSL quando necessário.
  */
 public class DatabaseUrlEnvironmentPostProcessor implements EnvironmentPostProcessor, Ordered {
 
@@ -25,14 +25,19 @@ public class DatabaseUrlEnvironmentPostProcessor implements EnvironmentPostProce
                 environment.getProperty("DATABASE_URL"),
                 environment.getProperty("SPRING_DATASOURCE_URL")
         );
-        if (raw == null || raw.startsWith("jdbc:")) {
-            return;
-        }
-        if (!raw.startsWith("postgres://") && !raw.startsWith("postgresql://")) {
+        if (raw == null) {
             return;
         }
 
         try {
+            if (raw.startsWith("jdbc:postgresql://")) {
+                applyJdbc(environment, ensureSsl(raw), null, null);
+                return;
+            }
+            if (!raw.startsWith("postgres://") && !raw.startsWith("postgresql://")) {
+                return;
+            }
+
             URI uri = new URI(raw.replaceFirst("^postgres(ql)?://", "http://"));
             String userInfo = uri.getUserInfo();
             if (userInfo == null || userInfo.isBlank()) {
@@ -51,18 +56,38 @@ public class DatabaseUrlEnvironmentPostProcessor implements EnvironmentPostProce
             if (uri.getQuery() != null && !uri.getQuery().isBlank()) {
                 jdbc = jdbc + "?" + uri.getQuery();
             }
-
-            Map<String, Object> props = new HashMap<>();
-            props.put("spring.datasource.url", jdbc);
-            props.put("DATABASE_URL", jdbc);
-            props.put("spring.datasource.username", username);
-            props.put("DATABASE_USERNAME", username);
-            props.put("spring.datasource.password", password);
-            props.put("DATABASE_PASSWORD", password);
-            environment.getPropertySources().addFirst(new MapPropertySource("renderDatabaseUrl", props));
+            applyJdbc(environment, ensureSsl(jdbc), username, password);
         } catch (URISyntaxException ignored) {
             // mantém o valor original; o boot falha com mensagem clara se inválido
         }
+    }
+
+    private static void applyJdbc(
+            ConfigurableEnvironment environment,
+            String jdbc,
+            String username,
+            String password
+    ) {
+        Map<String, Object> props = new HashMap<>();
+        props.put("spring.datasource.url", jdbc);
+        props.put("DATABASE_URL", jdbc);
+        if (username != null) {
+            props.put("spring.datasource.username", username);
+            props.put("DATABASE_USERNAME", username);
+        }
+        if (password != null) {
+            props.put("spring.datasource.password", password);
+            props.put("DATABASE_PASSWORD", password);
+        }
+        environment.getPropertySources().addFirst(new MapPropertySource("renderDatabaseUrl", props));
+    }
+
+    private static String ensureSsl(String jdbcUrl) {
+        String lower = jdbcUrl.toLowerCase();
+        if (lower.contains("sslmode=")) {
+            return jdbcUrl;
+        }
+        return jdbcUrl + (jdbcUrl.contains("?") ? "&" : "?") + "sslmode=require";
     }
 
     private static String firstNonBlank(String... values) {
