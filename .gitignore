@@ -38,3 +38,5 @@ backend/.mvn/wrapper/maven-wrapper.jar.md5
 *.swo
 /tmp/
 backend/hs_err_pid*
+.neon
+node_modules/

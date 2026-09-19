@@ -28,7 +28,11 @@ if [ -n "${DATABASE_URL:-}" ]; then
       esac
       jdbc="jdbc:postgresql://${host}:${port}/${dbname}"
       if [ -n "$query" ]; then
-        jdbc="${jdbc}?${query}"
+        # channel_binding é do libpq/Neon; o driver JDBC não usa
+        query="$(printf '%s' "$query" | sed 's/channel_binding=[^&]*//g; s/&&*/\&/g; s/^&//; s/&$//')"
+        if [ -n "$query" ]; then
+          jdbc="${jdbc}?${query}"
+        fi
       fi
       case "$jdbc" in
         *sslmode=*) ;;
