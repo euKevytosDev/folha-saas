@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Loja — Folha</title>
+    <meta name="description" content="Peça hortifruti fresco pelo celular.">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,650&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/reset.css">
+    <link rel="stylesheet" href="/css/layout.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/pages/store.css">
+    <script src="/js/env.js"></script>
+</head>
+<body class="page-shell">
+    <header class="store-header">
+        <div class="container store-header-inner">
+            <img class="store-logo" id="store-logo" alt="">
+            <div class="store-title">
+                <strong id="store-name">Loja</strong>
+                <p class="muted" id="store-meta"></p>
+            </div>
+        </div>
+    </header>
+    <main class="panel-main" style="padding-top: 1rem;">
+        <div class="container">
+            <div class="store-search">
+                <label class="visually-hidden" for="search">Buscar produtos</label>
+                <input id="search" type="search" placeholder="Buscar banana, tomate, alface..." autocomplete="off">
+            </div>
+            <div class="chip-row" id="category-row"></div>
+            <div id="store-alert" class="alert" hidden></div>
+            <section class="store-section" id="featured-section" hidden>
+                <h2>Destaques</h2>
+                <div class="product-grid" id="featured-grid"></div>
+            </section>
+            <section class="store-section">
+                <h2 id="catalog-title">Produtos</h2>
+                <div class="product-grid" id="product-grid"></div>
+                <p class="muted store-empty" id="empty-state" hidden>Nenhum produto encontrado.</p>
+            </section>
+        </div>
+    </main>
+    <div class="cart-bar" id="cart-bar" hidden>
+        <div class="container">
+            <button class="cart-bar-button" id="open-cart" type="button">
+                <span id="cart-count">0 itens</span>
+                <span id="cart-subtotal">R$ 0,00</span>
+            </button>
+        </div>
+    </div>
+    <div class="cart-drawer" id="cart-drawer" hidden>
+        <div class="cart-panel" role="dialog" aria-labelledby="cart-title">
+            <div class="catalog-toolbar">
+                <h2 id="cart-title">Carrinho</h2>
+                <button class="btn btn-ghost" id="close-cart" type="button">Fechar</button>
+            </div>
+            <div id="cart-lines"></div>
+            <div class="cart-totals">
+                <div><span>Subtotal</span><strong id="quote-subtotal">R$ 0,00</strong></div>
+                <div><span>Desconto</span><span id="quote-discount">R$ 0,00</span></div>
+                <div><span>Entrega</span><span id="quote-delivery">A calcular</span></div>
+                <div class="is-total"><span>Total</span><span id="quote-total">R$ 0,00</span></div>
+            </div>
+            <p class="muted" id="cart-note">Os preços são calculados pelo servidor no momento do pedido.</p>
+            <div style="display:flex; gap:0.6rem; margin-top:1rem;">
+                <button class="btn btn-secondary" id="clear-cart" type="button">Limpar</button>
+                <a class="btn btn-primary btn-block" id="go-checkout" href="#">Finalizar pedido</a>
+            </div>
+        </div>
+    </div>
+    <script type="module" src="/js/pages/store.js?v=4"></script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+.auth-main {
+    display: grid;
+    place-items: center;
+    padding: var(--space-8) 0 var(--space-12);
+}
+
+.auth-card {
+    width: min(100%, 420px);
+    padding: var(--space-6);
+}
+
+.auth-card h1 {
+    font-family: var(--font-display);
+    font-size: 1.85rem;
+    letter-spacing: -0.03em;
+    margin: var(--space-4) 0 var(--space-2);
+}
+
+.auth-form {
+    display: grid;
+    gap: var(--space-4);
+    margin-top: var(--space-6);
+}
+
+.auth-links {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-top: var(--space-4);
+    font-size: 0.9rem;
+}
+
+.auth-links a {
+    color: var(--color-primary-dark);
+    font-weight: 600;
+}

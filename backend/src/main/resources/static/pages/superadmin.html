@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Super admin — Folha</title>
+    <meta name="robots" content="noindex">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,650&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/reset.css">
+    <link rel="stylesheet" href="/css/layout.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/pages/placeholder.css">
+    <script src="/js/env.js"></script>
+</head>
+<body class="page-shell">
+    <header class="site-header">
+        <div class="container header-inner">
+            <a class="brand" href="/superadmin">
+                <img class="brand-mark" src="/assets/icons/logo.svg" alt="">
+                <span class="brand-name">Folha</span>
+            </a>
+            <div class="header-actions">
+                <span class="muted" id="user-name"></span>
+                <button class="btn btn-secondary" id="logout-button" type="button">Sair</button>
+            </div>
+        </div>
+    </header>
+    <main class="panel-main">
+        <div class="container">
+            <span class="badge">Plataforma</span>
+            <h1>Estabelecimentos</h1>
+            <p class="muted">Visão global da plataforma. Dados operacionais de clientes permanecem isolados em cada tenant.</p>
+            <section class="card placeholder-card">
+                <div id="establishments-list"></div>
+            </section>
+        </div>
+    </main>
+    <script type="module" src="/js/pages/superadmin.js?v=2"></script>
+</body>
+</html>
