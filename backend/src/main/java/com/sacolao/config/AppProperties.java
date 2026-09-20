@@ -60,6 +60,7 @@ public record AppProperties(
             String cloudName,
             String apiKey,
             String apiSecret,
+            String url,
             String folder,
             long maxBytes
     ) {

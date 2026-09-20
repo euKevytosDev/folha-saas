@@ -37,5 +37,6 @@ app:
     cloud-name:
     api-key:
     api-secret:
+    url:
     folder: folha-test
     max-bytes: 5242880

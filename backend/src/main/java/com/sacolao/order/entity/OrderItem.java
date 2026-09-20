@@ -43,6 +43,9 @@ public class OrderItem {
     @Column(name = "product_name", nullable = false, length = 160)
     private String productName;
 
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "product_unit", nullable = false, length = 8)
     private ProductUnit productUnit;
@@ -98,6 +101,14 @@ public class OrderItem {
 
     public void setProductName(String productName) {
         this.productName = productName;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
     }
 
     public ProductUnit getProductUnit() {

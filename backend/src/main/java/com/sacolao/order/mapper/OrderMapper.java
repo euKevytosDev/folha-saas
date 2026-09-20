@@ -56,10 +56,21 @@ public final class OrderMapper {
                 item.getId(),
                 item.getProduct() == null ? null : item.getProduct().getId(),
                 item.getProductName(),
+                resolveImageUrl(item),
                 item.getProductUnit(),
                 item.getQuantity(),
                 item.getUnitPrice(),
                 item.getSubtotal()
         );
+    }
+
+    private static String resolveImageUrl(OrderItem item) {
+        if (item.getImageUrl() != null && !item.getImageUrl().isBlank()) {
+            return item.getImageUrl();
+        }
+        if (item.getProduct() != null) {
+            return item.getProduct().getImageUrl();
+        }
+        return null;
     }
 }

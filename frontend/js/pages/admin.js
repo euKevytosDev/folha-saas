@@ -2,6 +2,8 @@ import { api, apiUpload, ApiError } from "../api/client.js";
 import { logout, requirePageAuth } from "../auth/api.js";
 import { $ } from "../utils/dom.js";
 import { formatBRL, formatQuantity } from "../utils/format.js";
+import { compressImageFile } from "../utils/image.js";
+import { createThumb, optimizedImageUrl, setPreviewImage } from "../utils/media.js";
 import { storeUrl } from "../utils/nav.js";
 
 const me = await requirePageAuth(["OWNER", "ADMIN", "STAFF"]);
@@ -239,7 +241,7 @@ async function loadMediaConfig() {
                 hint.textContent = "Upload ainda não configurado — cole uma URL da imagem. Configure Cloudinary no servidor para enviar arquivo.";
             }
         } else if (hint) {
-            hint.textContent = "Envie um arquivo (JPG/PNG/WEBP, até 5 MB) ou cole uma URL.";
+            hint.textContent = "Envie um arquivo (JPG/PNG/WEBP, até 5 MB). Fotos grandes são compactadas automaticamente, sem distorcer.";
         }
     } catch {
         mediaState.enabled = false;
@@ -261,8 +263,9 @@ function wireProductImageControls() {
         }
         mediaState.uploading = true;
         try {
+            const compact = await compressImageFile(file, { maxEdge: 1600 });
             const formData = new FormData();
-            formData.append("file", file);
+            formData.append("file", compact);
             const uploaded = await apiUpload("/media/upload", formData);
             if (urlInput) {
                 urlInput.value = uploaded.url;
@@ -292,7 +295,7 @@ function setProductImagePreview(url) {
     if (!box || !img || !url) {
         return;
     }
-    img.src = url;
+    setPreviewImage(img, url, { width: 600, height: 600 });
     box.hidden = false;
 }
 
@@ -406,6 +409,7 @@ function renderProducts(products) {
             ? ` · estoque ${item.stockQuantity ?? 0}`
             : "";
         meta.textContent = `${item.categoryName} · ${formatBRL(item.price)} / ${item.unit} · ${item.available ? "à venda" : "oculto"}${stockLabel}`;
+        const body = document.createElement("div");
         const actions = document.createElement("div");
         actions.style.display = "flex";
         actions.style.gap = "0.4rem";
@@ -435,7 +439,8 @@ function renderProducts(products) {
             });
             actions.append(stockBtn);
         }
-        row.append(title, meta, actions);
+        body.append(title, meta, actions);
+        row.append(createThumb(item.imageUrl, item.name, "product-admin-thumb"), body);
         list.append(row);
     });
 }
@@ -572,7 +577,11 @@ function renderOrders(orders) {
         items.className = "order-item-list";
         (order.items || []).forEach((item) => {
             const li = document.createElement("li");
-            li.textContent = `${formatQuantity(item.quantity, item.productUnit)} · ${item.productName}`;
+            li.className = "order-item-line";
+            li.append(
+                createThumb(item.imageUrl, item.productName, "order-item-thumb"),
+                document.createTextNode(`${formatQuantity(item.quantity, item.productUnit)} · ${item.productName}`)
+            );
             items.append(li);
         });
 
@@ -768,7 +777,7 @@ function renderStoreOpsCard() {
     }
     if (cover) {
         if (establishment.coverUrl) {
-            cover.style.backgroundImage = `url("${establishment.coverUrl}")`;
+            cover.style.backgroundImage = `url("${optimizedImageUrl(establishment.coverUrl, { width: 1600, height: 700, mode: "fill" })}")`;
             cover.classList.add("has-image");
         } else {
             cover.style.backgroundImage = "";
@@ -777,7 +786,7 @@ function renderStoreOpsCard() {
     }
     if (logo) {
         if (establishment.logoUrl) {
-            logo.src = establishment.logoUrl;
+            logo.src = optimizedImageUrl(establishment.logoUrl, { width: 256, height: 256 });
             logo.alt = establishment.name ?? "";
             logo.hidden = false;
         } else {
@@ -823,28 +832,37 @@ function wireStoreProfileForm() {
     wireStoreMediaUploads();
     form.addEventListener("submit", async (event) => {
         event.preventDefault();
-        const alertBox = $("#store-profile-alert");
-        try {
-            const body = {
-                name: form.name.value,
-                phone: form.phone.value || null,
-                address: form.address.value || null,
-                logoUrl: form.logoUrl.value || null,
-                coverUrl: form.coverUrl.value || null,
-                storeOpenMode: form.storeOpenMode.value,
-                openingHours: readOpeningHoursFromEditor()
-            };
-            establishment = await api(`/establishments/${establishment.id}`, {
-                method: "PUT",
-                body
-            });
-            fillStoreProfileForm(establishment);
-            renderStoreOpsCard();
-            hideAlert(alertBox);
-        } catch (error) {
-            showFormAlert(alertBox, error, "Não foi possível salvar a loja.");
-        }
+        await saveStoreProfile();
     });
+}
+
+async function saveStoreProfile() {
+    const form = $("#store-profile-form");
+    const alertBox = $("#store-profile-alert");
+    if (!form || !establishment) {
+        return;
+    }
+    try {
+        const body = {
+            name: form.name.value,
+            phone: form.phone.value || null,
+            address: form.address.value || null,
+            logoUrl: form.logoUrl.value || null,
+            coverUrl: form.coverUrl.value || null,
+            storeOpenMode: form.storeOpenMode.value,
+            openingHours: readOpeningHoursFromEditor()
+        };
+        establishment = await api(`/establishments/${establishment.id}`, {
+            method: "PUT",
+            body
+        });
+        fillStoreProfileForm(establishment);
+        renderStoreOpsCard();
+        hideAlert(alertBox);
+    } catch (error) {
+        showFormAlert(alertBox, error, "Não foi possível salvar a loja.");
+        throw error;
+    }
 }
 
 function fillStoreProfileForm(store) {
@@ -858,6 +876,8 @@ function fillStoreProfileForm(store) {
     form.logoUrl.value = store.logoUrl ?? "";
     form.coverUrl.value = store.coverUrl ?? "";
     form.storeOpenMode.value = store.storeOpenMode ?? "AUTO";
+    setStoreMediaPreview("#store-logo-preview", "#store-logo-preview-img", store.logoUrl, { width: 256, height: 256 });
+    setStoreMediaPreview("#store-cover-preview", "#store-cover-preview-img", store.coverUrl, { width: 800, height: 320 });
     renderOpeningHoursEditor(store.openingHours);
 }
 
@@ -933,11 +953,36 @@ function readOpeningHoursFromEditor() {
 }
 
 function wireStoreMediaUploads() {
-    bindMediaUpload("#store-logo-file", "#store-logo-url");
-    bindMediaUpload("#store-cover-file", "#store-cover-url");
+    bindMediaUpload("#store-logo-file", "#store-logo-url", {
+        maxEdge: 800,
+        previewBox: "#store-logo-preview",
+        previewImg: "#store-logo-preview-img",
+        previewSize: { width: 256, height: 256 }
+    });
+    bindMediaUpload("#store-cover-file", "#store-cover-url", {
+        maxEdge: 1600,
+        previewBox: "#store-cover-preview",
+        previewImg: "#store-cover-preview-img",
+        previewSize: { width: 800, height: 320 }
+    });
 }
 
-function bindMediaUpload(fileSelector, urlSelector) {
+function setStoreMediaPreview(boxSelector, imgSelector, url, size) {
+    const box = $(boxSelector);
+    const img = $(imgSelector);
+    if (!box || !img) {
+        return;
+    }
+    if (!url) {
+        box.hidden = true;
+        img.removeAttribute("src");
+        return;
+    }
+    setPreviewImage(img, url, size);
+    box.hidden = false;
+}
+
+function bindMediaUpload(fileSelector, urlSelector, options = {}) {
     const fileInput = $(fileSelector);
     const urlInput = $(urlSelector);
     fileInput?.addEventListener("change", async () => {
@@ -951,17 +996,23 @@ function bindMediaUpload(fileSelector, urlSelector) {
             return;
         }
         try {
+            const compact = await compressImageFile(file, { maxEdge: options.maxEdge ?? 1600 });
             const formData = new FormData();
-            formData.append("file", file);
+            formData.append("file", compact);
             const uploaded = await apiUpload("/media/upload", formData);
             if (urlInput) {
                 urlInput.value = uploaded.url;
             }
+            setStoreMediaPreview(options.previewBox, options.previewImg, uploaded.url, options.previewSize);
+            await saveStoreProfile();
             hideAlert($("#store-profile-alert"));
         } catch (error) {
             showFormAlert($("#store-profile-alert"), error, "Falha ao enviar imagem.");
             fileInput.value = "";
         }
+    });
+    urlInput?.addEventListener("change", () => {
+        setStoreMediaPreview(options.previewBox, options.previewImg, urlInput.value.trim(), options.previewSize);
     });
 }
 

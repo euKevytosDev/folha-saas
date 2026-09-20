@@ -30,4 +30,30 @@ class CloudinaryMediaServiceTest {
         assertFalse(CloudinaryMediaService.sign(params, "a")
                 .equals(CloudinaryMediaService.sign(params, "b")));
     }
+
+    @Test
+    void parsesCloudinaryUrl() {
+        var parsed = CloudinaryMediaService.parseCloudinaryUrl(
+                " cloudinary://123456789012345:abcdefghijklmnopqrstuvwxyzAB@demo-cloud "
+        );
+        assertEquals("demo-cloud", parsed.cloudName());
+        assertEquals("123456789012345", parsed.apiKey());
+        assertEquals("abcdefghijklmnopqrstuvwxyzAB", parsed.apiSecret());
+    }
+
+    @Test
+    void stripsQuotesFromCloudinaryUrl() {
+        var parsed = CloudinaryMediaService.parseCloudinaryUrl(
+                "\"cloudinary://key:secret@mycloud\""
+        );
+        assertEquals("mycloud", parsed.cloudName());
+        assertEquals("key", parsed.apiKey());
+        assertEquals("secret", parsed.apiSecret());
+    }
+
+    @Test
+    void incomingTransformationKeepsAspectRatio() {
+        assertTrue(CloudinaryMediaService.INCOMING_TRANSFORMATION.contains("c_limit"));
+        assertTrue(CloudinaryMediaService.INCOMING_TRANSFORMATION.contains("w_1600"));
+    }
 }

@@ -2,6 +2,7 @@ import { api, ApiError } from "../api/client.js";
 import { clearCart, loadCart } from "../store/cart.js";
 import { $, on } from "../utils/dom.js";
 import { formatBRL, formatQuantity } from "../utils/format.js";
+import { createThumb } from "../utils/media.js";
 import { currentStoreSlug, orderUrl, storeUrl } from "../utils/nav.js";
 
 const slug = currentStoreSlug();
@@ -113,7 +114,11 @@ function renderSummary(lines) {
         const row = document.createElement("div");
         row.className = "summary-line";
         const left = document.createElement("span");
-        left.textContent = `${line.name} · ${formatQuantity(line.quantity, line.unit)}`;
+        left.className = "summary-line-copy";
+        left.append(
+            createThumb(line.imageUrl, line.name, "order-item-thumb"),
+            document.createTextNode(`${line.name} · ${formatQuantity(line.quantity, line.unit)}`)
+        );
         const right = document.createElement("strong");
         right.textContent = formatBRL(line.subtotal);
         row.append(left, right);

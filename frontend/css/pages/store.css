@@ -47,7 +47,8 @@
     width: 72px;
     height: 72px;
     border-radius: 18px;
-    object-fit: cover;
+    object-fit: contain;
+    object-position: center;
     border: 2px solid rgba(255, 255, 255, 0.85);
     background: #fff;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
@@ -149,7 +150,8 @@
     height: 64px;
     margin-top: -2.4rem;
     border-radius: 16px;
-    object-fit: cover;
+    object-fit: contain;
+    object-position: center;
     border: 3px solid var(--color-surface);
     background: #fff;
 }
@@ -218,7 +220,8 @@
     width: 40px;
     height: 40px;
     border-radius: 12px;
-    object-fit: cover;
+    object-fit: contain;
+    object-position: center;
     background: var(--color-primary-light);
 }
 
@@ -305,7 +308,8 @@
     width: 92px;
     height: 92px;
     border-radius: 16px;
-    object-fit: cover;
+    object-fit: contain;
+    object-position: center;
     background: var(--color-primary-light);
 }
 
@@ -427,6 +431,9 @@
     width: 64px;
     height: 64px;
     border-radius: 14px;
+    object-fit: contain;
+    object-position: center;
+    background: var(--color-primary-light);
 }
 
 .cart-totals {
@@ -470,9 +477,40 @@
 
 .product-admin-row {
     display: grid;
-    gap: 0.35rem;
+    grid-template-columns: 56px 1fr;
+    gap: 0.75rem;
+    align-items: start;
     padding: 0.85rem 0;
     border-bottom: 1px solid var(--color-border);
+}
+
+.product-admin-thumb,
+.store-media-preview img {
+    display: block;
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    object-fit: contain;
+    object-position: center;
+    background: var(--color-surface-muted, #f4f6f2);
+    border: 1px solid var(--color-border);
+}
+
+.product-admin-thumb.is-empty {
+    display: grid;
+    place-items: center;
+    font-size: 1.15rem;
+}
+
+.store-media-preview {
+    margin: 0.4rem 0 0.2rem;
+}
+
+.store-media-preview.is-cover img,
+.store-media-preview img[id="store-cover-preview-img"] {
+    width: 100%;
+    max-width: 280px;
+    height: 88px;
 }
 
 .product-image-preview {
@@ -484,10 +522,11 @@
     width: 100%;
     max-width: 220px;
     aspect-ratio: 1;
-    object-fit: cover;
+    object-fit: contain;
+    object-position: center;
     border-radius: var(--radius-md);
     border: 1px solid var(--color-border);
-    background: var(--color-surface);
+    background: var(--color-surface-muted, #f4f6f2);
 }
 
 @media (min-width: 720px) {

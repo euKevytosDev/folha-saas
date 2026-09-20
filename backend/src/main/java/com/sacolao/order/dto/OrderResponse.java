@@ -44,6 +44,7 @@ public record OrderResponse(
             UUID id,
             UUID productId,
             String productName,
+            String imageUrl,
             ProductUnit productUnit,
             BigDecimal quantity,
             BigDecimal unitPrice,

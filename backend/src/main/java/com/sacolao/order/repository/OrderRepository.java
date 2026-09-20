@@ -17,7 +17,8 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     @Query("""
             select o from Order o
             join fetch o.customer
-            left join fetch o.items
+            left join fetch o.items i
+            left join fetch i.product
             where o.id = :id and o.establishment.id = :establishmentId
             """)
     Optional<Order> findDetailedByIdAndEstablishmentId(
@@ -28,7 +29,8 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     @Query("""
             select o from Order o
             join fetch o.customer
-            left join fetch o.items
+            left join fetch o.items i
+            left join fetch i.product
             where o.publicCode = :publicCode and o.establishment.id = :establishmentId
             """)
     Optional<Order> findDetailedByPublicCodeAndEstablishmentId(
@@ -39,7 +41,8 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     @Query("""
             select distinct o from Order o
             join fetch o.customer
-            left join fetch o.items
+            left join fetch o.items i
+            left join fetch i.product
             where o.establishment.id = :establishmentId
               and (:status is null or o.status = :status)
             order by o.createdAt desc

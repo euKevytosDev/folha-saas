@@ -8,6 +8,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 public abstract class CatalogSupport extends IntegrationTest {
@@ -28,6 +29,20 @@ public abstract class CatalogSupport extends IntegrationTest {
     }
 
     protected String createProduct(String token, String categoryId, String name, String price, String unit) throws Exception {
+        return createProduct(token, categoryId, name, price, unit, null);
+    }
+
+    protected String createProduct(
+            String token,
+            String categoryId,
+            String name,
+            String price,
+            String unit,
+            String imageUrl
+    ) throws Exception {
+        String imageField = imageUrl == null || imageUrl.isBlank()
+                ? ""
+                : ",\"imageUrl\":\"" + imageUrl + "\"";
         MvcResult result = mockMvc.perform(post("/api/v1/products")
                         .header("Authorization", AuthApi.bearer(token))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -40,10 +55,21 @@ public abstract class CatalogSupport extends IntegrationTest {
                                   "available":true,
                                   "featured":false,
                                   "minimumQuantity":1
+                                  %s
                                 }
-                                """.formatted(categoryId, name, price, unit)))
+                                """.formatted(categoryId, name, price, unit, imageField)))
                 .andExpect(status().isCreated())
                 .andReturn();
         return AuthApi.read(result, "$.id");
+    }
+
+    protected void forceStoreOpen(String token, String establishmentId) throws Exception {
+        mockMvc.perform(put("/api/v1/establishments/" + establishmentId)
+                        .header("Authorization", AuthApi.bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"storeOpenMode":"OPEN"}
+                                """))
+                .andExpect(status().isOk());
     }
 }

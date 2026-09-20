@@ -19,8 +19,16 @@ class OrderIT extends CatalogSupport {
         var registered = AuthApi.register(mockMvc, "Loja Pedido", "Eva", AuthApi.uniqueEmail("order"), "senha12345");
         String token = AuthApi.accessToken(registered);
         String slug = AuthApi.establishmentSlug(registered);
+        forceStoreOpen(token, AuthApi.establishmentId(registered));
         String categoryId = createCategory(token, "Frutas");
-        String productId = createProduct(token, categoryId, "Mamão", "5.00", "KG");
+        String productId = createProduct(
+                token,
+                categoryId,
+                "Mamão",
+                "5.00",
+                "KG",
+                "https://res.cloudinary.com/demo/image/upload/v1/folha/mamao.jpg"
+        );
 
         mockMvc.perform(post("/api/v1/store/" + slug + "/orders")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -43,6 +51,7 @@ class OrderIT extends CatalogSupport {
                 .andExpect(jsonPath("$.items", hasSize(1)))
                 .andExpect(jsonPath("$.items[0].unitPrice").value(5.00))
                 .andExpect(jsonPath("$.items[0].productName").value("Mamão"))
+                .andExpect(jsonPath("$.items[0].imageUrl").value("https://res.cloudinary.com/demo/image/upload/v1/folha/mamao.jpg"))
                 .andExpect(jsonPath("$.payment.status").value("PENDING"))
                 .andExpect(jsonPath("$.payment.pixCopyPaste").isNotEmpty());
 
@@ -64,6 +73,7 @@ class OrderIT extends CatalogSupport {
         var registered = AuthApi.register(mockMvc, "Loja Entrega", "Fred", AuthApi.uniqueEmail("deliv"), "senha12345");
         String token = AuthApi.accessToken(registered);
         String slug = AuthApi.establishmentSlug(registered);
+        forceStoreOpen(token, AuthApi.establishmentId(registered));
         String categoryId = createCategory(token, "Verduras");
         String productId = createProduct(token, categoryId, "Alface", "3.00", "UN");
 
@@ -86,6 +96,7 @@ class OrderIT extends CatalogSupport {
         var registered = AuthApi.register(mockMvc, "Loja Status", "Gabi", AuthApi.uniqueEmail("status"), "senha12345");
         String token = AuthApi.accessToken(registered);
         String slug = AuthApi.establishmentSlug(registered);
+        forceStoreOpen(token, AuthApi.establishmentId(registered));
         String categoryId = createCategory(token, "Raízes");
         String productId = createProduct(token, categoryId, "Cenoura", "4.00", "KG");
 

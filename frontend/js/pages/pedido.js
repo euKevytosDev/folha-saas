@@ -1,6 +1,7 @@
 import { api, ApiError } from "../api/client.js";
 import { $ } from "../utils/dom.js";
 import { formatBRL, formatQuantity } from "../utils/format.js";
+import { createThumb } from "../utils/media.js";
 import { storeUrl } from "../utils/nav.js";
 
 const { slug, publicCode } = currentOrderRef();
@@ -108,7 +109,11 @@ function renderItems(items) {
         const row = document.createElement("div");
         row.className = "order-item-row";
         const left = document.createElement("span");
-        left.textContent = `${item.productName} · ${formatQuantity(item.quantity, item.productUnit)}`;
+        left.className = "summary-line-copy";
+        left.append(
+            createThumb(item.imageUrl, item.productName, "order-item-thumb"),
+            document.createTextNode(`${item.productName} · ${formatQuantity(item.quantity, item.productUnit)}`)
+        );
         const right = document.createElement("strong");
         right.textContent = formatBRL(item.subtotal);
         row.append(left, right);

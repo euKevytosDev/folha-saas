@@ -2,6 +2,7 @@ import { api, ApiError } from "../api/client.js";
 import { currentStoreSlug, checkoutUrl } from "../utils/nav.js";
 import { $, on } from "../utils/dom.js";
 import { formatBRL, formatQuantity, unitStep } from "../utils/format.js";
+import { createThumb, optimizedImageUrl } from "../utils/media.js";
 import { addToCart, cartCount, clearCart, loadCart, setCartQuantity } from "../store/cart.js";
 
 const slug = currentStoreSlug();
@@ -79,7 +80,7 @@ function renderStorefrontHeader(store) {
     }
     if (els.cover) {
         if (store.coverUrl) {
-            els.cover.style.backgroundImage = `url("${store.coverUrl}")`;
+            els.cover.style.backgroundImage = `url("${optimizedImageUrl(store.coverUrl, { width: 1600, height: 700, mode: "fill" })}")`;
             els.cover.classList.add("has-image");
         } else {
             els.cover.style.backgroundImage = "";
@@ -87,7 +88,7 @@ function renderStorefrontHeader(store) {
         }
     }
     if (store.logoUrl) {
-        els.logo.src = store.logoUrl;
+        els.logo.src = optimizedImageUrl(store.logoUrl, { width: 256, height: 256 });
         els.logo.alt = store.name;
         els.logo.hidden = false;
     } else {
@@ -195,17 +196,7 @@ function productCard(product) {
 }
 
 function thumb(product) {
-    if (product.imageUrl) {
-        const image = document.createElement("img");
-        image.className = "product-thumb";
-        image.alt = product.name;
-        image.src = product.imageUrl;
-        return image;
-    }
-    const placeholder = document.createElement("div");
-    placeholder.className = "product-thumb is-empty";
-    placeholder.textContent = "🍃";
-    return placeholder;
+    return createThumb(product.imageUrl, product.name || "Produto");
 }
 
 function body(product) {

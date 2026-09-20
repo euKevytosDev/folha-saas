@@ -155,6 +155,7 @@ public class OrderService {
             OrderItem item = new OrderItem();
             item.setProduct(product);
             item.setProductName(product.getName());
+            item.setImageUrl(product.getImageUrl());
             item.setProductUnit(product.getUnit());
             item.setQuantity(quantity);
             item.setUnitPrice(unitPrice);
