@@ -56,8 +56,9 @@ public class ProductService {
         product.setUnit(request.unit());
         product.setAvailable(request.available() == null || request.available());
         product.setFeatured(Boolean.TRUE.equals(request.featured()));
-        product.setStockControlled(Boolean.TRUE.equals(request.stockControlled()));
-        product.setStockQuantity(Money.quantity(request.stockQuantity()));
+        boolean controlled = request.stockQuantity() != null;
+        product.setStockControlled(controlled);
+        product.setStockQuantity(controlled ? Money.quantity(request.stockQuantity()) : null);
         product.setMinimumQuantity(normalizeMinimum(request.minimumQuantity(), request.unit()));
         validateStock(product);
         return ProductMapper.toResponse(productRepository.save(product));

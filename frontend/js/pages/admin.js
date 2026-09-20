@@ -24,6 +24,14 @@ $("#store-link-top")?.setAttribute("href", establishment ? storeUrl(establishmen
 
 $("#logout-button")?.addEventListener("click", () => logout());
 
+if (user.role === "STAFF") {
+    document.querySelectorAll("[data-owner-only]").forEach((el) => {
+        el.hidden = true;
+    });
+}
+wireAdminNav();
+wireFormCarousels();
+
 const mediaState = { enabled: false, uploading: false };
 await loadMediaConfig();
 wireProductImageControls();
@@ -44,7 +52,7 @@ $("#refresh-orders-btn")?.addEventListener("click", async () => {
     } finally {
         if (btn) {
             btn.disabled = false;
-            btn.textContent = "Atualizar pedidos";
+            btn.textContent = "Atualizar";
         }
     }
 });
@@ -54,10 +62,7 @@ renderOrderFilters();
 await refreshOrders();
 
 const paymentSettingsCard = $("#payment-settings-card");
-if (user.role === "STAFF") {
-    paymentSettingsCard?.setAttribute("hidden", "");
-    $("#store-profile-form")?.setAttribute("hidden", "");
-} else {
+if (user.role !== "STAFF") {
     await loadPaymentSettings();
     $("#payment-settings-form")?.addEventListener("submit", async (event) => {
         event.preventDefault();
@@ -137,15 +142,10 @@ if (user.role !== "STAFF") {
             showFormAlert($("#coupon-alert"), error, "Não foi possível criar o cupom.");
         }
     });
-} else {
-    $("#delivery-settings-card")?.setAttribute("hidden", "");
-    $("#coupons-card")?.setAttribute("hidden", "");
 }
 
 const usersCard = $("#users-card");
-if (user.role === "STAFF") {
-    usersCard?.setAttribute("hidden", "");
-} else {
+if (user.role !== "STAFF") {
     if (user.role === "ADMIN") {
         document.querySelector("#member-role option[value='ADMIN']")?.remove();
     }
@@ -200,9 +200,12 @@ $("#product-form")?.addEventListener("submit", async (event) => {
         showFormAlert($("#product-alert"), null, "Aguarde o envio da imagem.");
         return;
     }
+    if (!validateFormCarousel(form)) {
+        return;
+    }
     try {
-        const stockControlled = form.stockControlled.checked;
-        const stockRaw = form.stockQuantity.value;
+        const stockRaw = form.stockQuantity.value.trim();
+        const hasStock = stockRaw !== "";
         await api("/products", {
             method: "POST",
             body: {
@@ -213,12 +216,13 @@ $("#product-form")?.addEventListener("submit", async (event) => {
                 imageUrl: form.imageUrl.value || null,
                 featured: form.featured.checked,
                 available: true,
-                stockControlled,
-                stockQuantity: stockControlled ? Number(stockRaw || 0) : null,
+                stockControlled: hasStock,
+                stockQuantity: hasStock ? Number(stockRaw) : null,
                 minimumQuantity: form.unit.value === "KG" ? 0.2 : 1
             }
         });
         form.reset();
+        resetFormCarousel(form);
         clearProductImagePreview();
         hideAlert($("#product-alert"));
         await refreshCatalog();
@@ -407,7 +411,7 @@ function renderProducts(products) {
         meta.className = "muted";
         const stockLabel = item.stockControlled
             ? ` · estoque ${item.stockQuantity ?? 0}`
-            : "";
+            : " · venda livre";
         meta.textContent = `${item.categoryName} · ${formatBRL(item.price)} / ${item.unit} · ${item.available ? "à venda" : "oculto"}${stockLabel}`;
         const body = document.createElement("div");
         const actions = document.createElement("div");
@@ -417,28 +421,29 @@ function renderProducts(products) {
             flagButton(item.available ? "Pausar" : "Publicar", `/products/${item.id}/availability`, !item.available),
             flagButton(item.featured ? "Tirar destaque" : "Destacar", `/products/${item.id}/featured`, !item.featured)
         );
-        if (item.stockControlled) {
-            const stockBtn = document.createElement("button");
-            stockBtn.type = "button";
-            stockBtn.className = "btn btn-ghost";
-            stockBtn.textContent = "Ajustar estoque";
-            stockBtn.addEventListener("click", async () => {
-                const raw = window.prompt("Nova quantidade em estoque", String(item.stockQuantity ?? 0));
-                if (raw == null || raw === "") {
-                    return;
-                }
-                try {
-                    await api(`/products/${item.id}/stock`, {
-                        method: "PATCH",
-                        body: { quantity: Number(raw) }
-                    });
-                    await refreshCatalog();
-                } catch (error) {
-                    showFormAlert($("#product-alert"), error, "Não foi possível ajustar o estoque.");
-                }
-            });
-            actions.append(stockBtn);
-        }
+        const stockBtn = document.createElement("button");
+        stockBtn.type = "button";
+        stockBtn.className = "btn btn-ghost";
+        stockBtn.textContent = "Estoque";
+        stockBtn.addEventListener("click", async () => {
+            const raw = window.prompt(
+                "Quantidade em estoque. Deixe 0 ou cancele para não mudar.",
+                String(item.stockQuantity ?? "")
+            );
+            if (raw == null || raw.trim() === "") {
+                return;
+            }
+            try {
+                await api(`/products/${item.id}/stock`, {
+                    method: "PATCH",
+                    body: { quantity: Number(raw) }
+                });
+                await refreshCatalog();
+            } catch (error) {
+                showFormAlert($("#product-alert"), error, "Não foi possível ajustar o estoque.");
+            }
+        });
+        actions.append(stockBtn);
         body.append(title, meta, actions);
         row.append(createThumb(item.imageUrl, item.name, "product-admin-thumb"), body);
         list.append(row);
@@ -842,6 +847,9 @@ async function saveStoreProfile() {
     if (!form || !establishment) {
         return;
     }
+    if (!validateFormCarousel(form)) {
+        return;
+    }
     try {
         const body = {
             name: form.name.value,
@@ -1132,5 +1140,149 @@ function paymentStatusLabel(status) {
         CANCELLED: "cancelado",
         EXPIRED: "expirado"
     })[status] || status;
+}
+
+const formCarousels = new Map();
+
+function wireAdminNav() {
+    const nav = $("#admin-nav");
+    const stage = $("#admin-stage");
+    nav?.addEventListener("click", (event) => {
+        const tab = event.target.closest(".admin-tab");
+        if (tab && !tab.hidden) {
+            showAdminPanel(tab.dataset.panel);
+        }
+    });
+    const allowed = visibleAdminPanels();
+    const hash = window.location.hash.replace("#", "");
+    showAdminPanel(allowed.includes(hash) ? hash : (allowed[0] || "pedidos"));
+
+    let touchStartX = 0;
+    let ignoreSwipe = false;
+    stage?.addEventListener("touchstart", (event) => {
+        touchStartX = event.changedTouches[0].clientX;
+        ignoreSwipe = Boolean(event.target.closest("input, textarea, select, button, a, label"));
+    }, { passive: true });
+    stage?.addEventListener("touchend", (event) => {
+        if (ignoreSwipe) {
+            return;
+        }
+        const delta = event.changedTouches[0].clientX - touchStartX;
+        if (Math.abs(delta) < 56) {
+            return;
+        }
+        const list = visibleAdminPanels();
+        const current = document.querySelector(".admin-panel.is-active")?.dataset.panel;
+        const index = list.indexOf(current);
+        const next = delta < 0 ? list[index + 1] : list[index - 1];
+        if (next) {
+            showAdminPanel(next);
+        }
+    }, { passive: true });
+}
+
+function visibleAdminPanels() {
+    return [...document.querySelectorAll(".admin-tab")]
+        .filter((tab) => !tab.hidden)
+        .map((tab) => tab.dataset.panel);
+}
+
+function showAdminPanel(id) {
+    document.querySelectorAll(".admin-panel").forEach((panel) => {
+        panel.classList.toggle("is-active", panel.dataset.panel === id && !panel.hidden);
+    });
+    document.querySelectorAll(".admin-tab").forEach((tab) => {
+        tab.classList.toggle("is-active", tab.dataset.panel === id);
+    });
+    document.querySelector(`.admin-tab[data-panel="${id}"]`)
+        ?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+    if (id) {
+        history.replaceState(null, "", `#${id}`);
+    }
+}
+
+function wireFormCarousels() {
+    document.querySelectorAll("[data-carousel]").forEach(wireFormCarousel);
+}
+
+function resetFormCarousel(form) {
+    formCarousels.get(form)?.go(0);
+}
+
+function validateFormCarousel(form) {
+    return formCarousels.get(form)?.validateAll() ?? true;
+}
+
+function wireFormCarousel(form) {
+    const slides = [...form.querySelectorAll(".form-slide")];
+    if (!slides.length) {
+        return;
+    }
+    const prev = form.querySelector("[data-carousel-prev]");
+    const next = form.querySelector("[data-carousel-next]");
+    const submit = form.querySelector("[data-carousel-submit]");
+    const dotsBox = form.querySelector("[data-carousel-dots]");
+    let step = 0;
+    if (dotsBox) {
+        dotsBox.replaceChildren();
+        slides.forEach((_, index) => {
+            const dot = document.createElement("button");
+            dot.type = "button";
+            dot.setAttribute("aria-label", `Passo ${index + 1}`);
+            dot.addEventListener("click", () => go(index));
+            dotsBox.append(dot);
+        });
+    }
+
+    function requiredFields(slide) {
+        return [...slide.querySelectorAll("[required]")];
+    }
+
+    function go(index) {
+        step = Math.max(0, Math.min(slides.length - 1, index));
+        slides.forEach((slide, i) => slide.classList.toggle("is-active", i === step));
+        dotsBox?.querySelectorAll("button").forEach((dot, i) => {
+            dot.classList.toggle("is-active", i === step);
+        });
+        if (prev) {
+            prev.disabled = step === 0;
+        }
+        if (next) {
+            next.hidden = step === slides.length - 1;
+        }
+        if (submit) {
+            submit.hidden = step !== slides.length - 1;
+        }
+    }
+
+    function validateCurrent() {
+        const invalid = requiredFields(slides[step]).find((field) => !field.checkValidity());
+        if (invalid) {
+            invalid.reportValidity();
+            return false;
+        }
+        return true;
+    }
+
+    function validateAll() {
+        for (let i = 0; i < slides.length; i += 1) {
+            const invalid = requiredFields(slides[i]).find((field) => !field.checkValidity());
+            if (invalid) {
+                go(i);
+                invalid.reportValidity();
+                return false;
+            }
+        }
+        return true;
+    }
+
+    prev?.addEventListener("click", () => go(step - 1));
+    next?.addEventListener("click", () => {
+        if (validateCurrent()) {
+            go(step + 1);
+        }
+    });
+    go(0);
+    formCarousels.set(form, { go, validateAll });
 }
 

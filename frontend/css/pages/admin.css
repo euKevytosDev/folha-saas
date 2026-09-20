@@ -1,0 +1,234 @@
+.admin-shell .site-header {
+    z-index: 40;
+}
+
+.admin-main {
+    padding-top: var(--space-4);
+}
+
+.admin-kicker {
+    margin: 0.85rem 0 0.65rem;
+    color: var(--color-text-muted);
+    font-size: 0.92rem;
+}
+
+.admin-nav {
+    position: sticky;
+    top: var(--header-h);
+    z-index: 35;
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding: 0.55rem 0.15rem 0.7rem;
+    margin: 0 -0.35rem 0.85rem;
+    scrollbar-width: none;
+    background: color-mix(in srgb, var(--color-background) 92%, white);
+    backdrop-filter: blur(12px);
+}
+
+.admin-nav::-webkit-scrollbar {
+    display: none;
+}
+
+.admin-tab {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 42px;
+    padding: 0.4rem 0.9rem;
+    border-radius: 999px;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-weight: 700;
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.admin-tab-dot {
+    width: 0.62rem;
+    height: 0.62rem;
+    border-radius: 50%;
+    background: var(--tab-color, var(--color-primary));
+}
+
+.admin-tab.is-active {
+    background: color-mix(in srgb, var(--tab-color) 14%, white);
+    border-color: color-mix(in srgb, var(--tab-color) 45%, white);
+    color: var(--tab-color);
+    box-shadow: 0 6px 16px color-mix(in srgb, var(--tab-color) 18%, transparent);
+}
+
+.admin-stage {
+    position: relative;
+    min-height: 52dvh;
+}
+
+.admin-panel {
+    display: none;
+    animation: admin-panel-in 220ms ease;
+    background: var(--color-surface);
+    border: 1px solid color-mix(in srgb, var(--panel-color) 28%, var(--color-border));
+    border-radius: var(--radius-lg);
+    padding: 1rem 1rem 1.15rem;
+    box-shadow: var(--shadow-sm);
+    border-top: 4px solid var(--panel-color, var(--color-primary));
+}
+
+.admin-panel.is-active {
+    display: block;
+}
+
+.admin-panel-head {
+    margin-bottom: 1rem;
+}
+
+.admin-panel-title {
+    margin: 0 0 0.25rem;
+    font-family: var(--font-display);
+    font-size: clamp(1.45rem, 4vw, 2rem);
+    letter-spacing: -0.03em;
+    color: var(--panel-color, var(--color-primary-dark));
+}
+
+.admin-meta-line {
+    margin: 0.35rem 0 0.75rem;
+}
+
+.admin-stack {
+    display: grid;
+    gap: 1rem;
+}
+
+.admin-block {
+    padding: 1rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: color-mix(in srgb, var(--panel-color, var(--color-primary)) 5%, white);
+}
+
+.admin-block-title {
+    margin: 0 0 0.75rem;
+    font-size: 1rem;
+    color: var(--panel-color, var(--color-primary-dark));
+}
+
+.admin-inline-form {
+    display: grid;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+}
+
+.admin-check {
+    display: flex;
+    gap: 0.55rem;
+    align-items: center;
+    margin: 0.35rem 0 0.85rem;
+    font-weight: 600;
+}
+
+.form-carousel .form-slides {
+    position: relative;
+}
+
+.form-slide {
+    display: none;
+    animation: admin-panel-in 180ms ease;
+}
+
+.form-slide.is-active {
+    display: grid;
+    gap: 0.85rem;
+}
+
+.form-step-label {
+    margin: 0;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--panel-color, var(--color-primary));
+}
+
+.form-carousel-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.45rem;
+    margin-top: 1rem;
+}
+
+.form-dots {
+    display: flex;
+    gap: 0.35rem;
+    margin-inline: auto;
+}
+
+.form-dots button {
+    width: 0.55rem;
+    height: 0.55rem;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: var(--color-border);
+    min-height: 0;
+}
+
+.form-dots button.is-active {
+    width: 1.15rem;
+    background: var(--panel-color, var(--color-primary));
+}
+
+.admin-panel .stat-grid,
+.admin-panel .chip-row {
+    margin-bottom: 0.85rem;
+}
+
+.admin-panel .placeholder-card {
+    margin-top: 0;
+}
+
+@keyframes admin-panel-in {
+    from {
+        opacity: 0;
+        transform: translateX(12px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@media (min-width: 768px) {
+    .admin-inline-form {
+        grid-template-columns: 1fr 6rem auto;
+        align-items: end;
+    }
+
+    .admin-nav {
+        margin-inline: 0;
+    }
+
+    .admin-block {
+        padding: 1.25rem;
+    }
+}
+
+@media (max-width: 520px) {
+    .admin-tab {
+        min-height: 40px;
+        padding: 0.35rem 0.8rem;
+    }
+
+    .form-carousel-bar .btn {
+        min-height: 44px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .admin-panel,
+    .form-slide {
+        animation: none;
+    }
+}

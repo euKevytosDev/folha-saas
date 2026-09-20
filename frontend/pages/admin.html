@@ -16,9 +16,10 @@
     <link rel="stylesheet" href="/css/pages/placeholder.css">
     <link rel="stylesheet" href="/css/pages/store.css?v=2">
     <link rel="stylesheet" href="/css/pages/checkout.css?v=2">
+    <link rel="stylesheet" href="/css/pages/admin.css?v=1">
     <script src="/js/env.js"></script>
 </head>
-<body class="page-shell">
+<body class="page-shell admin-shell">
     <header class="site-header">
         <div class="container header-inner">
             <a class="brand" href="/admin">
@@ -27,16 +28,13 @@
             </a>
             <div class="header-actions">
                 <span class="muted" id="user-name"></span>
+                <span class="badge" id="user-role">Painel</span>
                 <button class="btn btn-secondary" id="logout-button" type="button">Sair</button>
             </div>
         </div>
     </header>
-    <main class="panel-main">
+    <main class="panel-main admin-main">
         <div class="container">
-            <span class="badge" id="user-role">Painel</span>
-            <h1>Sua loja</h1>
-            <p class="muted">Pedidos, catálogo e equipe — funciona no celular com o mesmo login.</p>
-
             <section class="store-ops-card" id="store-ops-card">
                 <div class="store-ops-cover" id="store-ops-cover"></div>
                 <div class="store-ops-body">
@@ -50,138 +48,232 @@
                         <div class="store-ops-stats" id="store-ops-stats"></div>
                     </div>
                     <div class="store-ops-actions">
-                        <button class="btn btn-secondary" id="refresh-orders-btn" type="button">Atualizar pedidos</button>
+                        <button class="btn btn-secondary" id="refresh-orders-btn" type="button">Atualizar</button>
                         <a class="btn btn-ghost" id="store-link-top" href="/">Ver loja</a>
                     </div>
                 </div>
             </section>
 
-            <section class="card placeholder-card" style="margin-bottom:1.25rem;">
-                <div class="catalog-toolbar" style="margin-bottom:0.75rem;">
-                    <h2 style="margin:0;">Pedidos</h2>
-                </div>
-                <div class="stat-grid" id="order-summary"></div>
-                <div class="chip-row" id="order-filters" style="padding-bottom:0.75rem;"></div>
-                <div id="orders-list"></div>
-                <div class="alert" id="orders-alert" hidden></div>
-            </section>
-            <div class="panel-grid">
-                <section class="card placeholder-card">
-                    <h2>Estabelecimento</h2>
+            <p class="admin-kicker">Escolha uma área. No celular, deslize para o lado.</p>
+            <nav class="admin-nav" id="admin-nav" aria-label="Áreas do painel">
+                <button class="admin-tab is-active" type="button" data-panel="pedidos" style="--tab-color:#EA580C">
+                    <span class="admin-tab-dot"></span>Pedidos
+                </button>
+                <button class="admin-tab" type="button" data-panel="produtos" style="--tab-color:#16A34A">
+                    <span class="admin-tab-dot"></span>Produtos
+                </button>
+                <button class="admin-tab" type="button" data-panel="loja" data-owner-only style="--tab-color:#0D9488">
+                    <span class="admin-tab-dot"></span>Loja
+                </button>
+                <button class="admin-tab" type="button" data-panel="entrega" data-owner-only style="--tab-color:#2563EB">
+                    <span class="admin-tab-dot"></span>Entrega
+                </button>
+                <button class="admin-tab" type="button" data-panel="pagamentos" data-owner-only style="--tab-color:#7C3AED">
+                    <span class="admin-tab-dot"></span>Pagar
+                </button>
+                <button class="admin-tab" type="button" data-panel="cupons" data-owner-only style="--tab-color:#DB2777">
+                    <span class="admin-tab-dot"></span>Cupons
+                </button>
+                <button class="admin-tab" type="button" data-panel="equipe" data-owner-only style="--tab-color:#475569">
+                    <span class="admin-tab-dot"></span>Equipe
+                </button>
+            </nav>
+
+            <div class="admin-stage" id="admin-stage">
+                <section class="admin-panel is-active" id="panel-pedidos" data-panel="pedidos" style="--panel-color:#EA580C">
+                    <header class="admin-panel-head">
+                        <h2 class="admin-panel-title">Pedidos</h2>
+                        <p class="muted">O que chegou, o que está em preparo e o que já saiu.</p>
+                    </header>
+                    <div class="stat-grid" id="order-summary"></div>
+                    <div class="chip-row" id="order-filters"></div>
+                    <div id="orders-list"></div>
+                    <div class="alert" id="orders-alert" hidden></div>
+                </section>
+
+                <section class="admin-panel" id="panel-produtos" data-panel="produtos" style="--panel-color:#16A34A">
+                    <header class="admin-panel-head">
+                        <h2 class="admin-panel-title">Produtos</h2>
+                        <p class="muted">Monte o cardápio em passos curtos: o que é, preço, foto e estoque.</p>
+                    </header>
+                    <div class="admin-stack">
+                        <article class="admin-block">
+                            <h3 class="admin-block-title">Categorias</h3>
+                            <div id="categories-list"></div>
+                            <div class="alert" id="category-alert" hidden></div>
+                            <form id="category-form" class="auth-form admin-inline-form">
+                                <div class="field">
+                                    <label for="category-name">Nome</label>
+                                    <input id="category-name" name="name" type="text" required placeholder="Ex.: Frutas">
+                                </div>
+                                <div class="field">
+                                    <label for="category-order">Ordem</label>
+                                    <input id="category-order" name="sortOrder" type="number" value="0">
+                                </div>
+                                <button class="btn btn-primary" type="submit">Adicionar</button>
+                            </form>
+                        </article>
+                        <article class="admin-block">
+                            <h3 class="admin-block-title">Novo produto</h3>
+                            <div class="alert" id="product-alert" hidden></div>
+                            <form id="product-form" class="auth-form form-carousel" data-carousel novalidate>
+                                <div class="form-slides">
+                                    <div class="form-slide is-active">
+                                        <p class="form-step-label">1 de 4 · O que é</p>
+                                        <div class="field">
+                                            <label for="product-name">Nome</label>
+                                            <input id="product-name" name="name" type="text" required placeholder="Ex.: Banana prata">
+                                        </div>
+                                        <div class="field">
+                                            <label for="product-category">Categoria</label>
+                                            <select id="product-category" name="categoryId" required></select>
+                                        </div>
+                                    </div>
+                                    <div class="form-slide">
+                                        <p class="form-step-label">2 de 4 · Preço</p>
+                                        <div class="field">
+                                            <label for="product-price">Preço (R$)</label>
+                                            <input id="product-price" name="price" type="number" min="0.01" step="0.01" required>
+                                        </div>
+                                        <div class="field">
+                                            <label for="product-unit">Unidade</label>
+                                            <select id="product-unit" name="unit">
+                                                <option value="UN">UN</option>
+                                                <option value="KG">KG</option>
+                                                <option value="G">G</option>
+                                                <option value="L">L</option>
+                                                <option value="ML">ML</option>
+                                                <option value="CX">CX</option>
+                                                <option value="PCT">PCT</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="form-slide">
+                                        <p class="form-step-label">3 de 4 · Foto</p>
+                                        <div class="field">
+                                            <label for="product-image-file">Foto do produto</label>
+                                            <input id="product-image-file" name="imageFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif">
+                                            <p class="muted" id="product-image-hint" style="margin-top:0.35rem;">Envie um arquivo ou cole uma URL abaixo.</p>
+                                        </div>
+                                        <div class="product-image-preview" id="product-image-preview" hidden>
+                                            <img id="product-image-preview-img" alt="Prévia do produto">
+                                        </div>
+                                        <div class="field">
+                                            <label for="product-image">Imagem (URL)</label>
+                                            <input id="product-image" name="imageUrl" type="url" placeholder="https://...">
+                                        </div>
+                                    </div>
+                                    <div class="form-slide">
+                                        <p class="form-step-label">4 de 4 · Estoque</p>
+                                        <div class="field">
+                                            <label for="product-stock">Quantidade em estoque (opcional)</label>
+                                            <input id="product-stock" name="stockQuantity" type="number" min="0" step="0.001" placeholder="Ex.: 20">
+                                            <p class="muted">Deixe em branco para o cliente comprar à vontade. Se preencher, a loja limita as compras a essa quantidade.</p>
+                                        </div>
+                                        <label class="admin-check">
+                                            <input id="product-featured" name="featured" type="checkbox">
+                                            Destacar na vitrine
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="form-carousel-bar">
+                                    <button class="btn btn-ghost" type="button" data-carousel-prev>Voltar</button>
+                                    <div class="form-dots" data-carousel-dots></div>
+                                    <button class="btn btn-secondary" type="button" data-carousel-next>Continuar</button>
+                                    <button class="btn btn-primary" type="submit" data-carousel-submit hidden>Salvar produto</button>
+                                </div>
+                            </form>
+                        </article>
+                        <article class="admin-block">
+                            <h3 class="admin-block-title">Catálogo</h3>
+                            <div id="products-list"></div>
+                        </article>
+                    </div>
+                </section>
+
+                <section class="admin-panel" id="panel-loja" data-panel="loja" data-owner-only style="--panel-color:#0D9488">
+                    <header class="admin-panel-head">
+                        <h2 class="admin-panel-title">Loja</h2>
+                        <p class="muted">Nome, visual, horário e se está aberta agora.</p>
+                    </header>
                     <p class="muted" id="store-slug"></p>
-                    <p>Plano: <strong id="store-plan"></strong></p>
-                    <p>Status conta: <strong id="store-status"></strong></p>
-                    <p style="margin-top: 1rem;"><a class="btn btn-secondary" id="store-link" href="/">Ver loja pública</a></p>
+                    <p class="admin-meta-line">Plano: <strong id="store-plan"></strong> · Conta: <strong id="store-status"></strong></p>
+                    <p><a class="btn btn-secondary" id="store-link" href="/">Ver loja pública</a></p>
                     <div class="alert" id="store-profile-alert" hidden></div>
-                    <form id="store-profile-form" class="auth-form" style="margin-top: 1rem;">
-                        <div class="field">
-                            <label for="store-open-mode">Funcionamento</label>
-                            <select id="store-open-mode" name="storeOpenMode">
-                                <option value="AUTO">Automático (horários)</option>
-                                <option value="OPEN">Forçar aberta</option>
-                                <option value="CLOSED">Forçar fechada</option>
-                            </select>
-                        </div>
-                        <div class="field">
-                            <label for="store-profile-name">Nome da loja</label>
-                            <input id="store-profile-name" name="name" type="text" required minlength="2">
-                        </div>
-                        <div class="field">
-                            <label for="store-profile-phone">Telefone / WhatsApp</label>
-                            <input id="store-profile-phone" name="phone" type="tel">
-                        </div>
-                        <div class="field">
-                            <label for="store-profile-address">Endereço</label>
-                            <input id="store-profile-address" name="address" type="text">
-                        </div>
-                        <div class="field">
-                            <label for="store-logo-file">Logo (foto de perfil)</label>
-                            <input id="store-logo-file" type="file" accept="image/jpeg,image/png,image/webp,image/gif">
-                            <div class="store-media-preview" id="store-logo-preview" hidden>
-                                <img id="store-logo-preview-img" alt="Prévia do logo">
+                    <form id="store-profile-form" class="auth-form form-carousel" data-carousel novalidate style="margin-top:1rem;">
+                        <div class="form-slides">
+                            <div class="form-slide is-active">
+                                <p class="form-step-label">1 de 3 · Dados</p>
+                                <div class="field">
+                                    <label for="store-open-mode">Funcionamento</label>
+                                    <select id="store-open-mode" name="storeOpenMode">
+                                        <option value="AUTO">Automático (horários)</option>
+                                        <option value="OPEN">Forçar aberta</option>
+                                        <option value="CLOSED">Forçar fechada</option>
+                                    </select>
+                                </div>
+                                <div class="field">
+                                    <label for="store-profile-name">Nome da loja</label>
+                                    <input id="store-profile-name" name="name" type="text" required minlength="2">
+                                </div>
+                                <div class="field">
+                                    <label for="store-profile-phone">Telefone / WhatsApp</label>
+                                    <input id="store-profile-phone" name="phone" type="tel">
+                                </div>
+                                <div class="field">
+                                    <label for="store-profile-address">Endereço</label>
+                                    <input id="store-profile-address" name="address" type="text">
+                                </div>
                             </div>
-                            <input id="store-logo-url" name="logoUrl" type="url" placeholder="ou cole URL do logo">
-                        </div>
-                        <div class="field">
-                            <label for="store-cover-file">Imagem de fundo</label>
-                            <input id="store-cover-file" type="file" accept="image/jpeg,image/png,image/webp,image/gif">
-                            <div class="store-media-preview is-cover" id="store-cover-preview" hidden>
-                                <img id="store-cover-preview-img" alt="Prévia da capa">
+                            <div class="form-slide">
+                                <p class="form-step-label">2 de 3 · Visual</p>
+                                <div class="field">
+                                    <label for="store-logo-file">Logo (foto de perfil)</label>
+                                    <input id="store-logo-file" type="file" accept="image/jpeg,image/png,image/webp,image/gif">
+                                    <div class="store-media-preview" id="store-logo-preview" hidden>
+                                        <img id="store-logo-preview-img" alt="Prévia do logo">
+                                    </div>
+                                    <input id="store-logo-url" name="logoUrl" type="url" placeholder="ou cole URL do logo">
+                                </div>
+                                <div class="field">
+                                    <label for="store-cover-file">Imagem de fundo</label>
+                                    <input id="store-cover-file" type="file" accept="image/jpeg,image/png,image/webp,image/gif">
+                                    <div class="store-media-preview is-cover" id="store-cover-preview" hidden>
+                                        <img id="store-cover-preview-img" alt="Prévia da capa">
+                                    </div>
+                                    <input id="store-cover-url" name="coverUrl" type="url" placeholder="ou cole URL da capa">
+                                </div>
                             </div>
-                            <input id="store-cover-url" name="coverUrl" type="url" placeholder="ou cole URL da capa">
+                            <div class="form-slide">
+                                <p class="form-step-label">3 de 3 · Horários</p>
+                                <p class="muted">Usados no modo automático.</p>
+                                <div id="opening-hours-editor" class="hours-editor"></div>
+                            </div>
                         </div>
-                        <h3 style="font-size:1rem;margin:1rem 0 0.5rem;">Horários (modo automático)</h3>
-                        <div id="opening-hours-editor" class="hours-editor"></div>
-                        <button class="btn btn-primary" type="submit">Salvar loja</button>
+                        <div class="form-carousel-bar">
+                            <button class="btn btn-ghost" type="button" data-carousel-prev>Voltar</button>
+                            <div class="form-dots" data-carousel-dots></div>
+                            <button class="btn btn-secondary" type="button" data-carousel-next>Continuar</button>
+                            <button class="btn btn-primary" type="submit" data-carousel-submit hidden>Salvar loja</button>
+                        </div>
                     </form>
                 </section>
-                <section class="card placeholder-card" id="payment-settings-card">
-                    <h2>Pagamentos</h2>
-                    <p class="muted">Conecte a conta do estabelecimento (Mercado Pago). Em mock, o PIX é simulado.</p>
-                    <div class="alert" id="payment-settings-alert" hidden></div>
-                    <form id="payment-settings-form" class="auth-form" style="margin-top: 1rem;">
-                        <div class="field">
-                            <label for="payment-provider">Provedor</label>
-                            <select id="payment-provider" name="provider">
-                                <option value="MERCADO_PAGO">Mercado Pago</option>
-                                <option value="MOCK">Mock</option>
-                                <option value="MANUAL">Manual</option>
-                            </select>
-                        </div>
-                        <div class="field">
-                            <label for="payment-token">Access token</label>
-                            <input id="payment-token" name="accessToken" type="password" autocomplete="off" placeholder="Cole o token (opcional em mock)">
-                        </div>
-                        <div class="field">
-                            <label><input id="payment-mock" name="mockMode" type="checkbox" checked> Modo mock</label>
-                        </div>
-                        <div class="field">
-                            <label><input id="payment-pix" name="pixEnabled" type="checkbox" checked> PIX habilitado</label>
-                        </div>
-                        <button class="btn btn-primary" type="submit">Salvar pagamentos</button>
-                    </form>
-                    <p class="muted" id="payment-token-hint" style="margin-top:0.75rem;"></p>
-                </section>
-                <section class="card placeholder-card" id="users-card">
-                    <h2>Equipe</h2>
-                    <div id="users-list"></div>
-                    <div class="alert" id="users-alert" hidden></div>
-                    <form id="user-form" class="auth-form" style="margin-top: 1rem;">
-                        <div class="field">
-                            <label for="member-name">Nome</label>
-                            <input id="member-name" name="name" type="text" required>
-                        </div>
-                        <div class="field">
-                            <label for="member-email">E-mail</label>
-                            <input id="member-email" name="email" type="email" required>
-                        </div>
-                        <div class="field">
-                            <label for="member-password">Senha</label>
-                            <input id="member-password" name="password" type="password" minlength="8" required>
-                        </div>
-                        <div class="field">
-                            <label for="member-role">Perfil</label>
-                            <select id="member-role" name="role">
-                                <option value="STAFF">STAFF</option>
-                                <option value="ADMIN">ADMIN</option>
-                            </select>
-                        </div>
-                        <button class="btn btn-primary" type="submit">Adicionar</button>
-                    </form>
-                </section>
-            </div>
-            <div class="panel-grid" style="margin-top: 1.25rem;">
-                <section class="card placeholder-card" id="delivery-settings-card">
-                    <h2>Entrega e frete</h2>
-                    <p class="muted">Defina taxa fixa de frete e se a loja faz entrega e/ou retirada.</p>
+
+                <section class="admin-panel" id="delivery-settings-card" data-panel="entrega" data-owner-only style="--panel-color:#2563EB">
+                    <header class="admin-panel-head">
+                        <h2 class="admin-panel-title">Entrega e frete</h2>
+                        <p class="muted">Taxa, pedido mínimo e se faz entrega ou retirada.</p>
+                    </header>
                     <div class="alert" id="delivery-settings-alert" hidden></div>
-                    <form id="delivery-settings-form" class="auth-form" style="margin-top: 1rem;">
-                        <div class="field">
-                            <label><input id="delivery-enabled" name="deliveryEnabled" type="checkbox" checked> Aceitar entrega</label>
-                        </div>
-                        <div class="field">
-                            <label><input id="pickup-enabled" name="pickupEnabled" type="checkbox" checked> Aceitar retirada</label>
-                        </div>
+                    <form id="delivery-settings-form" class="auth-form">
+                        <label class="admin-check">
+                            <input id="delivery-enabled" name="deliveryEnabled" type="checkbox" checked>
+                            Aceitar entrega
+                        </label>
+                        <label class="admin-check">
+                            <input id="pickup-enabled" name="pickupEnabled" type="checkbox" checked>
+                            Aceitar retirada
+                        </label>
                         <div class="field">
                             <label for="delivery-fee">Taxa fixa de frete (R$)</label>
                             <input id="delivery-fee" name="fixedFee" type="number" min="0" step="0.01" value="0">
@@ -205,11 +297,45 @@
                         <button class="btn btn-primary" type="submit">Salvar frete</button>
                     </form>
                 </section>
-                <section class="card placeholder-card" id="coupons-card">
-                    <h2>Cupons</h2>
+
+                <section class="admin-panel" id="payment-settings-card" data-panel="pagamentos" data-owner-only style="--panel-color:#7C3AED">
+                    <header class="admin-panel-head">
+                        <h2 class="admin-panel-title">Pagamentos</h2>
+                        <p class="muted">Conecte a conta do estabelecimento (Mercado Pago). Em mock, o PIX é simulado.</p>
+                    </header>
+                    <div class="alert" id="payment-settings-alert" hidden></div>
+                    <form id="payment-settings-form" class="auth-form">
+                        <div class="field">
+                            <label for="payment-provider">Provedor</label>
+                            <select id="payment-provider" name="provider">
+                                <option value="MERCADO_PAGO">Mercado Pago</option>
+                                <option value="MOCK">Mock</option>
+                                <option value="MANUAL">Manual</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label for="payment-token">Access token</label>
+                            <input id="payment-token" name="accessToken" type="password" autocomplete="off" placeholder="Cole o token (opcional em mock)">
+                        </div>
+                        <label class="admin-check">
+                            <input id="payment-mock" name="mockMode" type="checkbox" checked> Modo mock
+                        </label>
+                        <label class="admin-check">
+                            <input id="payment-pix" name="pixEnabled" type="checkbox" checked> PIX habilitado
+                        </label>
+                        <button class="btn btn-primary" type="submit">Salvar pagamentos</button>
+                    </form>
+                    <p class="muted" id="payment-token-hint" style="margin-top:0.75rem;"></p>
+                </section>
+
+                <section class="admin-panel" id="coupons-card" data-panel="cupons" data-owner-only style="--panel-color:#DB2777">
+                    <header class="admin-panel-head">
+                        <h2 class="admin-panel-title">Cupons</h2>
+                        <p class="muted">Desconto fixo ou percentual no pedido.</p>
+                    </header>
                     <div id="coupons-list"></div>
                     <div class="alert" id="coupon-alert" hidden></div>
-                    <form id="coupon-form" class="auth-form" style="margin-top: 1rem;">
+                    <form id="coupon-form" class="auth-form" style="margin-top:1rem;">
                         <div class="field">
                             <label for="coupon-code-admin">Código</label>
                             <input id="coupon-code-admin" name="code" type="text" required maxlength="40" style="text-transform:uppercase">
@@ -232,83 +358,40 @@
                         <button class="btn btn-primary" type="submit">Criar cupom</button>
                     </form>
                 </section>
-            </div>
-            <div class="panel-grid" style="margin-top: 1.25rem;">
-                <section class="card placeholder-card">
-                    <h2>Categorias</h2>
-                    <div id="categories-list"></div>
-                    <div class="alert" id="category-alert" hidden></div>
-                    <form id="category-form" class="auth-form" style="margin-top: 1rem;">
+
+                <section class="admin-panel" id="users-card" data-panel="equipe" data-owner-only style="--panel-color:#475569">
+                    <header class="admin-panel-head">
+                        <h2 class="admin-panel-title">Equipe</h2>
+                        <p class="muted">Quem acessa o painel com você.</p>
+                    </header>
+                    <div id="users-list"></div>
+                    <div class="alert" id="users-alert" hidden></div>
+                    <form id="user-form" class="auth-form" style="margin-top:1rem;">
                         <div class="field">
-                            <label for="category-name">Nome</label>
-                            <input id="category-name" name="name" type="text" required>
+                            <label for="member-name">Nome</label>
+                            <input id="member-name" name="name" type="text" required>
                         </div>
                         <div class="field">
-                            <label for="category-order">Ordem</label>
-                            <input id="category-order" name="sortOrder" type="number" value="0">
-                        </div>
-                        <button class="btn btn-primary" type="submit">Salvar categoria</button>
-                    </form>
-                </section>
-                <section class="card placeholder-card">
-                    <h2>Produtos</h2>
-                    <div id="products-list"></div>
-                    <div class="alert" id="product-alert" hidden></div>
-                    <form id="product-form" class="auth-form" style="margin-top: 1rem;">
-                        <div class="field">
-                            <label for="product-name">Nome</label>
-                            <input id="product-name" name="name" type="text" required>
+                            <label for="member-email">E-mail</label>
+                            <input id="member-email" name="email" type="email" required>
                         </div>
                         <div class="field">
-                            <label for="product-category">Categoria</label>
-                            <select id="product-category" name="categoryId" required></select>
+                            <label for="member-password">Senha</label>
+                            <input id="member-password" name="password" type="password" minlength="8" required>
                         </div>
                         <div class="field">
-                            <label for="product-price">Preço</label>
-                            <input id="product-price" name="price" type="number" min="0.01" step="0.01" required>
-                        </div>
-                        <div class="field">
-                            <label for="product-unit">Unidade</label>
-                            <select id="product-unit" name="unit">
-                                <option value="UN">UN</option>
-                                <option value="KG">KG</option>
-                                <option value="G">G</option>
-                                <option value="L">L</option>
-                                <option value="ML">ML</option>
-                                <option value="CX">CX</option>
-                                <option value="PCT">PCT</option>
+                            <label for="member-role">Perfil</label>
+                            <select id="member-role" name="role">
+                                <option value="STAFF">STAFF</option>
+                                <option value="ADMIN">ADMIN</option>
                             </select>
                         </div>
-                        <div class="field">
-                            <label for="product-image-file">Foto do produto</label>
-                            <input id="product-image-file" name="imageFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif">
-                            <p class="muted" id="product-image-hint" style="margin-top:0.35rem;">Envie um arquivo ou cole uma URL abaixo.</p>
-                        </div>
-                        <div class="product-image-preview" id="product-image-preview" hidden>
-                            <img id="product-image-preview-img" alt="Prévia do produto">
-                        </div>
-                        <div class="field">
-                            <label for="product-image">Imagem (URL)</label>
-                            <input id="product-image" name="imageUrl" type="url" placeholder="https://...">
-                        </div>
-                        <label class="muted" style="display:flex;gap:0.5rem;align-items:center;">
-                            <input id="product-stock-controlled" name="stockControlled" type="checkbox">
-                            Controlar estoque
-                        </label>
-                        <div class="field">
-                            <label for="product-stock">Quantidade em estoque</label>
-                            <input id="product-stock" name="stockQuantity" type="number" min="0" step="0.001" placeholder="Ex.: 20">
-                        </div>
-                        <label class="muted" style="display:flex;gap:0.5rem;align-items:center;">
-                            <input id="product-featured" name="featured" type="checkbox">
-                            Destacar na vitrine
-                        </label>
-                        <button class="btn btn-primary" type="submit">Salvar produto</button>
+                        <button class="btn btn-primary" type="submit">Adicionar</button>
                     </form>
                 </section>
             </div>
         </div>
     </main>
-    <script type="module" src="/js/pages/admin.js?v=9"></script>
+    <script type="module" src="/js/pages/admin.js?v=10"></script>
 </body>
 </html>
