@@ -6,19 +6,21 @@ import com.sacolao.tenant.TenantContext;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.io.ByteArrayResource;
-import org.springframework.http.MediaType;
-import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
-import org.springframework.web.client.RestClient;
-import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.multipart.MultipartFile;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.HexFormat;
 import java.util.Locale;
@@ -32,7 +34,12 @@ public class CloudinaryMediaService {
 
     private static final Logger log = LoggerFactory.getLogger(CloudinaryMediaService.class);
     private static final JsonMapper JSON_MAPPER = JsonMapper.builder().build();
+    private static final HttpClient HTTP = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(20))
+            .followRedirects(HttpClient.Redirect.NORMAL)
+            .build();
 
+    /** Incoming transform — mantém proporção e limita o lado maior. */
     static final String INCOMING_TRANSFORMATION = "c_limit,w_1600,h_1600/q_auto:good";
 
     private static final Set<String> ALLOWED_TYPES = Set.of(
@@ -44,11 +51,9 @@ public class CloudinaryMediaService {
     );
 
     private final AppProperties properties;
-    private final RestClient.Builder restClientBuilder;
 
-    public CloudinaryMediaService(AppProperties properties, RestClient.Builder restClientBuilder) {
+    public CloudinaryMediaService(AppProperties properties) {
         this.properties = properties;
-        this.restClientBuilder = restClientBuilder;
     }
 
     @PostConstruct
@@ -73,6 +78,20 @@ public class CloudinaryMediaService {
     }
 
     public MediaUploadResponse upload(MultipartFile file) {
+        try {
+            return doUpload(file);
+        } catch (UnprocessableException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            log.error("Falha inesperada no upload de mídia", ex);
+            throw new UnprocessableException(
+                    "MEDIA_UPLOAD_FAILED",
+                    "Falha ao enviar imagem. Tente JPG/PNG menor ou cole a URL."
+            );
+        }
+    }
+
+    private MediaUploadResponse doUpload(MultipartFile file) throws IOException, InterruptedException {
         Credentials credentials = credentials();
         if (!credentials.enabled()) {
             throw new UnprocessableException("MEDIA_DISABLED", "Upload de imagens não configurado neste ambiente");
@@ -97,85 +116,104 @@ public class CloudinaryMediaService {
                 "transformation", INCOMING_TRANSFORMATION
         ), credentials.apiSecret());
 
-        try {
-            byte[] bytes = file.getBytes();
-            MultipartBodyBuilder body = new MultipartBodyBuilder();
-            body.part("file", new ByteArrayResource(bytes) {
-                @Override
-                public String getFilename() {
-                    String name = file.getOriginalFilename();
-                    return StringUtils.hasText(name) ? name : "upload.jpg";
-                }
-            }).contentType(MediaType.parseMediaType(contentType));
-            body.part("api_key", credentials.apiKey());
-            body.part("timestamp", String.valueOf(timestamp));
-            body.part("folder", folder);
-            body.part("transformation", INCOMING_TRANSFORMATION);
-            body.part("signature", signature);
+        byte[] bytes = file.getBytes();
+        String filename = StringUtils.hasText(file.getOriginalFilename()) ? file.getOriginalFilename() : "upload.jpg";
+        String boundary = "folha-" + UUID.randomUUID().toString().replace("-", "");
 
-            String endpoint = "https://api.cloudinary.com/v1_1/"
-                    + credentials.cloudName()
-                    + "/image/upload";
+        byte[] multipart = buildMultipart(
+                boundary,
+                Map.of(
+                        "api_key", credentials.apiKey(),
+                        "timestamp", String.valueOf(timestamp),
+                        "folder", folder,
+                        "transformation", INCOMING_TRANSFORMATION,
+                        "signature", signature
+                ),
+                filename,
+                contentType,
+                bytes
+        );
 
-            // Não fixar multipart/form-data sem boundary — o RestClient gera o boundary sozinho.
-            String raw = restClientBuilder.build()
-                    .post()
-                    .uri(endpoint)
-                    .body(body.build())
-                    .retrieve()
-                    .body(String.class);
+        String endpoint = "https://api.cloudinary.com/v1_1/"
+                + credentials.cloudName()
+                + "/image/upload";
 
-            if (raw == null || raw.isBlank()) {
-                throw new UnprocessableException("MEDIA_UPLOAD_FAILED", "Falha ao enviar imagem");
-            }
-            JsonNode response;
-            try {
-                response = JSON_MAPPER.readTree(raw);
-            } catch (Exception parseEx) {
-                log.warn("Resposta Cloudinary inválida: {}", truncate(raw));
-                throw new UnprocessableException("MEDIA_UPLOAD_FAILED", "Resposta inválida do Cloudinary");
-            }
+        HttpRequest request = HttpRequest.newBuilder(URI.create(endpoint))
+                .timeout(Duration.ofSeconds(60))
+                .header("Content-Type", "multipart/form-data; boundary=" + boundary)
+                .header("Accept", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofByteArray(multipart))
+                .build();
 
-            String url = text(response, "secure_url");
-            if (url == null || url.isBlank()) {
-                url = text(response, "url");
-            }
-            if (url == null || url.isBlank()) {
-                String cloudError = text(response, "error");
-                if (cloudError == null) {
-                    JsonNode errorNode = response.get("error");
-                    if (errorNode != null && errorNode.isObject()) {
-                        cloudError = text(errorNode, "message");
-                    }
-                }
-                log.warn("Cloudinary sem URL. error={} body={}", cloudError, truncate(raw));
-                throw new UnprocessableException(
-                        "MEDIA_UPLOAD_FAILED",
-                        cloudError != null ? cloudError : "Cloudinary não retornou URL"
-                );
-            }
-            return new MediaUploadResponse(
-                    url,
-                    text(response, "public_id"),
-                    text(response, "format"),
-                    intValue(response, "width"),
-                    intValue(response, "height"),
-                    intValue(response, "bytes")
-            );
-        } catch (UnprocessableException ex) {
-            throw ex;
-        } catch (RestClientResponseException ex) {
-            String body = truncate(ex.getResponseBodyAsString());
-            log.warn("Falha no upload Cloudinary status={} body={}", ex.getStatusCode().value(), body);
-            String detail = extractCloudinaryError(ex.getResponseBodyAsString());
+        HttpResponse<String> response = HTTP.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        String raw = response.body() == null ? "" : response.body();
+        if (response.statusCode() < 200 || response.statusCode() >= 300) {
+            log.warn("Cloudinary HTTP {} body={}", response.statusCode(), truncate(raw));
+            String detail = extractCloudinaryError(raw);
             throw new UnprocessableException(
                     "MEDIA_UPLOAD_FAILED",
-                    detail != null ? detail : "Falha ao enviar imagem ao Cloudinary"
+                    detail != null ? detail : ("Cloudinary recusou o upload (" + response.statusCode() + ")")
             );
-        } catch (Exception ex) {
-            log.warn("Falha no upload Cloudinary: {}", ex.toString());
-            throw new UnprocessableException("MEDIA_UPLOAD_FAILED", "Falha ao enviar imagem");
         }
+
+        JsonNode json;
+        try {
+            json = JSON_MAPPER.readTree(raw);
+        } catch (Exception parseEx) {
+            log.warn("Resposta Cloudinary inválida: {}", truncate(raw));
+            throw new UnprocessableException("MEDIA_UPLOAD_FAILED", "Resposta inválida do Cloudinary");
+        }
+
+        String url = text(json, "secure_url");
+        if (url == null || url.isBlank()) {
+            url = text(json, "url");
+        }
+        if (url == null || url.isBlank()) {
+            String cloudError = extractCloudinaryError(raw);
+            throw new UnprocessableException(
+                    "MEDIA_UPLOAD_FAILED",
+                    cloudError != null ? cloudError : "Cloudinary não retornou URL"
+            );
+        }
+        return new MediaUploadResponse(
+                url,
+                text(json, "public_id"),
+                text(json, "format"),
+                intValue(json, "width"),
+                intValue(json, "height"),
+                intValue(json, "bytes")
+        );
+    }
+
+    private static byte[] buildMultipart(
+            String boundary,
+            Map<String, String> fields,
+            String filename,
+            String contentType,
+            byte[] fileBytes
+    ) throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        String dash = "--" + boundary;
+        for (Map.Entry<String, String> entry : fields.entrySet()) {
+            out.write((dash + "\r\n").getBytes(StandardCharsets.UTF_8));
+            out.write(("Content-Disposition: form-data; name=\"" + entry.getKey() + "\"\r\n\r\n")
+                    .getBytes(StandardCharsets.UTF_8));
+            out.write(entry.getValue().getBytes(StandardCharsets.UTF_8));
+            out.write("\r\n".getBytes(StandardCharsets.UTF_8));
+        }
+        out.write((dash + "\r\n").getBytes(StandardCharsets.UTF_8));
+        out.write(("Content-Disposition: form-data; name=\"file\"; filename=\""
+                + sanitizeFilename(filename) + "\"\r\n").getBytes(StandardCharsets.UTF_8));
+        out.write(("Content-Type: " + contentType + "\r\n\r\n").getBytes(StandardCharsets.UTF_8));
+        out.write(fileBytes);
+        out.write("\r\n".getBytes(StandardCharsets.UTF_8));
+        out.write((dash + "--\r\n").getBytes(StandardCharsets.UTF_8));
+        return out.toByteArray();
+    }
+
+    private static String sanitizeFilename(String filename) {
+        String cleaned = filename.replace("\"", "").replace("\r", "").replace("\n", "");
+        return StringUtils.hasText(cleaned) ? cleaned : "upload.jpg";
     }
 
     private String extractCloudinaryError(String raw) {

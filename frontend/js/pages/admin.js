@@ -344,11 +344,15 @@ function wireProductImageControls() {
             return;
         }
         mediaState.uploading = true;
+        let localPreview = null;
         try {
+            localPreview = URL.createObjectURL(file);
+            setProductImagePreview(localPreview);
             const compact = await compressImageFile(file, { maxEdge: 1600 });
             if (compact.size > 5 * 1024 * 1024) {
                 showFormAlert($("#product-alert"), null, "Imagem ainda grande demais após compactar. Use outra foto (até 5 MB).");
                 fileInput.value = "";
+                clearProductImagePreview();
                 return;
             }
             const formData = new FormData();
@@ -362,7 +366,11 @@ function wireProductImageControls() {
         } catch (error) {
             showFormAlert($("#product-alert"), error, "Falha ao enviar a imagem.");
             fileInput.value = "";
+            clearProductImagePreview();
         } finally {
+            if (localPreview) {
+                URL.revokeObjectURL(localPreview);
+            }
             mediaState.uploading = false;
         }
     });
