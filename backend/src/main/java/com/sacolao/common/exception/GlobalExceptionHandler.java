@@ -19,6 +19,9 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
@@ -61,10 +64,22 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({
             HttpMessageNotReadableException.class,
-            MissingServletRequestParameterException.class
+            MissingServletRequestParameterException.class,
+            MissingServletRequestPartException.class
     })
     public ResponseEntity<ApiError> handleBadRequest(HttpServletRequest request) {
         return respond(400, "BAD_REQUEST", "Requisição inválida", request, List.of());
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiError> handleMaxUpload(HttpServletRequest request) {
+        return respond(413, "MEDIA_TOO_LARGE", "Imagem muito grande. Use até 5 MB (JPG/PNG/WEBP).", request, List.of());
+    }
+
+    @ExceptionHandler(MultipartException.class)
+    public ResponseEntity<ApiError> handleMultipart(MultipartException ex, HttpServletRequest request) {
+        log.warn("Falha ao ler multipart em {}: {}", request.getRequestURI(), ex.toString());
+        return respond(400, "MEDIA_INVALID", "Não foi possível ler o arquivo. Tente outra imagem.", request, List.of());
     }
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)

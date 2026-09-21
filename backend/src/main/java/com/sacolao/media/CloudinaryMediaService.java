@@ -15,6 +15,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.multipart.MultipartFile;
 import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -30,6 +31,7 @@ import java.util.UUID;
 public class CloudinaryMediaService {
 
     private static final Logger log = LoggerFactory.getLogger(CloudinaryMediaService.class);
+    private static final JsonMapper JSON_MAPPER = JsonMapper.builder().build();
 
     static final String INCOMING_TRANSFORMATION = "c_limit,w_1600,h_1600/q_auto:good";
 
@@ -115,23 +117,42 @@ public class CloudinaryMediaService {
                     + credentials.cloudName()
                     + "/image/upload";
 
-            JsonNode response = restClientBuilder.build()
+            // Não fixar multipart/form-data sem boundary — o RestClient gera o boundary sozinho.
+            String raw = restClientBuilder.build()
                     .post()
                     .uri(endpoint)
-                    .contentType(MediaType.MULTIPART_FORM_DATA)
                     .body(body.build())
                     .retrieve()
-                    .body(JsonNode.class);
+                    .body(String.class);
 
-            if (response == null) {
+            if (raw == null || raw.isBlank()) {
                 throw new UnprocessableException("MEDIA_UPLOAD_FAILED", "Falha ao enviar imagem");
             }
+            JsonNode response;
+            try {
+                response = JSON_MAPPER.readTree(raw);
+            } catch (Exception parseEx) {
+                log.warn("Resposta Cloudinary inválida: {}", truncate(raw));
+                throw new UnprocessableException("MEDIA_UPLOAD_FAILED", "Resposta inválida do Cloudinary");
+            }
+
             String url = text(response, "secure_url");
             if (url == null || url.isBlank()) {
                 url = text(response, "url");
             }
             if (url == null || url.isBlank()) {
-                throw new UnprocessableException("MEDIA_UPLOAD_FAILED", "Cloudinary não retornou URL");
+                String cloudError = text(response, "error");
+                if (cloudError == null) {
+                    JsonNode errorNode = response.get("error");
+                    if (errorNode != null && errorNode.isObject()) {
+                        cloudError = text(errorNode, "message");
+                    }
+                }
+                log.warn("Cloudinary sem URL. error={} body={}", cloudError, truncate(raw));
+                throw new UnprocessableException(
+                        "MEDIA_UPLOAD_FAILED",
+                        cloudError != null ? cloudError : "Cloudinary não retornou URL"
+                );
             }
             return new MediaUploadResponse(
                     url,
@@ -144,11 +165,35 @@ public class CloudinaryMediaService {
         } catch (UnprocessableException ex) {
             throw ex;
         } catch (RestClientResponseException ex) {
-            log.warn("Falha no upload Cloudinary status={} body={}", ex.getStatusCode().value(), truncate(ex.getResponseBodyAsString()));
-            throw new UnprocessableException("MEDIA_UPLOAD_FAILED", "Falha ao enviar imagem ao Cloudinary");
+            String body = truncate(ex.getResponseBodyAsString());
+            log.warn("Falha no upload Cloudinary status={} body={}", ex.getStatusCode().value(), body);
+            String detail = extractCloudinaryError(ex.getResponseBodyAsString());
+            throw new UnprocessableException(
+                    "MEDIA_UPLOAD_FAILED",
+                    detail != null ? detail : "Falha ao enviar imagem ao Cloudinary"
+            );
         } catch (Exception ex) {
             log.warn("Falha no upload Cloudinary: {}", ex.toString());
             throw new UnprocessableException("MEDIA_UPLOAD_FAILED", "Falha ao enviar imagem");
+        }
+    }
+
+    private String extractCloudinaryError(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            JsonNode root = JSON_MAPPER.readTree(raw);
+            JsonNode error = root.get("error");
+            if (error == null || error.isNull()) {
+                return null;
+            }
+            if (error.isValueNode()) {
+                return error.asString();
+            }
+            return text(error, "message");
+        } catch (Exception ignored) {
+            return null;
         }
     }
 

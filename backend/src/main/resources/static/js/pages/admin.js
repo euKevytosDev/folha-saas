@@ -346,8 +346,13 @@ function wireProductImageControls() {
         mediaState.uploading = true;
         try {
             const compact = await compressImageFile(file, { maxEdge: 1600 });
+            if (compact.size > 5 * 1024 * 1024) {
+                showFormAlert($("#product-alert"), null, "Imagem ainda grande demais após compactar. Use outra foto (até 5 MB).");
+                fileInput.value = "";
+                return;
+            }
             const formData = new FormData();
-            formData.append("file", compact);
+            formData.append("file", compact, compact.name || "produto.jpg");
             const uploaded = await apiUpload("/media/upload", formData);
             if (urlInput) {
                 urlInput.value = uploaded.url;
@@ -1216,8 +1221,13 @@ function bindMediaUpload(fileSelector, urlSelector, options = {}) {
         }
         try {
             const compact = await compressImageFile(file, { maxEdge: options.maxEdge ?? 1600 });
+            if (compact.size > 5 * 1024 * 1024) {
+                showFormAlert($("#store-profile-alert"), null, "Imagem ainda grande demais após compactar. Use outra foto (até 5 MB).");
+                fileInput.value = "";
+                return;
+            }
             const formData = new FormData();
-            formData.append("file", compact);
+            formData.append("file", compact, compact.name || "loja.jpg");
             const uploaded = await apiUpload("/media/upload", formData);
             if (urlInput) {
                 urlInput.value = uploaded.url;
