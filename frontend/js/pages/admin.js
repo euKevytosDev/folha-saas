@@ -6,6 +6,11 @@ import { compressImageFile } from "../utils/image.js";
 import { createThumb, optimizedImageUrl, setPreviewImage } from "../utils/media.js";
 import { storeUrl } from "../utils/nav.js";
 
+// Bloqueia submit nativo imediato (evita 405 em /admin antes do auth carregar).
+document.querySelectorAll("form.auth-form").forEach((form) => {
+    form.addEventListener("submit", (event) => event.preventDefault());
+});
+
 const me = await requirePageAuth(["OWNER", "ADMIN", "STAFF"]);
 if (!me) {
     throw new Error("redirect");

@@ -101,7 +101,7 @@
                             <h3 class="admin-block-title">Categorias</h3>
                             <div id="categories-list"></div>
                             <div class="alert" id="category-alert" hidden></div>
-                            <form id="category-form" class="auth-form admin-inline-form" method="post" action="#">
+                            <form id="category-form" class="auth-form admin-inline-form" onsubmit="return false;">
                                 <div class="field">
                                     <label for="category-name">Nome</label>
                                     <input id="category-name" name="name" type="text" required placeholder="Ex.: Frutas">
@@ -116,7 +116,7 @@
                         <article class="admin-block">
                             <h3 class="admin-block-title">Novo produto</h3>
                             <div class="alert" id="product-alert" hidden></div>
-                            <form id="product-form" class="auth-form form-carousel" data-carousel method="post" action="#" novalidate>
+                            <form id="product-form" class="auth-form form-carousel" data-carousel onsubmit="return false;" novalidate>
                                 <div class="form-slides">
                                     <div class="form-slide is-active">
                                         <p class="form-step-label">1 de 4 · O que é</p>
@@ -203,7 +203,7 @@
                     <p class="admin-meta-line">Plano: <strong id="store-plan"></strong> · Conta: <strong id="store-status"></strong></p>
                     <p><a class="btn btn-secondary" id="store-link" href="/">Ver loja pública</a></p>
                     <div class="alert" id="store-profile-alert" hidden></div>
-                    <form id="store-profile-form" class="auth-form form-carousel" data-carousel novalidate style="margin-top:1rem;">
+                    <form id="store-profile-form" class="auth-form form-carousel" data-carousel onsubmit="return false;" novalidate style="margin-top:1rem;">
                         <div class="form-slides">
                             <div class="form-slide is-active">
                                 <p class="form-step-label">1 de 3 · Dados</p>
@@ -270,7 +270,7 @@
                         <p class="muted">Taxa, pedido mínimo e se faz entrega ou retirada.</p>
                     </header>
                     <div class="alert" id="delivery-settings-alert" hidden></div>
-                    <form id="delivery-settings-form" class="auth-form">
+                    <form id="delivery-settings-form" class="auth-form" onsubmit="return false;">
                         <label class="admin-check">
                             <input id="delivery-enabled" name="deliveryEnabled" type="checkbox" checked>
                             Aceitar entrega
@@ -309,7 +309,7 @@
                         <p class="muted">Conecte a conta do estabelecimento (Mercado Pago). Em mock, o PIX é simulado.</p>
                     </header>
                     <div class="alert" id="payment-settings-alert" hidden></div>
-                    <form id="payment-settings-form" class="auth-form">
+                    <form id="payment-settings-form" class="auth-form" onsubmit="return false;">
                         <div class="field">
                             <label for="payment-provider">Provedor</label>
                             <select id="payment-provider" name="provider">
@@ -340,7 +340,7 @@
                     </header>
                     <div id="coupons-list"></div>
                     <div class="alert" id="coupon-alert" hidden></div>
-                    <form id="coupon-form" class="auth-form" style="margin-top:1rem;">
+                    <form id="coupon-form" class="auth-form" style="margin-top:1rem;" onsubmit="return false;">
                         <div class="field">
                             <label for="coupon-code-admin">Código</label>
                             <input id="coupon-code-admin" name="code" type="text" required maxlength="40" style="text-transform:uppercase">
@@ -371,7 +371,7 @@
                     </header>
                     <div id="users-list"></div>
                     <div class="alert" id="users-alert" hidden></div>
-                    <form id="user-form" class="auth-form" style="margin-top:1rem;">
+                    <form id="user-form" class="auth-form" style="margin-top:1rem;" onsubmit="return false;">
                         <div class="field">
                             <label for="member-name">Nome</label>
                             <input id="member-name" name="name" type="text" required>
@@ -397,6 +397,6 @@
             </div>
         </div>
     </main>
-    <script type="module" src="/js/pages/admin.js?v=12"></script>
+    <script type="module" src="/js/pages/admin.js?v=13"></script>
 </body>
 </html>
