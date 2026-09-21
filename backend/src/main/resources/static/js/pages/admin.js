@@ -51,6 +51,15 @@ wireAdminNav();
 const mediaState = { enabled: false, uploading: false };
 let catalogCategories = [];
 const formCarousels = new Map();
+const DAY_LABELS = {
+    mon: "Segunda",
+    tue: "Terça",
+    wed: "Quarta",
+    thu: "Quinta",
+    fri: "Sexta",
+    sat: "Sábado",
+    sun: "Domingo"
+};
 wireFormCarousels();
 wireCatalogForms();
 await refreshCatalog().catch((error) => {
@@ -61,6 +70,7 @@ await loadMediaConfig();
 wireProductImageControls();
 renderStoreOpsCard();
 wireStoreProfileForm();
+renderOpeningHoursEditor(establishment?.openingHours || {});
 $("#refresh-orders-btn")?.addEventListener("click", async () => {
     const btn = $("#refresh-orders-btn");
     if (btn) {
@@ -1078,16 +1088,6 @@ function fillStoreProfileForm(store) {
     setStoreMediaPreview("#store-cover-preview", "#store-cover-preview-img", store.coverUrl, { width: 800, height: 320 });
     renderOpeningHoursEditor(store.openingHours || {});
 }
-
-const DAY_LABELS = {
-    mon: "Segunda",
-    tue: "Terça",
-    wed: "Quarta",
-    thu: "Quinta",
-    fri: "Sexta",
-    sat: "Sábado",
-    sun: "Domingo"
-};
 
 function normalizeClock(value, fallback = "08:00") {
     const raw = String(value || "").trim();
