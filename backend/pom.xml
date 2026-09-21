@@ -93,10 +93,6 @@
             <resource>
                 <directory>src/main/resources</directory>
             </resource>
-            <resource>
-                <directory>${project.basedir}/../frontend</directory>
-                <targetPath>static</targetPath>
-            </resource>
         </resources>
         <plugins>
             <plugin>
@@ -116,4 +112,24 @@
             </plugin>
         </plugins>
     </build>
+
+    <!-- Quando ../frontend existe (dev local ou Dockerfile na raiz), sobrescreve o static embutido. -->
+    <profiles>
+        <profile>
+            <id>frontend-src</id>
+            <activation>
+                <file>
+                    <exists>${project.basedir}/../frontend/pages</exists>
+                </file>
+            </activation>
+            <build>
+                <resources>
+                    <resource>
+                        <directory>${project.basedir}/../frontend</directory>
+                        <targetPath>static</targetPath>
+                    </resource>
+                </resources>
+            </build>
+        </profile>
+    </profiles>
 </project>

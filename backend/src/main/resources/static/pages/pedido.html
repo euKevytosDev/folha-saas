@@ -13,8 +13,8 @@
     <link rel="stylesheet" href="/css/reset.css">
     <link rel="stylesheet" href="/css/layout.css">
     <link rel="stylesheet" href="/css/components.css">
-    <link rel="stylesheet" href="/css/pages/store.css">
-    <link rel="stylesheet" href="/css/pages/checkout.css">
+    <link rel="stylesheet" href="/css/pages/store.css?v=2">
+    <link rel="stylesheet" href="/css/pages/checkout.css?v=2">
     <script src="/js/env.js"></script>
 </head>
 <body class="page-shell">
@@ -39,10 +39,11 @@
                     <div><span>Subtotal</span><strong id="order-subtotal">R$ 0,00</strong></div>
                     <div><span>Total</span><strong id="order-total">R$ 0,00</strong></div>
                 </div>
+                <div class="payment-box" id="payment-box" hidden></div>
                 <div class="order-details" id="order-details"></div>
             </section>
         </div>
     </main>
-    <script type="module" src="/js/pages/pedido.js?v=1"></script>
+    <script type="module" src="/js/pages/pedido.js?v=2"></script>
 </body>
 </html>

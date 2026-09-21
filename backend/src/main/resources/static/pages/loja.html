@@ -13,21 +13,27 @@
     <link rel="stylesheet" href="/css/reset.css">
     <link rel="stylesheet" href="/css/layout.css">
     <link rel="stylesheet" href="/css/components.css">
-    <link rel="stylesheet" href="/css/pages/store.css">
+    <link rel="stylesheet" href="/css/pages/store.css?v=2">
     <script src="/js/env.js"></script>
 </head>
 <body class="page-shell">
-    <header class="store-header">
-        <div class="container store-header-inner">
-            <img class="store-logo" id="store-logo" alt="">
-            <div class="store-title">
-                <strong id="store-name">Loja</strong>
+    <header class="storefront-hero" id="storefront-hero">
+        <div class="storefront-cover" id="store-cover"></div>
+        <div class="container storefront-hero-inner">
+            <img class="storefront-logo" id="store-logo" alt="" hidden>
+            <div class="storefront-identity">
+                <div class="storefront-title-row">
+                    <h1 id="store-name">Loja</h1>
+                    <span class="store-status-badge" id="store-open-badge">—</span>
+                </div>
                 <p class="muted" id="store-meta"></p>
+                <div class="storefront-stats" id="store-stats"></div>
             </div>
         </div>
     </header>
     <main class="panel-main" style="padding-top: 1rem;">
         <div class="container">
+            <div class="alert" id="store-closed-banner" hidden>Loja fechada no momento. Você pode olhar o cardápio, mas não finalizar pedido.</div>
             <div class="store-search">
                 <label class="visually-hidden" for="search">Buscar produtos</label>
                 <input id="search" type="search" placeholder="Buscar banana, tomate, alface..." autocomplete="off">
@@ -67,12 +73,13 @@
                 <div class="is-total"><span>Total</span><span id="quote-total">R$ 0,00</span></div>
             </div>
             <p class="muted" id="cart-note">Totais estimados no aparelho. O preço final é confirmado pelo servidor no checkout.</p>
+            <p class="alert" id="cart-block-reason" hidden></p>
             <div style="display:flex; gap:0.6rem; margin-top:1rem;">
                 <button class="btn btn-secondary" id="clear-cart" type="button">Limpar</button>
                 <a class="btn btn-primary btn-block" id="go-checkout" href="#">Finalizar pedido</a>
             </div>
         </div>
     </div>
-    <script type="module" src="/js/pages/store.js?v=5"></script>
+    <script type="module" src="/js/pages/store.js?v=7"></script>
 </body>
 </html>

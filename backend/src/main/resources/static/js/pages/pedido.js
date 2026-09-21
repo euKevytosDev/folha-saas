@@ -1,10 +1,12 @@
 import { api, ApiError } from "../api/client.js";
 import { $ } from "../utils/dom.js";
 import { formatBRL, formatQuantity } from "../utils/format.js";
+import { createThumb } from "../utils/media.js";
 import { storeUrl } from "../utils/nav.js";
 
 const { slug, publicCode } = currentOrderRef();
 const alertBox = $("#order-alert");
+const paymentBox = $("#payment-box");
 
 if (!slug || !publicCode) {
     showError("Pedido não encontrado.");
@@ -20,14 +22,83 @@ async function boot() {
         $("#order-code").textContent = order.publicCode;
         $("#order-card").hidden = false;
         $("#order-status").textContent = statusLabel(order.status);
-        $("#order-heading").textContent = headingFor(order.status);
+        $("#order-heading").textContent = headingFor(order.status, order.payment);
         $("#order-meta").textContent = `${fulfillmentLabel(order.fulfillmentType)} · ${paymentLabel(order.paymentMethod)}`;
         renderItems(order.items);
         $("#order-subtotal").textContent = formatBRL(order.subtotal);
         $("#order-total").textContent = formatBRL(order.total);
         renderDetails(order);
+        renderPayment(order.payment);
     } catch (error) {
         showError(error instanceof ApiError ? error.message : "Não foi possível carregar o pedido.");
+    }
+}
+
+function renderPayment(payment) {
+    if (!paymentBox) {
+        return;
+    }
+    paymentBox.replaceChildren();
+    if (!payment) {
+        paymentBox.hidden = true;
+        return;
+    }
+    paymentBox.hidden = false;
+
+    const status = document.createElement("p");
+    status.innerHTML = `<strong>Pagamento:</strong> ${paymentStatusLabel(payment.status)} · ${payment.provider}`;
+    paymentBox.append(status);
+
+    if (payment.pixCopyPaste && payment.status !== "PAID") {
+        const label = document.createElement("p");
+        label.className = "muted";
+        label.textContent = "PIX copia e cola";
+        const code = document.createElement("textarea");
+        code.className = "pix-code";
+        code.readOnly = true;
+        code.rows = 4;
+        code.value = payment.pixCopyPaste;
+        const copy = document.createElement("button");
+        copy.type = "button";
+        copy.className = "btn btn-secondary";
+        copy.textContent = "Copiar PIX";
+        copy.addEventListener("click", async () => {
+            try {
+                await navigator.clipboard.writeText(payment.pixCopyPaste);
+                copy.textContent = "Copiado";
+            } catch {
+                code.select();
+            }
+        });
+        paymentBox.append(label, code, copy);
+    }
+
+    if (payment.provider === "MOCK" && payment.status !== "PAID") {
+        const simulate = document.createElement("button");
+        simulate.type = "button";
+        simulate.className = "btn btn-primary";
+        simulate.style.marginTop = "0.75rem";
+        simulate.textContent = "Simular pagamento (mock)";
+        simulate.addEventListener("click", async () => {
+            simulate.disabled = true;
+            try {
+                await api(`/store/${encodeURIComponent(slug)}/orders/${encodeURIComponent(publicCode)}/payment/simulate`, {
+                    method: "POST"
+                });
+                await boot();
+            } catch (error) {
+                showError(error instanceof ApiError ? error.message : "Falha ao simular pagamento.");
+                simulate.disabled = false;
+            }
+        });
+        paymentBox.append(simulate);
+    }
+
+    if (payment.status === "PAID") {
+        const paid = document.createElement("p");
+        paid.className = "muted";
+        paid.textContent = "Pagamento confirmado.";
+        paymentBox.append(paid);
     }
 }
 
@@ -38,7 +109,11 @@ function renderItems(items) {
         const row = document.createElement("div");
         row.className = "order-item-row";
         const left = document.createElement("span");
-        left.textContent = `${item.productName} · ${formatQuantity(item.quantity, item.productUnit)}`;
+        left.className = "summary-line-copy";
+        left.append(
+            createThumb(item.imageUrl, item.productName, "order-item-thumb"),
+            document.createTextNode(`${item.productName} · ${formatQuantity(item.quantity, item.productUnit)}`)
+        );
         const right = document.createElement("strong");
         right.textContent = formatBRL(item.subtotal);
         row.append(left, right);
@@ -82,14 +157,17 @@ function currentOrderRef() {
         return { slug: params.get("slug"), publicCode: params.get("code") };
     }
     const parts = window.location.pathname.split("/").filter(Boolean);
-    const pedidoIndex = parts.lastIndexOf("pedido");
-    if (pedidoIndex >= 0 && parts[pedidoIndex + 1] && parts[pedidoIndex + 2]) {
-        return {
-            slug: decodeURIComponent(parts[pedidoIndex + 1]),
-            publicCode: decodeURIComponent(parts[pedidoIndex + 2])
-        };
+    const idx = parts.indexOf("pedido");
+    if (idx >= 0 && parts[idx + 1] && parts[idx + 2]) {
+        return { slug: parts[idx + 1], publicCode: parts[idx + 2] };
     }
-    return { slug: "", publicCode: "" };
+    return { slug: null, publicCode: null };
+}
+
+function showError(message) {
+    alertBox.hidden = false;
+    alertBox.className = "alert alert-error";
+    alertBox.textContent = message;
 }
 
 function statusLabel(status) {
@@ -103,12 +181,27 @@ function statusLabel(status) {
     })[status] || status;
 }
 
-function headingFor(status) {
+function paymentStatusLabel(status) {
+    return ({
+        PENDING: "Aguardando",
+        AUTHORIZED: "Autorizado",
+        PAID: "Pago",
+        FAILED: "Falhou",
+        REFUNDED: "Estornado",
+        CANCELLED: "Cancelado",
+        EXPIRED: "Expirado"
+    })[status] || status;
+}
+
+function headingFor(status, payment) {
+    if (payment && payment.status === "PENDING" && payment.method === "PIX") {
+        return "Pague o PIX para confirmar";
+    }
     return ({
         PENDING: "Pedido recebido",
         CONFIRMED: "Pedido confirmado",
-        PREPARING: "Estamos preparando",
-        DISPATCHED: "A caminho",
+        PREPARING: "Preparando seu pedido",
+        DISPATCHED: "Saiu para entrega",
         DELIVERED: "Pedido entregue",
         CANCELLED: "Pedido cancelado"
     })[status] || "Pedido";
@@ -125,10 +218,4 @@ function paymentLabel(value) {
         CARD: "Cartão",
         ON_DELIVERY: "Na entrega"
     })[value] || value;
-}
-
-function showError(message) {
-    alertBox.hidden = false;
-    alertBox.className = "alert alert-error";
-    alertBox.textContent = message;
 }

@@ -2,6 +2,7 @@ import { api, ApiError } from "../api/client.js";
 import { currentStoreSlug, checkoutUrl } from "../utils/nav.js";
 import { $, on } from "../utils/dom.js";
 import { formatBRL, formatQuantity, unitStep } from "../utils/format.js";
+import { createThumb, optimizedImageUrl } from "../utils/media.js";
 import { addToCart, cartCount, clearCart, loadCart, setCartQuantity } from "../store/cart.js";
 
 const slug = currentStoreSlug();
@@ -20,6 +21,10 @@ const els = {
     name: $("#store-name"),
     meta: $("#store-meta"),
     logo: $("#store-logo"),
+    cover: $("#store-cover"),
+    openBadge: $("#store-open-badge"),
+    stats: $("#store-stats"),
+    closedBanner: $("#store-closed-banner"),
     search: $("#search"),
     categories: $("#category-row"),
     featuredSection: $("#featured-section"),
@@ -31,7 +36,9 @@ const els = {
     cartCount: $("#cart-count"),
     cartSubtotal: $("#cart-subtotal"),
     drawer: $("#cart-drawer"),
-    lines: $("#cart-lines")
+    lines: $("#cart-lines"),
+    cartBlock: $("#cart-block-reason"),
+    goCheckout: $("#go-checkout")
 };
 
 if (!slug) {
@@ -47,19 +54,73 @@ async function boot() {
         rememberProducts(state.catalog.products);
         rememberProducts(state.catalog.featured);
         document.title = `${state.store.name} — Folha`;
-        els.name.textContent = state.store.name;
-        els.meta.textContent = [state.store.city, state.store.state].filter(Boolean).join(" · ") || "Pedido pelo celular";
-        if (state.store.logoUrl) {
-            els.logo.src = state.store.logoUrl;
-            els.logo.alt = state.store.name;
-        } else {
-            els.logo.hidden = true;
-        }
+        renderStorefrontHeader(state.store);
         renderCategories();
         renderCatalog();
         refreshLocalCart();
     } catch (error) {
         showAlert(error instanceof ApiError ? error.message : "Não foi possível abrir a loja.");
+    }
+}
+
+function renderStorefrontHeader(store) {
+    els.name.textContent = store.name;
+    els.meta.textContent = [
+        store.address,
+        [store.city, store.state].filter(Boolean).join("/")
+    ].filter(Boolean).join(" · ") || "Pedido pelo celular";
+
+    const open = !!store.acceptingOrders;
+    if (els.openBadge) {
+        els.openBadge.textContent = open ? "Aberta" : "Fechada";
+        els.openBadge.className = `store-status-badge ${open ? "is-open" : "is-closed"}`;
+    }
+    if (els.closedBanner) {
+        els.closedBanner.hidden = open;
+    }
+    if (els.cover) {
+        if (store.coverUrl) {
+            els.cover.style.backgroundImage = `url("${optimizedImageUrl(store.coverUrl, { width: 1600, height: 700, mode: "fill" })}")`;
+            els.cover.classList.add("has-image");
+        } else {
+            els.cover.style.backgroundImage = "";
+            els.cover.classList.remove("has-image");
+        }
+    }
+    if (store.logoUrl) {
+        els.logo.src = optimizedImageUrl(store.logoUrl, { width: 256, height: 256 });
+        els.logo.alt = store.name;
+        els.logo.hidden = false;
+    } else {
+        els.logo.hidden = true;
+    }
+    if (els.stats) {
+        els.stats.replaceChildren();
+        const delivery = store.delivery || {};
+        const chips = [];
+        if (store.ratingCount > 0 && store.ratingAvg != null) {
+            chips.push(["Avaliações", `${store.ratingAvg} ★`]);
+        }
+        if (delivery.pickupEtaMinutes != null) {
+            chips.push(["Retirada", `${delivery.pickupEtaMinutes} min`]);
+        }
+        if (delivery.deliveryEtaMinutes != null) {
+            chips.push(["Entrega", `${delivery.deliveryEtaMinutes} min`]);
+        }
+        if (delivery.minOrderAmount != null) {
+            chips.push(["Mínimo", formatBRL(delivery.minOrderAmount)]);
+        }
+        chips.forEach(([label, value]) => {
+            const item = document.createElement("div");
+            item.className = "storefront-stat";
+            const strong = document.createElement("strong");
+            strong.textContent = value;
+            const span = document.createElement("span");
+            span.className = "muted";
+            span.textContent = label;
+            item.append(strong, span);
+            els.stats.append(item);
+        });
     }
 }
 
@@ -135,17 +196,7 @@ function productCard(product) {
 }
 
 function thumb(product) {
-    if (product.imageUrl) {
-        const image = document.createElement("img");
-        image.className = "product-thumb";
-        image.alt = product.name;
-        image.src = product.imageUrl;
-        return image;
-    }
-    const placeholder = document.createElement("div");
-    placeholder.className = "product-thumb is-empty";
-    placeholder.textContent = "🍃";
-    return placeholder;
+    return createThumb(product.imageUrl, product.name || "Produto");
 }
 
 function body(product) {
@@ -293,6 +344,11 @@ function renderCart() {
     }
     $("#quote-subtotal").textContent = formatBRL(state.quote?.subtotal || 0);
     $("#quote-discount").textContent = formatBRL(state.quote?.discount || 0);
+    const fee = Number(state.store?.delivery?.fixedFee || 0);
+    const deliveryEl = $("#quote-delivery");
+    if (deliveryEl) {
+        deliveryEl.textContent = fee > 0 ? `a partir de ${formatBRL(fee)}` : "Grátis / a calcular";
+    }
     $("#quote-total").textContent = formatBRL(state.quote?.total || 0);
     const note = $("#cart-note");
     if (note) {
@@ -356,11 +412,26 @@ function syncCheckoutLink() {
         return;
     }
     const items = loadCart(state.store.id);
-    const enabled = items.length > 0;
+    const open = state.store.acceptingOrders !== false;
+    const minOrder = Number(state.store.delivery?.minOrderAmount || 0);
+    const subtotal = Number(state.quote?.subtotal || 0);
+    const belowMin = minOrder > 0 && subtotal < minOrder;
+    let reason = "";
+    if (!open) {
+        reason = "Loja fechada — não é possível finalizar o pedido agora.";
+    } else if (belowMin) {
+        reason = `Pedido mínimo de ${formatBRL(minOrder)}.`;
+    }
+    const enabled = items.length > 0 && open && !belowMin;
+    if (els.cartBlock) {
+        els.cartBlock.hidden = !reason;
+        els.cartBlock.textContent = reason;
+    }
     link.href = enabled ? checkoutUrl(slug) : "#";
     link.setAttribute("aria-disabled", enabled ? "false" : "true");
     link.style.pointerEvents = enabled ? "" : "none";
     link.style.opacity = enabled ? "" : "0.6";
+    link.textContent = !open ? "Loja fechada" : belowMin ? "Abaixo do mínimo" : "Finalizar pedido";
 }
 
 let searchTimer = 0;

@@ -2,6 +2,7 @@ import { api, ApiError } from "../api/client.js";
 import { clearCart, loadCart } from "../store/cart.js";
 import { $, on } from "../utils/dom.js";
 import { formatBRL, formatQuantity } from "../utils/format.js";
+import { createThumb } from "../utils/media.js";
 import { currentStoreSlug, orderUrl, storeUrl } from "../utils/nav.js";
 
 const slug = currentStoreSlug();
@@ -13,6 +14,7 @@ const state = {
 const form = $("#checkout-form");
 const alertBox = $("#checkout-alert");
 const cepHint = $("#cep-hint");
+const couponHint = $("#coupon-hint");
 
 if (!slug) {
     showError("Loja não encontrada.");
@@ -28,6 +30,12 @@ async function boot() {
         $("#store-name").textContent = state.store.name;
         $("#back-store").href = storeUrl(slug);
 
+        if (state.store.acceptingOrders === false) {
+            showError("Loja fechada. Não é possível finalizar o pedido agora.");
+            form.hidden = true;
+            return;
+        }
+
         const items = loadCart(state.store.id);
         if (!items.length) {
             showError("Seu carrinho está vazio.");
@@ -35,12 +43,20 @@ async function boot() {
             return;
         }
 
-        // Única sync de preço com o servidor antes de pedir
-        state.quote = await api(`/store/${encodeURIComponent(slug)}/cart/quote`, {
-            method: "POST",
-            body: { items }
-        });
-        const valid = state.quote.items.filter((line) => !line.issue);
+        applyFulfillmentOptions(state.store.delivery);
+        await refreshQuote();
+        if (state.quote?.acceptingOrders === false) {
+            showError("Loja fechada. Não é possível finalizar o pedido agora.");
+            form.hidden = true;
+            return;
+        }
+        const minOrder = Number(state.quote?.minOrderAmount ?? state.store.delivery?.minOrderAmount ?? 0);
+        if (minOrder > 0 && Number(state.quote.subtotal) < minOrder) {
+            showError(`Pedido mínimo de ${formatBRL(minOrder)}. Adicione mais itens para continuar.`);
+            form.hidden = true;
+            return;
+        }
+        const valid = (state.quote?.items || []).filter((line) => !line.issue);
         if (!valid.length) {
             showError("Nenhum item disponível no carrinho.");
             form.hidden = true;
@@ -54,6 +70,43 @@ async function boot() {
     }
 }
 
+function applyFulfillmentOptions(delivery) {
+    const deliveryRadio = form.querySelector('input[name="fulfillmentType"][value="DELIVERY"]');
+    const pickupRadio = form.querySelector('input[name="fulfillmentType"][value="PICKUP"]');
+    if (delivery && delivery.deliveryEnabled === false && deliveryRadio) {
+        deliveryRadio.disabled = true;
+        deliveryRadio.closest("label")?.classList.add("is-disabled");
+    }
+    if (delivery && delivery.pickupEnabled === false && pickupRadio) {
+        pickupRadio.disabled = true;
+        pickupRadio.closest("label")?.classList.add("is-disabled");
+    }
+    if (deliveryRadio?.disabled && pickupRadio && !pickupRadio.disabled) {
+        pickupRadio.checked = true;
+    }
+    if (pickupRadio?.disabled && deliveryRadio && !deliveryRadio.disabled) {
+        deliveryRadio.checked = true;
+    }
+}
+
+async function refreshQuote() {
+    const items = loadCart(state.store.id);
+    state.quote = await api(`/store/${encodeURIComponent(slug)}/cart/quote`, {
+        method: "POST",
+        body: {
+            items,
+            fulfillmentType: form.fulfillmentType.value,
+            couponCode: form.couponCode?.value?.trim() || null
+        }
+    });
+    if (couponHint) {
+        couponHint.textContent = state.quote.couponMessage || "";
+        couponHint.className = state.quote.couponCode ? "muted ok-hint" : "muted";
+    }
+    const valid = state.quote.items.filter((line) => !line.issue);
+    renderSummary(valid);
+}
+
 function renderSummary(lines) {
     const box = $("#summary-lines");
     box.replaceChildren();
@@ -61,7 +114,11 @@ function renderSummary(lines) {
         const row = document.createElement("div");
         row.className = "summary-line";
         const left = document.createElement("span");
-        left.textContent = `${line.name} · ${formatQuantity(line.quantity, line.unit)}`;
+        left.className = "summary-line-copy";
+        left.append(
+            createThumb(line.imageUrl, line.name, "order-item-thumb"),
+            document.createTextNode(`${line.name} · ${formatQuantity(line.quantity, line.unit)}`)
+        );
         const right = document.createElement("strong");
         right.textContent = formatBRL(line.subtotal);
         row.append(left, right);
@@ -117,9 +174,23 @@ async function lookupCep(raw) {
     }
 }
 
-on(form, "change", (event) => {
+on(form, "change", async (event) => {
     if (event.target.name === "fulfillmentType") {
         syncAddressVisibility();
+        try {
+            await refreshQuote();
+        } catch (error) {
+            showError(error instanceof ApiError ? error.message : "Não foi possível recalcular o frete.");
+        }
+    }
+});
+
+on($("#apply-coupon"), "click", async () => {
+    try {
+        await refreshQuote();
+        hideAlert();
+    } catch (error) {
+        showError(error instanceof ApiError ? error.message : "Cupom inválido.");
     }
 });
 
@@ -147,7 +218,8 @@ on(form, "submit", async (event) => {
             customerEmail: form.customerEmail.value.trim() || null,
             fulfillmentType: form.fulfillmentType.value,
             paymentMethod: form.paymentMethod.value,
-            notes: form.notes.value.trim() || null
+            notes: form.notes.value.trim() || null,
+            couponCode: form.couponCode?.value?.trim() || null
         };
         if (payload.fulfillmentType === "DELIVERY") {
             payload.addressZipCode = form.addressZipCode.value.replace(/\D/g, "") || null;
@@ -158,9 +230,11 @@ on(form, "submit", async (event) => {
             payload.addressCity = form.addressCity.value.trim();
             payload.addressState = form.addressState.value.trim().toUpperCase();
         }
+        const idempotencyKey = crypto.randomUUID();
         const order = await api(`/store/${encodeURIComponent(slug)}/orders`, {
             method: "POST",
-            body: payload
+            body: payload,
+            headers: { "Idempotency-Key": idempotencyKey }
         });
         clearCart(state.store.id);
         window.location.href = orderUrl(slug, order.publicCode);
