@@ -6,6 +6,7 @@ import com.sacolao.common.exception.UnprocessableException;
 import com.sacolao.config.AppProperties;
 import com.sacolao.establishment.entity.Establishment;
 import com.sacolao.establishment.repository.EstablishmentRepository;
+import com.sacolao.fiscal.service.FiscalService;
 import com.sacolao.order.entity.Order;
 import com.sacolao.order.entity.OrderStatus;
 import com.sacolao.order.entity.PaymentMethod;
@@ -48,6 +49,7 @@ public class PaymentService {
     private final MercadoPagoPaymentGateway mercadoPagoPaymentGateway;
     private final MockPaymentGateway mockPaymentGateway;
     private final ManualPaymentGateway manualPaymentGateway;
+    private final FiscalService fiscalService;
     private final JsonMapper jsonMapper;
     private final AppProperties properties;
 
@@ -60,6 +62,7 @@ public class PaymentService {
             MercadoPagoPaymentGateway mercadoPagoPaymentGateway,
             MockPaymentGateway mockPaymentGateway,
             ManualPaymentGateway manualPaymentGateway,
+            FiscalService fiscalService,
             JsonMapper jsonMapper,
             AppProperties properties
     ) {
@@ -71,6 +74,7 @@ public class PaymentService {
         this.mercadoPagoPaymentGateway = mercadoPagoPaymentGateway;
         this.mockPaymentGateway = mockPaymentGateway;
         this.manualPaymentGateway = manualPaymentGateway;
+        this.fiscalService = fiscalService;
         this.jsonMapper = jsonMapper;
         this.properties = properties;
     }
@@ -105,7 +109,11 @@ public class PaymentService {
             payment.setPaidAt(Instant.now());
             markOrderConfirmed(order);
         }
-        return paymentRepository.save(payment);
+        Payment saved = paymentRepository.save(payment);
+        if (saved.getStatus() == PaymentStatus.PAID) {
+            fiscalService.tryAutoEmitAfterPaid(order.getId());
+        }
+        return saved;
     }
 
     @Transactional(readOnly = true)
@@ -315,7 +323,9 @@ public class PaymentService {
             payment.setRawResponse(raw);
         }
         markOrderConfirmed(payment.getOrder());
-        return PaymentMapper.toResponse(paymentRepository.save(payment));
+        Payment saved = paymentRepository.save(payment);
+        fiscalService.tryAutoEmitAfterPaid(saved.getOrder().getId());
+        return PaymentMapper.toResponse(saved);
     }
 
     private void markOrderConfirmed(Order order) {

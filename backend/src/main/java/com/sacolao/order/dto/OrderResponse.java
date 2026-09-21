@@ -1,5 +1,6 @@
 package com.sacolao.order.dto;
 
+import com.sacolao.fiscal.dto.NfceInfoResponse;
 import com.sacolao.order.entity.FulfillmentType;
 import com.sacolao.order.entity.OrderStatus;
 import com.sacolao.order.entity.PaymentMethod;
@@ -36,6 +37,7 @@ public record OrderResponse(
         BigDecimal total,
         List<OrderItemResponse> items,
         PaymentResponse payment,
+        NfceInfoResponse nfce,
         String couponCode,
         Instant createdAt,
         Instant updatedAt

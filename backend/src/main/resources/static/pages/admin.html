@@ -71,6 +71,9 @@
                 <button class="admin-tab" type="button" data-panel="pagamentos" data-owner-only style="--tab-color:#7C3AED">
                     <span class="admin-tab-dot"></span>Pagar
                 </button>
+                <button class="admin-tab" type="button" data-panel="fiscal" data-owner-only style="--tab-color:#0F766E">
+                    <span class="admin-tab-dot"></span>Fiscal
+                </button>
                 <button class="admin-tab" type="button" data-panel="cupons" data-owner-only style="--tab-color:#DB2777">
                     <span class="admin-tab-dot"></span>Cupons
                 </button>
@@ -333,6 +336,54 @@
                     <p class="muted" id="payment-token-hint" style="margin-top:0.75rem;"></p>
                 </section>
 
+                <section class="admin-panel" id="fiscal-settings-card" data-panel="fiscal" data-owner-only style="--panel-color:#0F766E">
+                    <header class="admin-panel-head">
+                        <h2 class="admin-panel-title">Fiscal (NFC-e)</h2>
+                        <p class="muted">Cole o token da Focus NFe. Certificado, CSC e IE ficam na Focus / contador.</p>
+                    </header>
+                    <div class="alert" id="fiscal-settings-alert" hidden></div>
+                    <form id="fiscal-settings-form" class="auth-form" onsubmit="return false;">
+                        <label class="admin-check">
+                            <input id="fiscal-enabled" name="enabled" type="checkbox"> Emitir NFC-e
+                        </label>
+                        <div class="field">
+                            <label for="fiscal-environment">Ambiente</label>
+                            <select id="fiscal-environment" name="environment">
+                                <option value="HOMOLOG">Homologação</option>
+                                <option value="PRODUCTION">Produção</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label for="fiscal-token">Token Focus NFe</label>
+                            <input id="fiscal-token" name="apiToken" type="password" autocomplete="off" placeholder="Cole o token da Focus">
+                        </div>
+                        <div class="field">
+                            <label for="fiscal-cnpj">CNPJ do emitente</label>
+                            <input id="fiscal-cnpj" name="cnpj" type="text" inputmode="numeric" maxlength="18" placeholder="00.000.000/0000-00">
+                        </div>
+                        <label class="admin-check">
+                            <input id="fiscal-auto-emit" name="autoEmitOnPaid" type="checkbox" checked> Emitir ao confirmar pagamento
+                        </label>
+                        <div class="field">
+                            <label for="fiscal-ncm">NCM padrão</label>
+                            <input id="fiscal-ncm" name="defaultNcm" type="text" maxlength="8" value="21069090">
+                        </div>
+                        <div class="field">
+                            <label for="fiscal-cfop">CFOP padrão</label>
+                            <input id="fiscal-cfop" name="defaultCfop" type="text" maxlength="4" value="5102">
+                        </div>
+                        <div class="field">
+                            <label for="fiscal-csosn">CSOSN / CST (ICMS)</label>
+                            <input id="fiscal-csosn" name="icmsSituacaoTributaria" type="text" maxlength="4" value="102">
+                        </div>
+                        <div class="admin-form-actions" style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+                            <button class="btn btn-primary" type="submit">Salvar fiscal</button>
+                            <button class="btn btn-secondary" type="button" id="fiscal-test-btn">Testar conexão</button>
+                        </div>
+                    </form>
+                    <p class="muted" id="fiscal-token-hint" style="margin-top:0.75rem;"></p>
+                </section>
+
                 <section class="admin-panel" id="coupons-card" data-panel="cupons" data-owner-only style="--panel-color:#DB2777">
                     <header class="admin-panel-head">
                         <h2 class="admin-panel-title">Cupons</h2>
@@ -397,6 +448,6 @@
             </div>
         </div>
     </main>
-    <script type="module" src="/js/pages/admin.js?v=19"></script>
+    <script type="module" src="/js/pages/admin.js?v=20"></script>
 </body>
 </html>

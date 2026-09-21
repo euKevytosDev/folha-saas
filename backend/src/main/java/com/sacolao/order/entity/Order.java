@@ -2,6 +2,7 @@ package com.sacolao.order.entity;
 
 import com.sacolao.customer.entity.Customer;
 import com.sacolao.establishment.entity.Establishment;
+import com.sacolao.fiscal.entity.NfceStatus;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -106,6 +107,37 @@ public class Order {
 
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal total;
+
+    @Column(name = "nfce_ref", length = 80)
+    private String nfceRef;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "nfce_status", nullable = false, length = 24)
+    private NfceStatus nfceStatus = NfceStatus.NONE;
+
+    @Column(name = "nfce_number", length = 20)
+    private String nfceNumber;
+
+    @Column(name = "nfce_series", length = 10)
+    private String nfceSeries;
+
+    @Column(name = "nfce_chave", length = 50)
+    private String nfceChave;
+
+    @Column(name = "nfce_url_danfe", length = 500)
+    private String nfceUrlDanfe;
+
+    @Column(name = "nfce_url_xml", length = 500)
+    private String nfceUrlXml;
+
+    @Column(name = "nfce_qrcode_url", length = 500)
+    private String nfceQrcodeUrl;
+
+    @Column(name = "nfce_error_message", columnDefinition = "text")
+    private String nfceErrorMessage;
+
+    @Column(name = "nfce_emitted_at")
+    private Instant nfceEmittedAt;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("createdAt ASC")
@@ -325,6 +357,86 @@ public class Order {
 
     public void setTotal(BigDecimal total) {
         this.total = total;
+    }
+
+    public String getNfceRef() {
+        return nfceRef;
+    }
+
+    public void setNfceRef(String nfceRef) {
+        this.nfceRef = nfceRef;
+    }
+
+    public NfceStatus getNfceStatus() {
+        return nfceStatus;
+    }
+
+    public void setNfceStatus(NfceStatus nfceStatus) {
+        this.nfceStatus = nfceStatus == null ? NfceStatus.NONE : nfceStatus;
+    }
+
+    public String getNfceNumber() {
+        return nfceNumber;
+    }
+
+    public void setNfceNumber(String nfceNumber) {
+        this.nfceNumber = nfceNumber;
+    }
+
+    public String getNfceSeries() {
+        return nfceSeries;
+    }
+
+    public void setNfceSeries(String nfceSeries) {
+        this.nfceSeries = nfceSeries;
+    }
+
+    public String getNfceChave() {
+        return nfceChave;
+    }
+
+    public void setNfceChave(String nfceChave) {
+        this.nfceChave = nfceChave;
+    }
+
+    public String getNfceUrlDanfe() {
+        return nfceUrlDanfe;
+    }
+
+    public void setNfceUrlDanfe(String nfceUrlDanfe) {
+        this.nfceUrlDanfe = nfceUrlDanfe;
+    }
+
+    public String getNfceUrlXml() {
+        return nfceUrlXml;
+    }
+
+    public void setNfceUrlXml(String nfceUrlXml) {
+        this.nfceUrlXml = nfceUrlXml;
+    }
+
+    public String getNfceQrcodeUrl() {
+        return nfceQrcodeUrl;
+    }
+
+    public void setNfceQrcodeUrl(String nfceQrcodeUrl) {
+        this.nfceQrcodeUrl = nfceQrcodeUrl;
+    }
+
+    public String getNfceErrorMessage() {
+        return nfceErrorMessage;
+    }
+
+    public void setNfceErrorMessage(String nfceErrorMessage) {
+        this.nfceErrorMessage = nfceErrorMessage;
+    }
+
+    public Instant getNfceEmittedAt() {
+        return nfceEmittedAt;
+    }
+
+    public void setNfceEmittedAt(Instant nfceEmittedAt) {
+        this.nfceEmittedAt = nfceEmittedAt;
     }
 
     public List<OrderItem> getItems() {

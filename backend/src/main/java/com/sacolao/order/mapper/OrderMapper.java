@@ -1,5 +1,6 @@
 package com.sacolao.order.mapper;
 
+import com.sacolao.fiscal.mapper.FiscalMapper;
 import com.sacolao.order.dto.OrderResponse;
 import com.sacolao.order.entity.Order;
 import com.sacolao.order.entity.OrderItem;
@@ -45,6 +46,7 @@ public final class OrderMapper {
                 order.getTotal(),
                 items,
                 payment,
+                FiscalMapper.toNfceInfo(order),
                 order.getCouponCode(),
                 order.getCreatedAt(),
                 order.getUpdatedAt()

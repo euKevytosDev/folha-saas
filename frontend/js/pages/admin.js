@@ -123,6 +123,58 @@ if (user.role !== "STAFF") {
             showFormAlert(alertBox, error, "Não foi possível salvar pagamentos.");
         }
     });
+
+    await loadFiscalSettings();
+    $("#fiscal-settings-form")?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const alertBox = $("#fiscal-settings-alert");
+        try {
+            const body = {
+                enabled: form.enabled.checked,
+                environment: form.environment.value,
+                cnpj: form.cnpj.value.trim(),
+                autoEmitOnPaid: form.autoEmitOnPaid.checked,
+                defaultNcm: form.defaultNcm.value.trim() || "21069090",
+                defaultCfop: form.defaultCfop.value.trim() || "5102",
+                icmsOrigem: 0,
+                icmsSituacaoTributaria: form.icmsSituacaoTributaria.value.trim() || "102"
+            };
+            if (form.apiToken.value.trim()) {
+                body.apiToken = form.apiToken.value.trim();
+            }
+            await api("/fiscal/settings", { method: "PUT", body });
+            form.apiToken.value = "";
+            hideAlert(alertBox);
+            await loadFiscalSettings();
+            showFormSuccess(alertBox, "Configuração fiscal salva.");
+        } catch (error) {
+            showFormAlert(alertBox, error, "Não foi possível salvar o fiscal.");
+        }
+    });
+    $("#fiscal-test-btn")?.addEventListener("click", async () => {
+        const alertBox = $("#fiscal-settings-alert");
+        const btn = $("#fiscal-test-btn");
+        try {
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = "Testando…";
+            }
+            const result = await api("/fiscal/settings/test", { method: "POST", body: {} });
+            if (result?.ok) {
+                showFormSuccess(alertBox, result.message || "Conexão OK.");
+            } else {
+                showFormAlert(alertBox, null, result?.message || "Falha ao conectar na Focus.");
+            }
+        } catch (error) {
+            showFormAlert(alertBox, error, "Não foi possível testar a Focus NFe.");
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = "Testar conexão";
+            }
+        }
+    });
 }
 
 if (user.role !== "STAFF") {
@@ -750,7 +802,10 @@ function renderOrders(orders) {
         const payLabel = payment
             ? ` · Pagamento ${paymentStatusLabel(payment.status)}`
             : "";
-        meta.textContent = `${formatBRL(order.total)} · ${fulfillmentLabel(order.fulfillmentType)} · ${formatPhoneDisplay(order.customerPhone)}${payLabel}`;
+        const nfceLabel = order.nfce && order.nfce.status && order.nfce.status !== "NONE"
+            ? ` · NFC-e ${nfceStatusLabel(order.nfce.status)}`
+            : "";
+        meta.textContent = `${formatBRL(order.total)} · ${fulfillmentLabel(order.fulfillmentType)} · ${formatPhoneDisplay(order.customerPhone)}${payLabel}${nfceLabel}`;
 
         const items = document.createElement("ul");
         items.className = "order-item-list";
@@ -818,6 +873,9 @@ function renderOrders(orders) {
             confirmPay.addEventListener("click", () => confirmPayment(order.id));
             actions.append(confirmPay);
         }
+
+        appendNfceActions(actions, order);
+
         if (next) {
             const advance = document.createElement("button");
             advance.type = "button";
@@ -908,6 +966,98 @@ async function loadPaymentSettings() {
     } catch (error) {
         showFormAlert($("#payment-settings-alert"), error, "Não foi possível carregar pagamentos.");
     }
+}
+
+async function loadFiscalSettings() {
+    try {
+        const settings = await api("/fiscal/settings");
+        const form = $("#fiscal-settings-form");
+        if (!form) {
+            return;
+        }
+        form.enabled.checked = !!settings.enabled;
+        form.environment.value = settings.environment || "HOMOLOG";
+        form.cnpj.value = settings.cnpj || "";
+        form.autoEmitOnPaid.checked = settings.autoEmitOnPaid !== false;
+        form.defaultNcm.value = settings.defaultNcm || "21069090";
+        form.defaultCfop.value = settings.defaultCfop || "5102";
+        form.icmsSituacaoTributaria.value = settings.icmsSituacaoTributaria || "102";
+        const hint = $("#fiscal-token-hint");
+        if (hint) {
+            hint.textContent = settings.tokenConfigured
+                ? "Token Focus já configurado. Deixe em branco para manter."
+                : "Sem token — cadastre a empresa na Focus e cole o token aqui.";
+        }
+    } catch (error) {
+        showFormAlert($("#fiscal-settings-alert"), error, "Não foi possível carregar o fiscal.");
+    }
+}
+
+function appendNfceActions(actions, order) {
+    const nfce = order.nfce;
+    const status = nfce?.status || "NONE";
+    if (status === "AUTHORIZED") {
+        if (nfce.danfeUrl) {
+            const danfe = document.createElement("a");
+            danfe.className = "btn btn-secondary";
+            danfe.href = nfce.danfeUrl;
+            danfe.target = "_blank";
+            danfe.rel = "noopener noreferrer";
+            danfe.textContent = "Ver NFC-e";
+            actions.append(danfe);
+        }
+        return;
+    }
+    if (status === "PROCESSING") {
+        const refresh = document.createElement("button");
+        refresh.type = "button";
+        refresh.className = "btn btn-secondary";
+        refresh.textContent = "Atualizar NFC-e";
+        refresh.addEventListener("click", () => refreshNfce(order.id));
+        actions.append(refresh);
+        return;
+    }
+    const paid = order.payment?.status === "PAID" || ["CONFIRMED", "PREPARING", "DISPATCHED", "DELIVERED"].includes(order.status);
+    if (!paid) {
+        return;
+    }
+    const emit = document.createElement("button");
+    emit.type = "button";
+    emit.className = "btn btn-secondary";
+    emit.textContent = status === "ERROR" || status === "DENIED" ? "Reemitir NFC-e" : "Emitir NFC-e";
+    emit.addEventListener("click", () => emitNfce(order.id));
+    actions.append(emit);
+}
+
+async function emitNfce(orderId) {
+    try {
+        await api(`/orders/${orderId}/nfce`, { method: "POST", body: {} });
+        hideAlert($("#orders-alert"));
+        await refreshOrders();
+    } catch (error) {
+        showFormAlert($("#orders-alert"), error, "Não foi possível emitir a NFC-e.");
+    }
+}
+
+async function refreshNfce(orderId) {
+    try {
+        await api(`/orders/${orderId}/nfce/refresh`, { method: "POST", body: {} });
+        hideAlert($("#orders-alert"));
+        await refreshOrders();
+    } catch (error) {
+        showFormAlert($("#orders-alert"), error, "Não foi possível atualizar a NFC-e.");
+    }
+}
+
+function nfceStatusLabel(status) {
+    return ({
+        NONE: "não emitida",
+        PROCESSING: "processando",
+        AUTHORIZED: "autorizada",
+        DENIED: "negada",
+        CANCELLED: "cancelada",
+        ERROR: "erro"
+    })[status] || status;
 }
 
 async function loadDeliverySettings() {
