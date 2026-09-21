@@ -1,8 +1,28 @@
 import { $, on } from "../utils/dom.js";
-import { ApiError } from "../api/client.js";
+import { ApiError, refreshAccessToken } from "../api/client.js";
 import { login, redirectAfterLogin, registerAccount } from "../auth/api.js";
 import { api } from "../api/client.js";
+import { getAccessToken, getStoredUser } from "../auth/session.js";
 import { pageUrl } from "../utils/nav.js";
+
+// Se já houver sessão válida, entra direto no painel.
+(async () => {
+    if (!$("#login-form")) {
+        return;
+    }
+    try {
+        if (!getAccessToken()) {
+            const ok = await refreshAccessToken();
+            if (!ok) {
+                return;
+            }
+        }
+        const me = await api("/auth/me");
+        redirectAfterLogin(me.user || getStoredUser());
+    } catch {
+        // fica na tela de login
+    }
+})();
 
 function showAlert(type, message) {
     const alertBox = $(".alert");

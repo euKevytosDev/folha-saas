@@ -1,35 +1,50 @@
-import { isCrossOriginApi } from "../config.js";
-
 const ACCESS_KEY = "folha.accessToken";
 const USER_KEY = "folha.user";
 const REFRESH_KEY = "folha.refreshToken";
 
+/** Persistência longa — sobrevive a fechar o navegador. */
+const store = typeof localStorage !== "undefined" ? localStorage : sessionStorage;
+
+function read(key) {
+    try {
+        return store.getItem(key) ?? sessionStorage.getItem(key);
+    } catch {
+        return null;
+    }
+}
+
+function write(key, value) {
+    try {
+        if (value == null) {
+            store.removeItem(key);
+            sessionStorage.removeItem(key);
+            return;
+        }
+        store.setItem(key, value);
+        sessionStorage.removeItem(key);
+    } catch {
+        // storage cheio / privado
+    }
+}
+
 export function getAccessToken() {
-    return sessionStorage.getItem(ACCESS_KEY);
+    return read(ACCESS_KEY);
 }
 
 export function setAccessToken(token) {
-    if (token) {
-        sessionStorage.setItem(ACCESS_KEY, token);
-        return;
-    }
-    sessionStorage.removeItem(ACCESS_KEY);
+    write(ACCESS_KEY, token || null);
 }
 
 export function getRefreshToken() {
-    return sessionStorage.getItem(REFRESH_KEY);
+    return read(REFRESH_KEY);
 }
 
 export function setRefreshToken(token) {
-    if (token) {
-        sessionStorage.setItem(REFRESH_KEY, token);
-        return;
-    }
-    sessionStorage.removeItem(REFRESH_KEY);
+    write(REFRESH_KEY, token || null);
 }
 
 export function getStoredUser() {
-    const raw = sessionStorage.getItem(USER_KEY);
+    const raw = read(USER_KEY);
     if (!raw) {
         return null;
     }
@@ -41,17 +56,13 @@ export function getStoredUser() {
 }
 
 export function setStoredUser(user) {
-    if (user) {
-        sessionStorage.setItem(USER_KEY, JSON.stringify(user));
-        return;
-    }
-    sessionStorage.removeItem(USER_KEY);
+    write(USER_KEY, user ? JSON.stringify(user) : null);
 }
 
 export function clearSession() {
-    sessionStorage.removeItem(ACCESS_KEY);
-    sessionStorage.removeItem(USER_KEY);
-    sessionStorage.removeItem(REFRESH_KEY);
+    write(ACCESS_KEY, null);
+    write(USER_KEY, null);
+    write(REFRESH_KEY, null);
 }
 
 export function saveAuth(payload) {
@@ -64,7 +75,8 @@ export function saveAuth(payload) {
     if (payload.user) {
         setStoredUser(payload.user);
     }
-    if (payload.refreshToken && isCrossOriginApi()) {
+    // Sempre guarda o refresh no storage (além do cookie HttpOnly no same-origin).
+    if (payload.refreshToken) {
         setRefreshToken(payload.refreshToken);
     }
 }

@@ -1,4 +1,4 @@
-import { api } from "../api/client.js";
+import { api, refreshAccessToken } from "../api/client.js";
 import { clearSession, getAccessToken, getRefreshToken, getStoredUser, saveAuth } from "./session.js";
 import { pageUrl } from "../utils/nav.js";
 
@@ -40,12 +40,29 @@ export function redirectAfterLogin(user = getStoredUser()) {
     window.location.href = pageUrl(user?.role === "SUPER_ADMIN" ? "superadmin" : "admin");
 }
 
+/** Tenta renovar a sessão (cookie HttpOnly e/ou refresh no localStorage). */
+export async function ensureSession() {
+    if (getAccessToken()) {
+        return true;
+    }
+    return refreshAccessToken();
+}
+
 export async function requirePageAuth(allowedRoles) {
     try {
+        if (!getAccessToken()) {
+            const refreshed = await refreshAccessToken();
+            if (!refreshed) {
+                clearSession();
+                window.location.href = pageUrl("login");
+                return null;
+            }
+        }
         const me = await api("/auth/me");
         saveAuth({
             accessToken: getAccessToken(),
-            user: me.user
+            user: me.user,
+            refreshToken: getRefreshToken()
         });
         if (allowedRoles && !allowedRoles.includes(me.user.role)) {
             redirectAfterLogin(me.user);
@@ -53,6 +70,24 @@ export async function requirePageAuth(allowedRoles) {
         }
         return me;
     } catch {
+        const recovered = await refreshAccessToken();
+        if (recovered) {
+            try {
+                const me = await api("/auth/me", { retry: false });
+                saveAuth({
+                    accessToken: getAccessToken(),
+                    user: me.user,
+                    refreshToken: getRefreshToken()
+                });
+                if (allowedRoles && !allowedRoles.includes(me.user.role)) {
+                    redirectAfterLogin(me.user);
+                    return null;
+                }
+                return me;
+            } catch {
+                // cai no logout abaixo
+            }
+        }
         clearSession();
         window.location.href = pageUrl("login");
         return null;

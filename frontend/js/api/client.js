@@ -14,7 +14,14 @@ let refreshPromise = null;
 
 export async function api(path, { method = "GET", body, headers, retry = true } = {}) {
     const response = await request(path, { method, body, headers });
-    if (response.status === 401 && retry && !path.startsWith("/auth/")) {
+    const canRefresh = retry
+        && response.status === 401
+        && path !== "/auth/login"
+        && path !== "/auth/register"
+        && path !== "/auth/refresh"
+        && path !== "/auth/forgot-password"
+        && path !== "/auth/reset-password";
+    if (canRefresh) {
         const refreshed = await refreshAccessToken();
         if (refreshed) {
             return api(path, { method, body, headers, retry: false });
@@ -53,7 +60,8 @@ export async function refreshAccessToken() {
                 Accept: "application/json",
                 ...(getRefreshToken() ? { "Content-Type": "application/json" } : {})
             },
-            credentials: isCrossOriginApi() ? "include" : "same-origin",
+            // Sempre envia cookies (refresh HttpOnly no same-origin).
+            credentials: "include",
             body: getRefreshToken() ? JSON.stringify({ refreshToken: getRefreshToken() }) : undefined
         })
             .then(async (response) => {
@@ -64,6 +72,7 @@ export async function refreshAccessToken() {
                 saveAuth(payload);
                 return true;
             })
+            .catch(() => false)
             .finally(() => {
                 refreshPromise = null;
             });
