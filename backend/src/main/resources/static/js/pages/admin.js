@@ -6,6 +6,18 @@ import { compressImageFile } from "../utils/image.js";
 import { createThumb, optimizedImageUrl, setPreviewImage } from "../utils/media.js";
 import { storeUrl } from "../utils/nav.js";
 
+/** Controle do form por name — evita colisão com form.name (atributo HTML). */
+function control(form, name) {
+    if (!form) {
+        return null;
+    }
+    const named = form.elements?.namedItem(name);
+    if (named && typeof named === "object" && "value" in named) {
+        return named;
+    }
+    return form.querySelector(`[name="${name}"]`);
+}
+
 // Bloqueia submit nativo imediato (evita 405 em /admin antes do auth carregar).
 document.querySelectorAll("form.auth-form").forEach((form) => {
     form.addEventListener("submit", (event) => event.preventDefault());
@@ -176,7 +188,7 @@ if (user.role !== "STAFF") {
             await api("/users", {
                 method: "POST",
                 body: {
-                    name: form.name.value,
+                    name: control(form, "name")?.value,
                     email: form.email.value,
                     password: form.password.value,
                     role: form.role.value
@@ -233,7 +245,7 @@ function wireCatalogForms() {
             await api("/products", {
                 method: "POST",
                 body: {
-                    name: form.name.value,
+                    name: control(form, "name")?.value,
                     categoryId: form.categoryId.value,
                     price: Number(form.price.value),
                     unit: form.unit.value,
@@ -266,9 +278,10 @@ async function saveCategory(form) {
     }
     const alertBox = $("#category-alert");
     const submitBtn = form.querySelector("[data-category-submit], button[type='submit']");
-    const name = form.name.value.trim();
+    const nameInput = control(form, "name");
+    const name = nameInput?.value.trim() || "";
     if (!name) {
-        form.name.reportValidity?.();
+        nameInput?.reportValidity?.();
         showFormAlert(alertBox, null, "Informe o nome da categoria.");
         return;
     }
@@ -287,8 +300,13 @@ async function saveCategory(form) {
                 sortOrder: Number(form.sortOrder.value || 0)
             }
         });
-        form.name.value = "";
-        form.sortOrder.value = "0";
+        if (nameInput) {
+            nameInput.value = "";
+        }
+        const orderInput = control(form, "sortOrder");
+        if (orderInput) {
+            orderInput.value = "0";
+        }
         showFormSuccess(alertBox, "Categoria salva.");
         await refreshCatalog();
         if (created?.id) {
@@ -476,7 +494,10 @@ function clearProductForm(form) {
     if (!form) {
         return;
     }
-    form.name.value = "";
+    const nameInput = control(form, "name");
+    if (nameInput) {
+        nameInput.value = "";
+    }
     form.price.value = "";
     form.unit.value = "UN";
     form.imageUrl.value = "";
@@ -976,7 +997,13 @@ function wireStoreProfileForm() {
     if (!form || !establishment) {
         return;
     }
-    fillStoreProfileForm(establishment);
+    try {
+        fillStoreProfileForm(establishment);
+    } catch (error) {
+        console.error(error);
+        renderOpeningHoursEditor(establishment.openingHours || {});
+        showFormAlert($("#store-profile-alert"), error, "Não foi possível carregar todos os dados da loja.");
+    }
     wireStoreMediaUploads();
     form.addEventListener("submit", async (event) => {
         event.preventDefault();
@@ -1006,7 +1033,7 @@ async function saveStoreProfile({ skipCarouselValidation = false, silent = false
     }
     try {
         const body = {
-            name: form.name.value,
+            name: control(form, "name")?.value,
             phone: form.phone.value || null,
             address: form.address.value || null,
             logoUrl: form.logoUrl.value || null,
@@ -1038,7 +1065,10 @@ function fillStoreProfileForm(store) {
     if (!form || !store) {
         return;
     }
-    form.name.value = store.name ?? "";
+    const nameInput = control(form, "name");
+    if (nameInput) {
+        nameInput.value = store.name ?? "";
+    }
     form.phone.value = store.phone ?? "";
     form.address.value = store.address ?? "";
     form.logoUrl.value = store.logoUrl ?? "";
@@ -1046,7 +1076,7 @@ function fillStoreProfileForm(store) {
     form.storeOpenMode.value = store.storeOpenMode ?? "AUTO";
     setStoreMediaPreview("#store-logo-preview", "#store-logo-preview-img", store.logoUrl, { width: 256, height: 256 });
     setStoreMediaPreview("#store-cover-preview", "#store-cover-preview-img", store.coverUrl, { width: 800, height: 320 });
-    renderOpeningHoursEditor(store.openingHours);
+    renderOpeningHoursEditor(store.openingHours || {});
 }
 
 const DAY_LABELS = {
