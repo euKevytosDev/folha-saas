@@ -200,6 +200,25 @@
     }
 }
 
+.admin-panel select,
+.admin-panel input[type="time"],
+.admin-panel input[type="file"] {
+    width: 100%;
+    max-width: 100%;
+    pointer-events: auto;
+    position: relative;
+    z-index: 1;
+}
+
+.admin-panel select:disabled {
+    opacity: 0.65;
+}
+
+#hours-preview {
+    margin-top: 0.65rem;
+    line-height: 1.4;
+}
+
 @media (min-width: 768px) {
     .admin-inline-form {
         grid-template-columns: 1fr 6rem auto;

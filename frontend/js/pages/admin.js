@@ -82,6 +82,7 @@ if (user.role !== "STAFF") {
             form.accessToken.value = "";
             hideAlert(alertBox);
             await loadPaymentSettings();
+            showFormSuccess(alertBox, "Pagamentos atualizados.");
         } catch (error) {
             showFormAlert(alertBox, error, "Não foi possível salvar pagamentos.");
         }
@@ -116,6 +117,7 @@ if (user.role !== "STAFF") {
             hideAlert(alertBox);
             await loadDeliverySettings();
             renderStoreOpsCard();
+            showFormSuccess(alertBox, "Frete atualizado.");
         } catch (error) {
             showFormAlert(alertBox, error, "Não foi possível salvar frete.");
         }
@@ -173,10 +175,21 @@ if (user.role !== "STAFF") {
     });
 }
 
-await refreshCatalog();
+await refreshCatalog().catch((error) => {
+    showFormAlert($("#product-alert"), error, "Não foi possível carregar o catálogo.");
+});
 $("#category-form")?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
+    const alertBox = $("#category-alert");
+    const submitBtn = form.querySelector("button[type='submit']");
+    if (submitBtn?.disabled) {
+        return;
+    }
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Salvando…";
+    }
     try {
         await api("/categories", {
             method: "POST",
@@ -185,23 +198,44 @@ $("#category-form")?.addEventListener("submit", async (event) => {
                 sortOrder: Number(form.sortOrder.value || 0)
             }
         });
-        form.reset();
-        hideAlert($("#category-alert"));
+        form.name.value = "";
+        form.sortOrder.value = "0";
+        showFormSuccess(alertBox, "Categoria salva.");
         await refreshCatalog();
+        showAdminPanel("produtos");
     } catch (error) {
-        showFormAlert($("#category-alert"), error, "Não foi possível salvar a categoria.");
+        showFormAlert(alertBox, error, "Não foi possível salvar a categoria.");
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Adicionar";
+        }
     }
 });
 
 $("#product-form")?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
+    const alertBox = $("#product-alert");
     if (mediaState.uploading) {
-        showFormAlert($("#product-alert"), null, "Aguarde o envio da imagem.");
+        showFormAlert(alertBox, null, "Aguarde o envio da imagem.");
         return;
     }
     if (!validateFormCarousel(form)) {
         return;
+    }
+    if (!form.categoryId.value) {
+        showFormAlert(alertBox, null, "Selecione uma categoria.");
+        formCarousels.get(form)?.go(0);
+        return;
+    }
+    const submitBtn = form.querySelector("[data-carousel-submit]");
+    if (submitBtn?.disabled) {
+        return;
+    }
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Salvando…";
     }
     try {
         const stockRaw = form.stockQuantity.value.trim();
@@ -221,13 +255,16 @@ $("#product-form")?.addEventListener("submit", async (event) => {
                 minimumQuantity: form.unit.value === "KG" ? 0.2 : 1
             }
         });
-        form.reset();
-        resetFormCarousel(form);
-        clearProductImagePreview();
-        hideAlert($("#product-alert"));
         await refreshCatalog();
+        clearProductForm(form);
+        showFormSuccess(alertBox, "Produto salvo no catálogo.");
     } catch (error) {
-        showFormAlert($("#product-alert"), error, "Não foi possível salvar o produto.");
+        showFormAlert(alertBox, error, "Não foi possível salvar o produto.");
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Salvar produto";
+        }
     }
 });
 
@@ -340,25 +377,65 @@ async function renderUsers() {
     });
 }
 
+let catalogCategories = [];
+
 async function refreshCatalog() {
     const [categories, products] = await Promise.all([api("/categories"), api("/products")]);
-    renderCategoryOptions(categories);
-    renderCategories(categories);
+    catalogCategories = Array.isArray(categories) ? categories : [];
+    renderCategoryOptions(catalogCategories);
+    renderCategories(catalogCategories);
     renderProducts(products);
 }
 
 function renderCategoryOptions(categories) {
     const select = $("#product-category");
+    const hint = $("#product-category-hint");
     if (!select) {
         return;
     }
+    const previous = select.value;
+    const active = categories.filter((item) => item.active !== false);
     select.replaceChildren();
-    categories.filter((item) => item.active).forEach((item) => {
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = active.length ? "Selecione uma categoria" : "Crie uma categoria primeiro";
+    select.append(placeholder);
+    active.forEach((item) => {
         const option = document.createElement("option");
         option.value = item.id;
         option.textContent = item.name;
         select.append(option);
     });
+    if (previous && active.some((item) => item.id === previous)) {
+        select.value = previous;
+    } else if (active.length === 1) {
+        select.value = active[0].id;
+    } else {
+        select.value = "";
+    }
+    select.disabled = active.length === 0;
+    if (hint) {
+        hint.hidden = active.length > 0;
+    }
+}
+
+function clearProductForm(form) {
+    if (!form) {
+        return;
+    }
+    form.name.value = "";
+    form.price.value = "";
+    form.unit.value = "UN";
+    form.imageUrl.value = "";
+    form.stockQuantity.value = "";
+    form.featured.checked = false;
+    const fileInput = $("#product-image-file");
+    if (fileInput) {
+        fileInput.value = "";
+    }
+    clearProductImagePreview();
+    renderCategoryOptions(catalogCategories);
+    resetFormCarousel(form);
 }
 
 function renderCategories(categories) {
@@ -381,11 +458,15 @@ function renderCategories(categories) {
         actions.type = "button";
         actions.textContent = item.active ? "Ocultar" : "Ativar";
         actions.addEventListener("click", async () => {
-            await api(`/categories/${item.id}`, {
-                method: "PUT",
-                body: { active: !item.active }
-            });
-            await refreshCatalog();
+            try {
+                await api(`/categories/${item.id}`, {
+                    method: "PUT",
+                    body: { active: !item.active }
+                });
+                await refreshCatalog();
+            } catch (error) {
+                showFormAlert($("#category-alert"), error, "Não foi possível atualizar a categoria.");
+            }
         });
         row.append(name, actions);
         list.append(row);
@@ -469,6 +550,15 @@ function showFormAlert(alertBox, error, fallback) {
     alertBox.hidden = false;
     alertBox.className = "alert alert-error";
     alertBox.textContent = error instanceof ApiError ? error.message : fallback;
+}
+
+function showFormSuccess(alertBox, message) {
+    if (!alertBox) {
+        return;
+    }
+    alertBox.hidden = false;
+    alertBox.className = "alert alert-success";
+    alertBox.textContent = message;
 }
 
 function hideAlert(alertBox) {
@@ -841,14 +931,25 @@ function wireStoreProfileForm() {
     });
 }
 
-async function saveStoreProfile() {
+async function saveStoreProfile({ skipCarouselValidation = false, silent = false } = {}) {
     const form = $("#store-profile-form");
     const alertBox = $("#store-profile-alert");
     if (!form || !establishment) {
         return;
     }
-    if (!validateFormCarousel(form)) {
+    if (!skipCarouselValidation && !validateFormCarousel(form)) {
         return;
+    }
+    const hours = readOpeningHoursFromEditor();
+    if (!hoursValid(hours)) {
+        showFormAlert(alertBox, null, "Confira os horários: abertura precisa ser antes do fechamento.");
+        formCarousels.get(form)?.go(1);
+        return;
+    }
+    const submitBtn = form.querySelector("[data-carousel-submit]");
+    if (submitBtn && !silent) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Salvando…";
     }
     try {
         const body = {
@@ -858,7 +959,7 @@ async function saveStoreProfile() {
             logoUrl: form.logoUrl.value || null,
             coverUrl: form.coverUrl.value || null,
             storeOpenMode: form.storeOpenMode.value,
-            openingHours: readOpeningHoursFromEditor()
+            openingHours: hours
         };
         establishment = await api(`/establishments/${establishment.id}`, {
             method: "PUT",
@@ -866,10 +967,16 @@ async function saveStoreProfile() {
         });
         fillStoreProfileForm(establishment);
         renderStoreOpsCard();
-        hideAlert(alertBox);
+        showFormSuccess(alertBox, "Loja atualizada.");
+        $("#store-name").textContent = establishment?.name ?? "Estabelecimento";
     } catch (error) {
         showFormAlert(alertBox, error, "Não foi possível salvar a loja.");
         throw error;
+    } finally {
+        if (submitBtn && !silent) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Salvar loja";
+        }
     }
 }
 
@@ -890,14 +997,34 @@ function fillStoreProfileForm(store) {
 }
 
 const DAY_LABELS = {
-    mon: "Seg",
-    tue: "Ter",
-    wed: "Qua",
-    thu: "Qui",
-    fri: "Sex",
-    sat: "Sáb",
-    sun: "Dom"
+    mon: "Segunda",
+    tue: "Terça",
+    wed: "Quarta",
+    thu: "Quinta",
+    fri: "Sexta",
+    sat: "Sábado",
+    sun: "Domingo"
 };
+
+function normalizeClock(value, fallback = "08:00") {
+    const raw = String(value || "").trim();
+    const match = raw.match(/^(\d{1,2}):(\d{2})$/);
+    if (!match) {
+        return fallback;
+    }
+    const hour = Math.min(23, Math.max(0, Number(match[1])));
+    const minute = Math.min(59, Math.max(0, Number(match[2])));
+    return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
+function hoursValid(hours) {
+    return Object.values(hours || {}).every((intervals) => {
+        if (!intervals?.length) {
+            return true;
+        }
+        return intervals.every((item) => item.open && item.close && item.open !== item.close);
+    });
+}
 
 function renderOpeningHoursEditor(hours) {
     const box = $("#opening-hours-editor");
@@ -909,35 +1036,62 @@ function renderOpeningHoursEditor(hours) {
     Object.keys(DAY_LABELS).forEach((day) => {
         const intervals = source[day] || [];
         const first = intervals[0];
+        const open = !!first;
         const row = document.createElement("div");
-        row.className = "hours-row";
+        row.className = `hours-row${open ? " is-open" : " is-closed"}`;
         row.dataset.day = day;
-        const label = document.createElement("span");
-        label.textContent = DAY_LABELS[day];
+
+        const toggle = document.createElement("label");
+        toggle.className = "hours-toggle";
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.name = `${day}-open-day`;
+        checkbox.checked = open;
+        const dayName = document.createElement("span");
+        dayName.textContent = DAY_LABELS[day];
+        toggle.append(checkbox, dayName);
+
+        const times = document.createElement("div");
+        times.className = "hours-times";
         const openInput = document.createElement("input");
         openInput.type = "time";
         openInput.name = `${day}-open`;
-        openInput.value = first?.open ?? "08:00";
+        openInput.value = normalizeClock(first?.open, "08:00");
+        openInput.setAttribute("aria-label", `Abertura ${DAY_LABELS[day]}`);
+        const sep = document.createElement("span");
+        sep.className = "hours-sep";
+        sep.textContent = "às";
         const closeInput = document.createElement("input");
         closeInput.type = "time";
         closeInput.name = `${day}-close`;
-        closeInput.value = first?.close ?? "18:00";
-        const closed = document.createElement("label");
-        closed.className = "muted";
-        const checkbox = document.createElement("input");
-        checkbox.type = "checkbox";
-        checkbox.name = `${day}-closed`;
-        checkbox.checked = !first;
-        checkbox.addEventListener("change", () => {
-            openInput.disabled = checkbox.checked;
-            closeInput.disabled = checkbox.checked;
-        });
-        openInput.disabled = checkbox.checked;
-        closeInput.disabled = checkbox.checked;
-        closed.append(checkbox, document.createTextNode(" Fechado"));
-        row.append(label, openInput, closeInput, closed);
+        closeInput.value = normalizeClock(first?.close, "18:00");
+        closeInput.setAttribute("aria-label", `Fechamento ${DAY_LABELS[day]}`);
+        times.append(openInput, sep, closeInput);
+
+        const status = document.createElement("span");
+        status.className = "hours-status";
+
+        function syncRow() {
+            const enabled = checkbox.checked;
+            openInput.disabled = !enabled;
+            closeInput.disabled = !enabled;
+            row.classList.toggle("is-open", enabled);
+            row.classList.toggle("is-closed", !enabled);
+            status.textContent = enabled
+                ? `${normalizeClock(openInput.value)} – ${normalizeClock(closeInput.value)}`
+                : "Fechado";
+            updateHoursPreview();
+        }
+
+        checkbox.addEventListener("change", syncRow);
+        openInput.addEventListener("change", syncRow);
+        closeInput.addEventListener("change", syncRow);
+        syncRow();
+
+        row.append(toggle, times, status);
         box.append(row);
     });
+    updateHoursPreview();
 }
 
 function readOpeningHoursFromEditor() {
@@ -948,16 +1102,33 @@ function readOpeningHoursFromEditor() {
     }
     box.querySelectorAll(".hours-row").forEach((row) => {
         const day = row.dataset.day;
-        const closed = row.querySelector(`input[name="${day}-closed"]`)?.checked;
-        if (closed) {
+        const openDay = row.querySelector(`input[name="${day}-open-day"]`)?.checked;
+        if (!openDay) {
             result[day] = [];
             return;
         }
-        const open = row.querySelector(`input[name="${day}-open"]`)?.value || "08:00";
-        const close = row.querySelector(`input[name="${day}-close"]`)?.value || "18:00";
+        const open = normalizeClock(row.querySelector(`input[name="${day}-open"]`)?.value, "08:00");
+        const close = normalizeClock(row.querySelector(`input[name="${day}-close"]`)?.value, "18:00");
         result[day] = [{ open, close }];
     });
     return result;
+}
+
+function updateHoursPreview() {
+    const preview = $("#hours-preview");
+    if (!preview) {
+        return;
+    }
+    const hours = readOpeningHoursFromEditor();
+    const openDays = Object.entries(DAY_LABELS)
+        .filter(([key]) => (hours[key] || []).length)
+        .map(([key, label]) => {
+            const slot = hours[key][0];
+            return `${label} ${slot.open}–${slot.close}`;
+        });
+    preview.textContent = openDays.length
+        ? `Automático: ${openDays.join(" · ")}`
+        : "Nenhum dia marcado — no modo automático a loja fica fechada.";
 }
 
 function wireStoreMediaUploads() {
@@ -1012,8 +1183,8 @@ function bindMediaUpload(fileSelector, urlSelector, options = {}) {
                 urlInput.value = uploaded.url;
             }
             setStoreMediaPreview(options.previewBox, options.previewImg, uploaded.url, options.previewSize);
-            await saveStoreProfile();
-            hideAlert($("#store-profile-alert"));
+            await saveStoreProfile({ skipCarouselValidation: true, silent: true });
+            showFormSuccess($("#store-profile-alert"), "Imagem enviada e loja atualizada.");
         } catch (error) {
             showFormAlert($("#store-profile-alert"), error, "Falha ao enviar imagem.");
             fileInput.value = "";
