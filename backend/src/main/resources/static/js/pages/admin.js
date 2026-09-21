@@ -35,10 +35,11 @@ if (user.role === "STAFF") {
     });
 }
 wireAdminNav();
-wireFormCarousels();
 
 const mediaState = { enabled: false, uploading: false };
 let catalogCategories = [];
+const formCarousels = new Map();
+wireFormCarousels();
 wireCatalogForms();
 await refreshCatalog().catch((error) => {
     showFormAlert($("#product-alert"), error, "Não foi possível carregar o catálogo.");
@@ -191,46 +192,15 @@ if (user.role !== "STAFF") {
 }
 
 function wireCatalogForms() {
-    $("#category-form")?.addEventListener("submit", async (event) => {
+    const categoryForm = $("#category-form");
+    const categoryBtn = categoryForm?.querySelector("[data-category-submit], button[type='submit']");
+    categoryBtn?.addEventListener("click", async (event) => {
         event.preventDefault();
-        const form = event.currentTarget;
-        const alertBox = $("#category-alert");
-        const submitBtn = form.querySelector("button[type='submit']");
-        if (submitBtn?.disabled) {
-            return;
-        }
-        if (submitBtn) {
-            submitBtn.disabled = true;
-            submitBtn.textContent = "Salvando…";
-        }
-        try {
-            const created = await api("/categories", {
-                method: "POST",
-                body: {
-                    name: form.name.value,
-                    sortOrder: Number(form.sortOrder.value || 0)
-                }
-            });
-            form.name.value = "";
-            form.sortOrder.value = "0";
-            showFormSuccess(alertBox, "Categoria salva.");
-            await refreshCatalog();
-            if (created?.id) {
-                const select = $("#product-category");
-                if (select) {
-                    select.value = String(created.id);
-                    select.disabled = false;
-                }
-            }
-            showAdminPanel("produtos");
-        } catch (error) {
-            showFormAlert(alertBox, error, "Não foi possível salvar a categoria.");
-        } finally {
-            if (submitBtn) {
-                submitBtn.disabled = false;
-                submitBtn.textContent = "Adicionar";
-            }
-        }
+        await saveCategory(categoryForm);
+    });
+    categoryForm?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        await saveCategory(categoryForm);
     });
 
     $("#product-form")?.addEventListener("submit", async (event) => {
@@ -288,6 +258,55 @@ function wireCatalogForms() {
             }
         }
     });
+}
+
+async function saveCategory(form) {
+    if (!form) {
+        return;
+    }
+    const alertBox = $("#category-alert");
+    const submitBtn = form.querySelector("[data-category-submit], button[type='submit']");
+    const name = form.name.value.trim();
+    if (!name) {
+        form.name.reportValidity?.();
+        showFormAlert(alertBox, null, "Informe o nome da categoria.");
+        return;
+    }
+    if (submitBtn?.disabled) {
+        return;
+    }
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Salvando…";
+    }
+    try {
+        const created = await api("/categories", {
+            method: "POST",
+            body: {
+                name,
+                sortOrder: Number(form.sortOrder.value || 0)
+            }
+        });
+        form.name.value = "";
+        form.sortOrder.value = "0";
+        showFormSuccess(alertBox, "Categoria salva.");
+        await refreshCatalog();
+        if (created?.id) {
+            const select = $("#product-category");
+            if (select) {
+                select.value = String(created.id);
+                select.disabled = false;
+            }
+        }
+        showAdminPanel("produtos");
+    } catch (error) {
+        showFormAlert(alertBox, error, "Não foi possível salvar a categoria.");
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Adicionar";
+        }
+    }
 }
 
 async function loadMediaConfig() {
@@ -1333,8 +1352,6 @@ function paymentStatusLabel(status) {
         EXPIRED: "expirado"
     })[status] || status;
 }
-
-const formCarousels = new Map();
 
 function wireAdminNav() {
     const nav = $("#admin-nav");
