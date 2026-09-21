@@ -33,6 +33,12 @@ wireAdminNav();
 wireFormCarousels();
 
 const mediaState = { enabled: false, uploading: false };
+let catalogCategories = [];
+wireCatalogForms();
+await refreshCatalog().catch((error) => {
+    showFormAlert($("#product-alert"), error, "Não foi possível carregar o catálogo.");
+});
+
 await loadMediaConfig();
 wireProductImageControls();
 renderStoreOpsCard();
@@ -59,7 +65,9 @@ $("#refresh-orders-btn")?.addEventListener("click", async () => {
 
 const orderState = { status: "OPEN" };
 renderOrderFilters();
-await refreshOrders();
+await refreshOrders().catch((error) => {
+    showFormAlert($("#orders-alert"), error, "Não foi possível carregar os pedidos.");
+});
 
 const paymentSettingsCard = $("#payment-settings-card");
 if (user.role !== "STAFF") {
@@ -151,7 +159,9 @@ if (user.role !== "STAFF") {
     if (user.role === "ADMIN") {
         document.querySelector("#member-role option[value='ADMIN']")?.remove();
     }
-    await renderUsers();
+    await renderUsers().catch((error) => {
+        showFormAlert($("#users-alert"), error, "Não foi possível carregar a equipe.");
+    });
     $("#user-form")?.addEventListener("submit", async (event) => {
         event.preventDefault();
         const form = event.currentTarget;
@@ -175,98 +185,105 @@ if (user.role !== "STAFF") {
     });
 }
 
-await refreshCatalog().catch((error) => {
-    showFormAlert($("#product-alert"), error, "Não foi possível carregar o catálogo.");
-});
-$("#category-form")?.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const alertBox = $("#category-alert");
-    const submitBtn = form.querySelector("button[type='submit']");
-    if (submitBtn?.disabled) {
-        return;
-    }
-    if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.textContent = "Salvando…";
-    }
-    try {
-        await api("/categories", {
-            method: "POST",
-            body: {
-                name: form.name.value,
-                sortOrder: Number(form.sortOrder.value || 0)
-            }
-        });
-        form.name.value = "";
-        form.sortOrder.value = "0";
-        showFormSuccess(alertBox, "Categoria salva.");
-        await refreshCatalog();
-        showAdminPanel("produtos");
-    } catch (error) {
-        showFormAlert(alertBox, error, "Não foi possível salvar a categoria.");
-    } finally {
-        if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.textContent = "Adicionar";
+function wireCatalogForms() {
+    $("#category-form")?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const alertBox = $("#category-alert");
+        const submitBtn = form.querySelector("button[type='submit']");
+        if (submitBtn?.disabled) {
+            return;
         }
-    }
-});
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Salvando…";
+        }
+        try {
+            const created = await api("/categories", {
+                method: "POST",
+                body: {
+                    name: form.name.value,
+                    sortOrder: Number(form.sortOrder.value || 0)
+                }
+            });
+            form.name.value = "";
+            form.sortOrder.value = "0";
+            showFormSuccess(alertBox, "Categoria salva.");
+            await refreshCatalog();
+            if (created?.id) {
+                const select = $("#product-category");
+                if (select) {
+                    select.value = String(created.id);
+                    select.disabled = false;
+                }
+            }
+            showAdminPanel("produtos");
+        } catch (error) {
+            showFormAlert(alertBox, error, "Não foi possível salvar a categoria.");
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = "Adicionar";
+            }
+        }
+    });
 
-$("#product-form")?.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const alertBox = $("#product-alert");
-    if (mediaState.uploading) {
-        showFormAlert(alertBox, null, "Aguarde o envio da imagem.");
-        return;
-    }
-    if (!validateFormCarousel(form)) {
-        return;
-    }
-    if (!form.categoryId.value) {
-        showFormAlert(alertBox, null, "Selecione uma categoria.");
-        formCarousels.get(form)?.go(0);
-        return;
-    }
-    const submitBtn = form.querySelector("[data-carousel-submit]");
-    if (submitBtn?.disabled) {
-        return;
-    }
-    if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.textContent = "Salvando…";
-    }
-    try {
-        const stockRaw = form.stockQuantity.value.trim();
-        const hasStock = stockRaw !== "";
-        await api("/products", {
-            method: "POST",
-            body: {
-                name: form.name.value,
-                categoryId: form.categoryId.value,
-                price: Number(form.price.value),
-                unit: form.unit.value,
-                imageUrl: form.imageUrl.value || null,
-                featured: form.featured.checked,
-                available: true,
-                stockControlled: hasStock,
-                stockQuantity: hasStock ? Number(stockRaw) : null,
-                minimumQuantity: form.unit.value === "KG" ? 0.2 : 1
-            }
-        });
-        await refreshCatalog();
-        clearProductForm(form);
-        showFormSuccess(alertBox, "Produto salvo no catálogo.");
-    } catch (error) {
-        showFormAlert(alertBox, error, "Não foi possível salvar o produto.");
-    } finally {
-        if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.textContent = "Salvar produto";
+    $("#product-form")?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const alertBox = $("#product-alert");
+        if (mediaState.uploading) {
+            showFormAlert(alertBox, null, "Aguarde o envio da imagem.");
+            return;
         }
-    }
-});
+        if (!validateFormCarousel(form)) {
+            return;
+        }
+        if (!form.categoryId.value) {
+            showFormAlert(alertBox, null, "Selecione uma categoria.");
+            formCarousels.get(form)?.go(0);
+            return;
+        }
+        const submitBtn = form.querySelector("[data-carousel-submit]");
+        if (submitBtn?.disabled) {
+            return;
+        }
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Salvando…";
+        }
+        try {
+            const stockRaw = form.stockQuantity.value.trim();
+            const hasStock = stockRaw !== "";
+            await api("/products", {
+                method: "POST",
+                body: {
+                    name: form.name.value,
+                    categoryId: form.categoryId.value,
+                    price: Number(form.price.value),
+                    unit: form.unit.value,
+                    imageUrl: form.imageUrl.value || null,
+                    featured: form.featured.checked,
+                    available: true,
+                    stockControlled: hasStock,
+                    stockQuantity: hasStock ? Number(stockRaw) : null,
+                    minimumQuantity: form.unit.value === "KG" ? 0.2 : 1
+                }
+            });
+            await refreshCatalog();
+            clearProductForm(form);
+            showFormSuccess(alertBox, "Produto salvo no catálogo.");
+            showAdminPanel("produtos");
+        } catch (error) {
+            showFormAlert(alertBox, error, "Não foi possível salvar o produto.");
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = "Salvar produto";
+            }
+        }
+    });
+}
 
 async function loadMediaConfig() {
     try {
@@ -377,8 +394,6 @@ async function renderUsers() {
     });
 }
 
-let catalogCategories = [];
-
 async function refreshCatalog() {
     const [categories, products] = await Promise.all([api("/categories"), api("/products")]);
     catalogCategories = Array.isArray(categories) ? categories : [];
@@ -394,7 +409,7 @@ function renderCategoryOptions(categories) {
         return;
     }
     const previous = select.value;
-    const active = categories.filter((item) => item.active !== false);
+    const active = (categories || []).filter((item) => item.active !== false);
     select.replaceChildren();
     const placeholder = document.createElement("option");
     placeholder.value = "";
@@ -402,14 +417,15 @@ function renderCategoryOptions(categories) {
     select.append(placeholder);
     active.forEach((item) => {
         const option = document.createElement("option");
-        option.value = item.id;
+        option.value = String(item.id);
         option.textContent = item.name;
         select.append(option);
     });
-    if (previous && active.some((item) => item.id === previous)) {
-        select.value = previous;
+    const previousId = previous ? String(previous) : "";
+    if (previousId && active.some((item) => String(item.id) === previousId)) {
+        select.value = previousId;
     } else if (active.length === 1) {
-        select.value = active[0].id;
+        select.value = String(active[0].id);
     } else {
         select.value = "";
     }
@@ -1422,7 +1438,14 @@ function wireFormCarousel(form) {
             next.hidden = step === slides.length - 1;
         }
         if (submit) {
-            submit.hidden = step !== slides.length - 1;
+            const onLast = step === slides.length - 1;
+            submit.hidden = !onLast;
+            submit.setAttribute("aria-hidden", onLast ? "false" : "true");
+            if (!onLast) {
+                submit.tabIndex = -1;
+            } else {
+                submit.removeAttribute("tabindex");
+            }
         }
     }
 

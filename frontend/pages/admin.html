@@ -12,11 +12,11 @@
     <link rel="stylesheet" href="/css/variables.css">
     <link rel="stylesheet" href="/css/reset.css">
     <link rel="stylesheet" href="/css/layout.css">
-    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/components.css?v=2">
     <link rel="stylesheet" href="/css/pages/placeholder.css">
     <link rel="stylesheet" href="/css/pages/store.css?v=3">
     <link rel="stylesheet" href="/css/pages/checkout.css?v=2">
-    <link rel="stylesheet" href="/css/pages/admin.css?v=2">
+    <link rel="stylesheet" href="/css/pages/admin.css?v=3">
     <script src="/js/env.js"></script>
 </head>
 <body class="page-shell admin-shell">
@@ -101,7 +101,7 @@
                             <h3 class="admin-block-title">Categorias</h3>
                             <div id="categories-list"></div>
                             <div class="alert" id="category-alert" hidden></div>
-                            <form id="category-form" class="auth-form admin-inline-form">
+                            <form id="category-form" class="auth-form admin-inline-form" method="post" action="#">
                                 <div class="field">
                                     <label for="category-name">Nome</label>
                                     <input id="category-name" name="name" type="text" required placeholder="Ex.: Frutas">
@@ -116,7 +116,7 @@
                         <article class="admin-block">
                             <h3 class="admin-block-title">Novo produto</h3>
                             <div class="alert" id="product-alert" hidden></div>
-                            <form id="product-form" class="auth-form form-carousel" data-carousel novalidate>
+                            <form id="product-form" class="auth-form form-carousel" data-carousel method="post" action="#" novalidate>
                                 <div class="form-slides">
                                     <div class="form-slide is-active">
                                         <p class="form-step-label">1 de 4 · O que é</p>
@@ -397,6 +397,6 @@
             </div>
         </div>
     </main>
-    <script type="module" src="/js/pages/admin.js?v=11"></script>
+    <script type="module" src="/js/pages/admin.js?v=12"></script>
 </body>
 </html>

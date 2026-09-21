@@ -12,6 +12,11 @@
     transition: background var(--transition), color var(--transition), border-color var(--transition), transform var(--transition), opacity var(--transition);
 }
 
+.btn[hidden],
+[hidden] {
+    display: none !important;
+}
+
 .btn:active {
     transform: translateY(1px);
 }
