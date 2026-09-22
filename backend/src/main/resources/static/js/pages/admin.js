@@ -704,7 +704,31 @@ function beginEditProduct(item) {
     formCarousels.get(form)?.go(0);
     hideAlert($("#product-alert"));
     showAdminPanel("produtos");
-    form.scrollIntoView({ behavior: "smooth", block: "start" });
+    scrollToProductEditor();
+}
+
+function scrollToProductEditor() {
+    const target = $("#product-form-block") || $("#product-form-title") || $("#product-form");
+    if (!target) {
+        return;
+    }
+    const run = () => {
+        const header = document.querySelector(".site-header");
+        const nav = document.querySelector(".admin-nav");
+        const stickyOffset = (header?.getBoundingClientRect().height || 0)
+            + (nav?.getBoundingClientRect().height || 0)
+            + 12;
+        const top = window.scrollY + target.getBoundingClientRect().top - stickyOffset;
+        window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+        const nameInput = $("#product-name");
+        window.setTimeout(() => {
+            nameInput?.focus({ preventScroll: true });
+        }, 280);
+    };
+    // espera o painel/layout estabilizar (mobile e desktop)
+    requestAnimationFrame(() => {
+        requestAnimationFrame(run);
+    });
 }
 
 function renderCategories(categories) {

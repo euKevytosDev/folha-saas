@@ -80,6 +80,10 @@
     display: block;
 }
 
+#product-form-block {
+    scroll-margin-top: calc(var(--header-h) + 4.5rem);
+}
+
 .admin-panel-head {
     margin-bottom: 1rem;
 }
