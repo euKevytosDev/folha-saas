@@ -15,6 +15,11 @@ cp "$ROOT/frontend/public/robots.txt" "$SITE/robots.txt"
 cp "$ROOT/frontend/pages/"*.html "$SITE/"
 cp "$ROOT/frontend/pages/404.html" "$SITE/404.html"
 
+# Cache-bust com hash do conteúdo (antes de reescrever caminhos)
+python3 "$ROOT/scripts/stamp-asset-versions.py" "$SITE/pages" "$SITE"
+# HTMLs na raiz do site também
+python3 "$ROOT/scripts/stamp-asset-versions.py" "$SITE" "$SITE"
+
 python3 - "$SITE" "$API_URL" "$BASE_PATH" <<'PY'
 import pathlib
 import re

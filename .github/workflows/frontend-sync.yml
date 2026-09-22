@@ -1,0 +1,28 @@
+name: Frontend sync
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - "backend/src/main/resources/static/**"
+      - "scripts/sync-frontend.sh"
+      - "scripts/check-frontend-sync.sh"
+      - "scripts/stamp-asset-versions.py"
+      - ".github/workflows/frontend-sync.yml"
+  pull_request:
+    paths:
+      - "frontend/**"
+      - "backend/src/main/resources/static/**"
+      - "scripts/sync-frontend.sh"
+      - "scripts/check-frontend-sync.sh"
+      - "scripts/stamp-asset-versions.py"
+      - ".github/workflows/frontend-sync.yml"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verificar paridade frontend ↔ static
+        run: bash scripts/check-frontend-sync.sh

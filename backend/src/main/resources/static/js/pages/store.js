@@ -2,6 +2,7 @@ import { api, ApiError } from "../api/client.js";
 import { currentStoreSlug, checkoutUrl } from "../utils/nav.js";
 import { $, on } from "../utils/dom.js";
 import { formatBRL, formatQuantity, quantityHint, unitStep } from "../utils/format.js";
+import { nextOpenHint } from "../utils/hours.js";
 import { createThumb, optimizedImageUrl } from "../utils/media.js";
 import { addToCart, cartCount, clearCart, loadCart, setCartQuantity } from "../store/cart.js";
 
@@ -77,6 +78,12 @@ function renderStorefrontHeader(store) {
     }
     if (els.closedBanner) {
         els.closedBanner.hidden = open;
+        if (!open) {
+            const hint = nextOpenHint(store.openingHours, store.timezone);
+            els.closedBanner.textContent = hint
+                ? `Loja fechada no momento. ${hint}. Você pode olhar o cardápio, mas não finalizar pedido.`
+                : "Loja fechada no momento. Você pode olhar o cardápio, mas não finalizar pedido.";
+        }
     }
     if (els.cover) {
         if (store.coverUrl) {
