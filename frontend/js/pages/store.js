@@ -10,6 +10,8 @@ const slug = currentStoreSlug();
 const state = {
     store: null,
     catalog: null,
+    /** catálogo completo (uma carga); filtro de categoria/busca é local */
+    allProducts: [],
     categoryId: null,
     query: "",
     /** @type {Map<string, any>} */
@@ -52,7 +54,8 @@ async function boot() {
     try {
         state.catalog = await api(`/store/${encodeURIComponent(slug)}/catalog`);
         state.store = state.catalog.store;
-        rememberProducts(state.catalog.products);
+        state.allProducts = state.catalog.products || [];
+        rememberProducts(state.allProducts);
         rememberProducts(state.catalog.featured);
         document.title = `${state.store.name} — Folha`;
         renderStorefrontHeader(state.store);
@@ -159,31 +162,32 @@ function chip(label, active) {
     return button;
 }
 
-async function selectCategory(categoryId) {
+function selectCategory(categoryId) {
+    if (state.categoryId === categoryId) {
+        return;
+    }
     state.categoryId = categoryId;
-    await reloadCatalog();
-}
-
-async function reloadCatalog() {
-    const params = new URLSearchParams();
-    if (state.categoryId) {
-        params.set("categoryId", state.categoryId);
-    }
-    if (state.query) {
-        params.set("q", state.query);
-    }
-    const suffix = params.toString() ? `?${params}` : "";
-    state.catalog = await api(`/store/${encodeURIComponent(slug)}/catalog${suffix}`);
-    rememberProducts(state.catalog.products);
-    rememberProducts(state.catalog.featured);
     renderCategories();
     renderCatalog();
-    refreshLocalCart();
+}
+
+function visibleProducts() {
+    let products = state.allProducts;
+    if (state.categoryId) {
+        products = products.filter((product) => product.categoryId === state.categoryId);
+    }
+    const query = state.query.trim().toLowerCase();
+    if (query) {
+        products = products.filter((product) => (product.name || "").toLowerCase().includes(query));
+    }
+    return products;
 }
 
 function renderCatalog() {
-    const products = state.catalog.products;
-    const featured = state.categoryId || state.query ? [] : state.catalog.featured;
+    const products = visibleProducts();
+    const featured = state.categoryId || state.query.trim()
+        ? []
+        : state.allProducts.filter((product) => product.featured);
     els.featuredSection.hidden = featured.length === 0;
     fillGrid(els.featuredGrid, featured);
     fillGrid(els.grid, products);
@@ -470,10 +474,10 @@ function syncCheckoutLink() {
 let searchTimer = 0;
 on(els.search, "input", () => {
     window.clearTimeout(searchTimer);
-    searchTimer = window.setTimeout(async () => {
+    searchTimer = window.setTimeout(() => {
         state.query = els.search.value.trim();
-        await reloadCatalog();
-    }, 350);
+        renderCatalog();
+    }, 120);
 });
 
 on($("#open-cart"), "click", () => {
