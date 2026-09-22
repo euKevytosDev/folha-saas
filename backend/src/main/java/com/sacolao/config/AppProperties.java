@@ -8,13 +8,15 @@ import java.util.List;
 public record AppProperties(
         String name,
         String frontendDir,
+        String publicFrontendUrl,
         Cors cors,
         Jwt jwt,
         Auth auth,
         Bootstrap bootstrap,
         Payments payments,
         Security security,
-        Cloudinary cloudinary
+        Cloudinary cloudinary,
+        Resend resend
 ) {
     public record Cors(List<String> allowedOrigins) {
     }
@@ -63,6 +65,12 @@ public record AppProperties(
             String url,
             String folder,
             long maxBytes
+    ) {
+    }
+
+    public record Resend(
+            String apiKey,
+            String from
     ) {
     }
 }

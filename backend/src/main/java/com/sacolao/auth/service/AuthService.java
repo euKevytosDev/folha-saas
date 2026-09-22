@@ -23,6 +23,7 @@ import com.sacolao.establishment.entity.Establishment;
 import com.sacolao.establishment.mapper.EstablishmentMapper;
 import com.sacolao.establishment.service.EstablishmentService;
 import com.sacolao.establishment.service.StoreAvailabilityService;
+import com.sacolao.mail.ResendEmailClient;
 import com.sacolao.security.AuthenticatedUser;
 import com.sacolao.security.JwtService;
 import com.sacolao.security.SecurityUtils;
@@ -57,6 +58,7 @@ public class AuthService {
     private final AppProperties properties;
     private final Environment environment;
     private final StoreAvailabilityService availabilityService;
+    private final ResendEmailClient resendEmailClient;
 
     public AuthService(
             UserRepository userRepository,
@@ -69,7 +71,8 @@ public class AuthService {
             SecureTokenFactory tokenFactory,
             AppProperties properties,
             Environment environment,
-            StoreAvailabilityService availabilityService
+            StoreAvailabilityService availabilityService,
+            ResendEmailClient resendEmailClient
     ) {
         this.userRepository = userRepository;
         this.userService = userService;
@@ -82,6 +85,7 @@ public class AuthService {
         this.properties = properties;
         this.environment = environment;
         this.availabilityService = availabilityService;
+        this.resendEmailClient = resendEmailClient;
     }
 
     @Transactional
@@ -163,11 +167,33 @@ public class AuthService {
             reset.setExpiresAt(now.plusMillis(properties.auth().passwordResetExpirationMs()));
             passwordResetTokenRepository.save(reset);
             log.info("Recuperação de senha solicitada userId={}", user.getId());
-            if (environment.matchesProfiles("dev")) {
-                log.info("Link de recuperação (somente dev): /redefinir-senha?token={}", rawToken);
+            String resetUrl = buildResetUrl(rawToken);
+            if (resendEmailClient.isConfigured()) {
+                try {
+                    resendEmailClient.sendPasswordReset(user.getEmail(), resetUrl);
+                } catch (Exception ex) {
+                    log.error("Falha ao enviar e-mail de recuperação userId={}", user.getId(), ex);
+                }
+            } else if (environment.matchesProfiles("dev", "test")) {
+                log.info("Link de recuperação (Resend off): {}", resetUrl);
+            } else {
+                log.warn("RESEND_API_KEY ausente — e-mail de recuperação não enviado userId={}", user.getId());
             }
         });
         return new MessageResponse(GENERIC_RESET);
+    }
+
+    private String buildResetUrl(String rawToken) {
+        String base = properties.publicFrontendUrl();
+        if (base == null || base.isBlank()) {
+            base = "http://localhost:8080";
+        }
+        String normalized = base.endsWith("/") ? base.substring(0, base.length() - 1) : base;
+        boolean staticHost = normalized.contains("github.io");
+        if (staticHost) {
+            return normalized + "/redefinir-senha.html?token=" + rawToken;
+        }
+        return normalized + "/redefinir-senha?token=" + rawToken;
     }
 
     @Transactional

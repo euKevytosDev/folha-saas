@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -19,12 +20,20 @@ public class StorePaymentController {
     }
 
     @GetMapping
-    public PaymentResponse get(@PathVariable String slug, @PathVariable String publicCode) {
-        return paymentService.getPublic(slug, publicCode);
+    public PaymentResponse get(
+            @PathVariable String slug,
+            @PathVariable String publicCode,
+            @RequestParam("token") String token
+    ) {
+        return paymentService.getPublic(slug, publicCode, token);
     }
 
     @PostMapping("/simulate")
-    public PaymentResponse simulate(@PathVariable String slug, @PathVariable String publicCode) {
-        return paymentService.simulatePaid(slug, publicCode);
+    public PaymentResponse simulate(
+            @PathVariable String slug,
+            @PathVariable String publicCode,
+            @RequestParam("token") String token
+    ) {
+        return paymentService.simulatePaid(slug, publicCode, token);
     }
 }

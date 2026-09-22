@@ -66,6 +66,12 @@ public class Order {
     @Column(name = "customer_email", length = 255)
     private String customerEmail;
 
+    @Column(name = "customer_cpf", length = 11)
+    private String customerCpf;
+
+    @Column(name = "view_token", nullable = false, length = 48)
+    private String viewToken;
+
     @Column(name = "address_zip_code", length = 16)
     private String addressZipCode;
 
@@ -245,6 +251,22 @@ public class Order {
 
     public void setCustomerEmail(String customerEmail) {
         this.customerEmail = customerEmail;
+    }
+
+    public String getCustomerCpf() {
+        return customerCpf;
+    }
+
+    public void setCustomerCpf(String customerCpf) {
+        this.customerCpf = customerCpf;
+    }
+
+    public String getViewToken() {
+        return viewToken;
+    }
+
+    public void setViewToken(String viewToken) {
+        this.viewToken = viewToken;
     }
 
     public String getAddressZipCode() {

@@ -74,6 +74,7 @@ class Phase6IT extends CatalogSupport {
                                   "customerName":"Cliente Frete",
                                   "customerPhone":"11970001111",
                                   "fulfillmentType":"DELIVERY",
+                                  "customerCpf":"52998224725",
                                   "paymentMethod":"PIX",
                                   "couponCode":"DESCONTO5",
                                   "addressStreet":"Rua A",

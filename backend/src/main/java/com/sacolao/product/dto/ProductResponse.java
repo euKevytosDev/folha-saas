@@ -22,6 +22,7 @@ public record ProductResponse(
         boolean stockControlled,
         BigDecimal stockQuantity,
         BigDecimal minimumQuantity,
+        String ncm,
         Instant createdAt,
         Instant updatedAt
 ) {

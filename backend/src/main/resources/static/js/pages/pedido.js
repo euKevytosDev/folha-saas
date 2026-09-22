@@ -4,12 +4,13 @@ import { formatBRL, formatQuantity } from "../utils/format.js";
 import { createThumb } from "../utils/media.js";
 import { storeUrl } from "../utils/nav.js";
 
-const { slug, publicCode } = currentOrderRef();
+const { slug, publicCode, token } = currentOrderRef();
 const alertBox = $("#order-alert");
 const paymentBox = $("#payment-box");
+let pollTimer = 0;
 
-if (!slug || !publicCode) {
-    showError("Pedido não encontrado.");
+if (!slug || !publicCode || !token) {
+    showError("Pedido não encontrado. Abra o link completo enviado após a compra.");
 } else {
     $("#back-store").href = storeUrl(slug);
     await boot();
@@ -17,7 +18,9 @@ if (!slug || !publicCode) {
 
 async function boot() {
     try {
-        const order = await api(`/store/${encodeURIComponent(slug)}/orders/${encodeURIComponent(publicCode)}`);
+        const order = await api(
+            `/store/${encodeURIComponent(slug)}/orders/${encodeURIComponent(publicCode)}?token=${encodeURIComponent(token)}`
+        );
         document.title = `Pedido ${order.publicCode} — Folha`;
         $("#order-code").textContent = order.publicCode;
         $("#order-card").hidden = false;
@@ -29,9 +32,29 @@ async function boot() {
         $("#order-total").textContent = formatBRL(order.total);
         renderDetails(order);
         renderPayment(order.payment);
+        schedulePoll(order);
     } catch (error) {
         showError(error instanceof ApiError ? error.message : "Não foi possível carregar o pedido.");
     }
+}
+
+function schedulePoll(order) {
+    window.clearTimeout(pollTimer);
+    const pendingPix = order?.payment
+        && order.payment.method === "PIX"
+        && order.payment.status !== "PAID"
+        && order.payment.status !== "FAILED"
+        && order.status !== "CANCELLED";
+    if (!pendingPix) {
+        return;
+    }
+    pollTimer = window.setTimeout(async () => {
+        if (document.visibilityState === "hidden") {
+            schedulePoll(order);
+            return;
+        }
+        await boot();
+    }, 4000);
 }
 
 function renderPayment(payment) {
@@ -82,9 +105,10 @@ function renderPayment(payment) {
         simulate.addEventListener("click", async () => {
             simulate.disabled = true;
             try {
-                await api(`/store/${encodeURIComponent(slug)}/orders/${encodeURIComponent(publicCode)}/payment/simulate`, {
-                    method: "POST"
-                });
+                await api(
+                    `/store/${encodeURIComponent(slug)}/orders/${encodeURIComponent(publicCode)}/payment/simulate?token=${encodeURIComponent(token)}`,
+                    { method: "POST" }
+                );
                 await boot();
             } catch (error) {
                 showError(error instanceof ApiError ? error.message : "Falha ao simular pagamento.");
@@ -123,17 +147,22 @@ function renderItems(items) {
 
 function renderDetails(order) {
     const box = $("#order-details");
+    if (!box) {
+        return;
+    }
     box.replaceChildren();
     addDetail(box, "Cliente", order.customerName);
     addDetail(box, "Telefone", order.customerPhone);
+    if (order.customerEmail) {
+        addDetail(box, "E-mail", order.customerEmail);
+    }
     if (order.fulfillmentType === "DELIVERY") {
         const address = [
             order.addressStreet,
             order.addressNumber,
             order.addressComplement,
             order.addressNeighborhood,
-            order.addressCity,
-            order.addressState,
+            [order.addressCity, order.addressState].filter(Boolean).join(" - "),
             order.addressZipCode
         ].filter(Boolean).join(", ");
         addDetail(box, "Endereço", address);
@@ -154,14 +183,22 @@ function addDetail(box, label, value) {
 function currentOrderRef() {
     const params = new URLSearchParams(window.location.search);
     if (params.get("slug") && params.get("code")) {
-        return { slug: params.get("slug"), publicCode: params.get("code") };
+        return {
+            slug: params.get("slug"),
+            publicCode: params.get("code"),
+            token: params.get("token")
+        };
     }
     const parts = window.location.pathname.split("/").filter(Boolean);
     const idx = parts.indexOf("pedido");
     if (idx >= 0 && parts[idx + 1] && parts[idx + 2]) {
-        return { slug: parts[idx + 1], publicCode: parts[idx + 2] };
+        return {
+            slug: parts[idx + 1],
+            publicCode: parts[idx + 2],
+            token: params.get("token")
+        };
     }
-    return { slug: null, publicCode: null };
+    return { slug: null, publicCode: null, token: null };
 }
 
 function showError(message) {
@@ -187,35 +224,47 @@ function paymentStatusLabel(status) {
         AUTHORIZED: "Autorizado",
         PAID: "Pago",
         FAILED: "Falhou",
-        REFUNDED: "Estornado",
-        CANCELLED: "Cancelado",
-        EXPIRED: "Expirado"
+        REFUNDED: "Estornado"
     })[status] || status;
 }
 
-function headingFor(status, payment) {
-    if (payment && payment.status === "PENDING" && payment.method === "PIX") {
-        return "Pague o PIX para confirmar";
-    }
-    return ({
-        PENDING: "Pedido recebido",
-        CONFIRMED: "Pedido confirmado",
-        PREPARING: "Preparando seu pedido",
-        DISPATCHED: "Saiu para entrega",
-        DELIVERED: "Pedido entregue",
-        CANCELLED: "Pedido cancelado"
-    })[status] || "Pedido";
+function fulfillmentLabel(type) {
+    return type === "DELIVERY" ? "Entrega" : "Retirada";
 }
 
-function fulfillmentLabel(value) {
-    return value === "PICKUP" ? "Retirada" : "Entrega";
-}
-
-function paymentLabel(value) {
+function paymentLabel(method) {
     return ({
         PIX: "PIX",
         CASH: "Dinheiro",
         CARD: "Cartão",
         ON_DELIVERY: "Na entrega"
-    })[value] || value;
+    })[method] || method;
 }
+
+function headingFor(status, payment) {
+    if (payment?.status === "PENDING" && payment?.method === "PIX") {
+        return "Aguardando pagamento PIX";
+    }
+    if (status === "CONFIRMED") {
+        return "Pedido confirmado";
+    }
+    if (status === "PREPARING") {
+        return "Preparando seu pedido";
+    }
+    if (status === "DISPATCHED") {
+        return "Saiu para entrega";
+    }
+    if (status === "DELIVERED") {
+        return "Pedido entregue";
+    }
+    if (status === "CANCELLED") {
+        return "Pedido cancelado";
+    }
+    return "Pedido recebido";
+}
+
+document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && slug && publicCode && token) {
+        boot().catch(() => {});
+    }
+});

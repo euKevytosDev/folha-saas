@@ -38,6 +38,7 @@ class StoreOperationsIT extends CatalogSupport {
                                   "customerName":"Cliente",
                                   "customerPhone":"11988887777",
                                   "fulfillmentType":"PICKUP",
+                                  "customerCpf":"52998224725",
                                   "paymentMethod":"PIX"
                                 }
                                 """.formatted(productId)))

@@ -22,7 +22,7 @@ class PaymentIT extends CatalogSupport {
         String categoryId = createCategory(token, "Frutas");
         String productId = createProduct(token, categoryId, "Uva", "10.00", "KG");
 
-        String publicCode = AuthApi.read(mockMvc.perform(post("/api/v1/store/" + slug + "/orders")
+        var created = mockMvc.perform(post("/api/v1/store/" + slug + "/orders")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("Idempotency-Key", "pix-key-1")
                         .content("""
@@ -31,6 +31,7 @@ class PaymentIT extends CatalogSupport {
                                   "customerName":"Cliente PIX",
                                   "customerPhone":"11922223333",
                                   "fulfillmentType":"PICKUP",
+                                  "customerCpf":"52998224725",
                                   "paymentMethod":"PIX"
                                 }
                                 """.formatted(productId)))
@@ -39,16 +40,24 @@ class PaymentIT extends CatalogSupport {
                 .andExpect(jsonPath("$.payment.status").value("PENDING"))
                 .andExpect(jsonPath("$.payment.provider").value("MOCK"))
                 .andExpect(jsonPath("$.payment.pixCopyPaste").isNotEmpty())
-                .andReturn(), "$.publicCode");
+                .andExpect(jsonPath("$.viewToken").isNotEmpty())
+                .andReturn();
+        String publicCode = AuthApi.read(created, "$.publicCode");
+        String viewToken = AuthApi.read(created, "$.viewToken");
 
-        mockMvc.perform(post("/api/v1/store/" + slug + "/orders/" + publicCode + "/payment/simulate"))
+        mockMvc.perform(post("/api/v1/store/" + slug + "/orders/" + publicCode + "/payment/simulate")
+                        .param("token", viewToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("PAID"));
 
-        mockMvc.perform(get("/api/v1/store/" + slug + "/orders/" + publicCode))
+        mockMvc.perform(get("/api/v1/store/" + slug + "/orders/" + publicCode)
+                        .param("token", viewToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CONFIRMED"))
                 .andExpect(jsonPath("$.payment.status").value("PAID"));
+
+        mockMvc.perform(get("/api/v1/store/" + slug + "/orders/" + publicCode))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -91,7 +100,7 @@ class PaymentIT extends CatalogSupport {
         String categoryId = createCategory(token, "Raízes");
         String productId = createProduct(token, categoryId, "Batata", "3.00", "KG");
 
-        String publicCode = AuthApi.read(mockMvc.perform(post("/api/v1/store/" + slug + "/orders")
+        var created = mockMvc.perform(post("/api/v1/store/" + slug + "/orders")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -99,13 +108,17 @@ class PaymentIT extends CatalogSupport {
                                   "customerName":"Cliente",
                                   "customerPhone":"11944445555",
                                   "fulfillmentType":"PICKUP",
+                                  "customerCpf":"52998224725",
                                   "paymentMethod":"PIX"
                                 }
                                 """.formatted(productId)))
                 .andExpect(status().isCreated())
-                .andReturn(), "$.publicCode");
+                .andReturn();
+        String publicCode = AuthApi.read(created, "$.publicCode");
+        String viewToken = AuthApi.read(created, "$.viewToken");
 
-        String externalId = AuthApi.read(mockMvc.perform(get("/api/v1/store/" + slug + "/orders/" + publicCode + "/payment"))
+        String externalId = AuthApi.read(mockMvc.perform(get("/api/v1/store/" + slug + "/orders/" + publicCode + "/payment")
+                        .param("token", viewToken))
                         .andExpect(status().isOk())
                         .andExpect(jsonPath("$.status").value("PENDING"))
                         .andReturn(), "$.externalId");
@@ -129,11 +142,13 @@ class PaymentIT extends CatalogSupport {
                                 """.formatted(externalId)))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(get("/api/v1/store/" + slug + "/orders/" + publicCode + "/payment"))
+        mockMvc.perform(get("/api/v1/store/" + slug + "/orders/" + publicCode + "/payment")
+                        .param("token", viewToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("PAID"));
 
-        mockMvc.perform(get("/api/v1/store/" + slug + "/orders/" + publicCode))
+        mockMvc.perform(get("/api/v1/store/" + slug + "/orders/" + publicCode)
+                        .param("token", viewToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CONFIRMED"))
                 .andExpect(jsonPath("$.payment.status").value("PAID"));

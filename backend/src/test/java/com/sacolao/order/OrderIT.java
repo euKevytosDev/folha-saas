@@ -39,6 +39,7 @@ class OrderIT extends CatalogSupport {
                                   "customerPhone":"(11) 98888-7777",
                                   "customerEmail":"cliente@exemplo.com",
                                   "fulfillmentType":"PICKUP",
+                                  "customerCpf":"52998224725",
                                   "paymentMethod":"PIX",
                                   "notes":"Sem saco plástico"
                                 }

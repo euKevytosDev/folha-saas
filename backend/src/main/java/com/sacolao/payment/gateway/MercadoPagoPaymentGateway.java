@@ -61,7 +61,11 @@ public class MercadoPagoPaymentGateway implements PaymentGateway {
                     : email);
             ObjectNode identification = payer.putObject("identification");
             identification.put("type", "CPF");
-            identification.put("number", "19119119100");
+            String cpf = request.order().getCustomerCpf();
+            if (cpf == null || cpf.isBlank()) {
+                throw new UnprocessableException("CPF_REQUIRED", "Informe o CPF do cliente para gerar o PIX");
+            }
+            identification.put("number", cpf.replaceAll("\\D", ""));
 
             String raw = restClientBuilder.build()
                     .post()

@@ -92,9 +92,57 @@ $("#refresh-orders-btn")?.addEventListener("click", async () => {
 });
 
 const orderState = { status: "OPEN" };
+let knownOrderIds = new Set();
+let ordersPollTimer = 0;
+let audioCtx = null;
 renderOrderFilters();
 await refreshOrders().catch((error) => {
     showFormAlert($("#orders-alert"), error, "Não foi possível carregar os pedidos.");
+});
+
+function playNewOrderChime() {
+    try {
+        audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = 880;
+        gain.gain.value = 0.04;
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.18);
+    } catch {
+        // ignore autoplay restrictions
+    }
+}
+
+async function pollOrdersQuietly() {
+    try {
+        const result = await refreshOrders({ silent: true, detectNew: true });
+        if (result?.hasNew) {
+            playNewOrderChime();
+        }
+    } catch {
+        // keep polling
+    }
+}
+
+function scheduleOrdersPoll() {
+    window.clearTimeout(ordersPollTimer);
+    ordersPollTimer = window.setTimeout(async () => {
+        if (document.visibilityState !== "hidden") {
+            await pollOrdersQuietly();
+        }
+        scheduleOrdersPoll();
+    }, 12000);
+}
+
+scheduleOrdersPoll();
+document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+        pollOrdersQuietly();
+    }
 });
 
 const paymentSettingsCard = $("#payment-settings-card");
@@ -316,7 +364,8 @@ function wireCatalogForms() {
                     available: true,
                     stockControlled: hasStock,
                     stockQuantity: hasStock ? Number(stockRaw) : null,
-                    minimumQuantity: form.unit.value === "KG" ? 0.2 : 1
+                    minimumQuantity: form.unit.value === "KG" ? 0.2 : 1,
+                    ncm: form.ncm?.value?.trim() || null
                 }
             });
             await refreshCatalog();
@@ -564,6 +613,9 @@ function clearProductForm(form) {
     form.unit.value = "UN";
     form.imageUrl.value = "";
     form.stockQuantity.value = "";
+    if (form.ncm) {
+        form.ncm.value = "";
+    }
     form.featured.checked = false;
     const fileInput = $("#product-image-file");
     if (fileInput) {
@@ -703,7 +755,7 @@ function hideAlert(alertBox) {
     }
 }
 
-async function refreshOrders() {
+async function refreshOrders(options = {}) {
     const statusParam = orderState.status === "PENDING" ? "?status=PENDING" : "";
     const [summary, orders] = await Promise.all([
         api("/orders/summary"),
@@ -715,8 +767,20 @@ async function refreshOrders() {
     } else if (orderState.status === "DONE") {
         filtered = orders.filter((order) => ["DELIVERED", "CANCELLED"].includes(order.status));
     }
+    const nextIds = new Set(orders.map((order) => order.id));
+    let hasNew = false;
+    if (options.detectNew && knownOrderIds.size > 0) {
+        for (const id of nextIds) {
+            if (!knownOrderIds.has(id)) {
+                hasNew = true;
+                break;
+            }
+        }
+    }
+    knownOrderIds = nextIds;
     renderOrderSummary(summary);
     renderOrders(filtered);
+    return { hasNew };
 }
 
 function renderOrderFilters() {

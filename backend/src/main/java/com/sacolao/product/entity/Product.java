@@ -70,6 +70,9 @@ public class Product {
     @Column(name = "minimum_quantity", nullable = false, precision = 12, scale = 3)
     private BigDecimal minimumQuantity = BigDecimal.ONE;
 
+    @Column(length = 8)
+    private String ncm;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -198,6 +201,14 @@ public class Product {
 
     public void setMinimumQuantity(BigDecimal minimumQuantity) {
         this.minimumQuantity = minimumQuantity;
+    }
+
+    public String getNcm() {
+        return ncm;
+    }
+
+    public void setNcm(String ncm) {
+        this.ncm = ncm;
     }
 
     public Instant getCreatedAt() {

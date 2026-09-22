@@ -25,11 +25,13 @@ export function checkoutUrl(slug) {
     return `/loja/${slug}/checkout`;
 }
 
-export function orderUrl(slug, publicCode) {
+export function orderUrl(slug, publicCode, viewToken) {
+    const tokenQuery = viewToken ? `&token=${encodeURIComponent(viewToken)}` : "";
     if (config.staticHost) {
-        return `${withBase("pedido.html")}?slug=${encodeURIComponent(slug)}&code=${encodeURIComponent(publicCode)}`;
+        return `${withBase("pedido.html")}?slug=${encodeURIComponent(slug)}&code=${encodeURIComponent(publicCode)}${tokenQuery}`;
     }
-    return `/pedido/${encodeURIComponent(slug)}/${encodeURIComponent(publicCode)}`;
+    const tokenPath = viewToken ? `?token=${encodeURIComponent(viewToken)}` : "";
+    return `/pedido/${encodeURIComponent(slug)}/${encodeURIComponent(publicCode)}${tokenPath}`;
 }
 
 export function currentStoreSlug() {

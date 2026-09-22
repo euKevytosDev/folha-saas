@@ -40,3 +40,7 @@ app:
     url:
     folder: folha-test
     max-bytes: 5242880
+  public-frontend-url: http://localhost:8080
+  resend:
+    api-key:
+    from: Folha <onboarding@resend.dev>

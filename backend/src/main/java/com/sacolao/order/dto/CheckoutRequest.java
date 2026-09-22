@@ -19,6 +19,7 @@ public record CheckoutRequest(
         @NotBlank @Size(max = 160) String customerName,
         @NotBlank @Size(max = 32) String customerPhone,
         @Email @Size(max = 255) String customerEmail,
+        @Size(max = 14) String customerCpf,
         @NotNull FulfillmentType fulfillmentType,
         @NotNull PaymentMethod paymentMethod,
         @Size(max = 16) String addressZipCode,

@@ -31,6 +31,7 @@ class OrderIsolationIT extends CatalogSupport {
                                   "customerName":"Cliente A",
                                   "customerPhone":"11900001111",
                                   "fulfillmentType":"PICKUP",
+                                  "customerCpf":"52998224725",
                                   "paymentMethod":"PIX"
                                 }
                                 """.formatted(productId)))
@@ -38,13 +39,18 @@ class OrderIsolationIT extends CatalogSupport {
                 .andReturn();
         String orderId = AuthApi.read(created, "$.id");
         String publicCode = AuthApi.read(created, "$.publicCode");
+        String viewToken = AuthApi.read(created, "$.viewToken");
 
         mockMvc.perform(get("/api/v1/orders/" + orderId)
                         .header("Authorization", AuthApi.bearer(tokenB)))
                 .andExpect(status().isNotFound());
 
-        mockMvc.perform(get("/api/v1/store/" + AuthApi.establishmentSlug(tenantB) + "/orders/" + publicCode))
+        mockMvc.perform(get("/api/v1/store/" + AuthApi.establishmentSlug(tenantB) + "/orders/" + publicCode)
+                        .param("token", viewToken))
                 .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/api/v1/store/" + slugA + "/orders/" + publicCode))
+                .andExpect(status().isBadRequest());
 
         mockMvc.perform(get("/api/v1/orders")
                         .header("Authorization", AuthApi.bearer(tokenB)))

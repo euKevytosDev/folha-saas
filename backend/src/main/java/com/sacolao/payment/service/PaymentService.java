@@ -124,14 +124,37 @@ public class PaymentService {
     }
 
     @Transactional(readOnly = true)
-    public PaymentResponse getPublic(String slug, String publicCode) {
+    public PaymentResponse getPublic(String slug, String publicCode, String viewToken) {
         Establishment store = requireActiveStore(slug);
-        return paymentRepository.findByOrderPublicCodeAndEstablishmentId(
+        Order order = orderRepository.findDetailedByPublicCodeAndEstablishmentId(
                         publicCode.trim().toUpperCase(Locale.ROOT),
                         store.getId()
                 )
+                .orElseThrow(() -> new ResourceNotFoundException("Recurso não encontrado"));
+        assertViewToken(order, viewToken);
+        return paymentRepository.findByOrder_IdAndEstablishment_Id(order.getId(), store.getId())
                 .map(PaymentMapper::toResponse)
                 .orElseThrow(() -> new ResourceNotFoundException("Recurso não encontrado"));
+    }
+
+    @Transactional
+    public PaymentResponse simulatePaid(String slug, String publicCode, String viewToken) {
+        if (!properties.payments().simulateEnabled()) {
+            throw new UnprocessableException("SIMULATE_DISABLED", "Simulação de pagamento desabilitada neste ambiente");
+        }
+        Establishment store = requireActiveStore(slug);
+        Order order = orderRepository.findDetailedByPublicCodeAndEstablishmentId(
+                        publicCode.trim().toUpperCase(Locale.ROOT),
+                        store.getId()
+                )
+                .orElseThrow(() -> new ResourceNotFoundException("Recurso não encontrado"));
+        assertViewToken(order, viewToken);
+        Payment payment = paymentRepository.findByOrder_IdAndEstablishment_Id(order.getId(), store.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Recurso não encontrado"));
+        if (payment.getProvider() != PaymentProviderType.MOCK && !requireSettings(store).isMockMode()) {
+            throw new UnprocessableException("SIMULATE_DISABLED", "Simulação disponível apenas em modo mock");
+        }
+        return markPaid(payment, "simulate-" + Instant.now().toEpochMilli(), "{\"source\":\"simulate\"}");
     }
 
     @Transactional
@@ -148,23 +171,6 @@ public class PaymentService {
             throw new UnprocessableException("MANUAL_CONFIRM_NOT_ALLOWED", "Este pagamento deve ser confirmado pelo gateway");
         }
         return markPaid(payment, "manual-confirm-" + Instant.now().toEpochMilli(), "{\"source\":\"manual\"}");
-    }
-
-    @Transactional
-    public PaymentResponse simulatePaid(String slug, String publicCode) {
-        if (!properties.payments().simulateEnabled()) {
-            throw new UnprocessableException("SIMULATE_DISABLED", "Simulação de pagamento desabilitada neste ambiente");
-        }
-        Establishment store = requireActiveStore(slug);
-        Payment payment = paymentRepository.findByOrderPublicCodeAndEstablishmentId(
-                        publicCode.trim().toUpperCase(Locale.ROOT),
-                        store.getId()
-                )
-                .orElseThrow(() -> new ResourceNotFoundException("Recurso não encontrado"));
-        if (payment.getProvider() != PaymentProviderType.MOCK && !requireSettings(store).isMockMode()) {
-            throw new UnprocessableException("SIMULATE_DISABLED", "Simulação disponível apenas em modo mock");
-        }
-        return markPaid(payment, "simulate-" + Instant.now().toEpochMilli(), "{\"source\":\"simulate\"}");
     }
 
     @Transactional
@@ -371,6 +377,13 @@ public class PaymentService {
         return establishmentRepository.findBySlug(slug)
                 .filter(Establishment::isActive)
                 .orElseThrow(() -> new ResourceNotFoundException("Loja não encontrada"));
+    }
+
+    private static void assertViewToken(Order order, String viewToken) {
+        if (viewToken == null || viewToken.isBlank() || order.getViewToken() == null
+                || !order.getViewToken().equals(viewToken.trim())) {
+            throw new ResourceNotFoundException("Recurso não encontrado");
+        }
     }
 
     private static boolean isPaidSignal(String status) {

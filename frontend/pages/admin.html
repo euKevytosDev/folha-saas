@@ -176,6 +176,10 @@
                                             <input id="product-stock" name="stockQuantity" type="number" min="0" step="0.001" placeholder="Ex.: 20">
                                             <p class="muted">Deixe em branco para o cliente comprar à vontade. Se preencher, a loja limita as compras a essa quantidade.</p>
                                         </div>
+                                        <div class="field">
+                                            <label for="product-ncm">NCM (opcional, NFC-e)</label>
+                                            <input id="product-ncm" name="ncm" type="text" maxlength="8" inputmode="numeric" placeholder="Ex.: 07019000">
+                                        </div>
                                         <label class="admin-check">
                                             <input id="product-featured" name="featured" type="checkbox">
                                             Destacar na vitrine
@@ -448,6 +452,6 @@
             </div>
         </div>
     </main>
-    <script type="module" src="/js/pages/admin.js?v=21"></script>
+    <script type="module" src="/js/pages/admin.js?v=22"></script>
 </body>
 </html>

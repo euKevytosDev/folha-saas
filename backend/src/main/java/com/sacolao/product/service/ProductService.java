@@ -60,6 +60,7 @@ public class ProductService {
         product.setStockControlled(controlled);
         product.setStockQuantity(controlled ? Money.quantity(request.stockQuantity()) : null);
         product.setMinimumQuantity(normalizeMinimum(request.minimumQuantity(), request.unit()));
+        product.setNcm(normalizeNcm(request.ncm()));
         validateStock(product);
         return ProductMapper.toResponse(productRepository.save(product));
     }
@@ -116,6 +117,9 @@ public class ProductService {
             product.setMinimumQuantity(normalizeMinimum(request.minimumQuantity(), product.getUnit()));
         } else {
             product.setMinimumQuantity(normalizeMinimum(product.getMinimumQuantity(), product.getUnit()));
+        }
+        if (request.ncm() != null) {
+            product.setNcm(normalizeNcm(request.ncm()));
         }
         validateStock(product);
         product.setCompareAtPrice(normalizeCompare(product.getCompareAtPrice(), product.getPrice()));
@@ -184,6 +188,14 @@ public class ProductService {
         if (product.isStockControlled() && product.getStockQuantity() == null) {
             throw new UnprocessableException("STOCK_REQUIRED", "Informe a quantidade em estoque");
         }
+    }
+
+    private static String normalizeNcm(String ncm) {
+        if (ncm == null || ncm.isBlank()) {
+            return null;
+        }
+        String digits = ncm.replaceAll("\\D", "");
+        return digits.isBlank() ? null : digits;
     }
 
     private ResourceNotFoundException notFound() {

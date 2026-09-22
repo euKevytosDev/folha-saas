@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -59,20 +60,60 @@ public class StockService {
 
     @Transactional
     public void consumeForSale(Product product, Order order, BigDecimal quantity) {
-        if (!product.isStockControlled() || product.getStockQuantity() == null) {
+        Product locked = productRepository.findByIdAndEstablishmentIdForUpdate(product.getId(), product.getEstablishmentId())
+                .orElse(product);
+        if (!locked.isStockControlled() || locked.getStockQuantity() == null) {
             return;
         }
-        BigDecimal current = Money.quantity(product.getStockQuantity());
+        BigDecimal current = Money.quantity(locked.getStockQuantity());
         BigDecimal qty = Money.quantity(quantity);
         if (qty.compareTo(current) > 0) {
-            throw new UnprocessableException("OUT_OF_STOCK", "Estoque insuficiente para " + product.getName());
+            throw new UnprocessableException("OUT_OF_STOCK", "Estoque insuficiente para " + locked.getName());
         }
         BigDecimal after = Money.quantity(current.subtract(qty));
-        product.setStockQuantity(after);
+        locked.setStockQuantity(after);
         if (after.compareTo(BigDecimal.ZERO) <= 0) {
-            product.setAvailable(false);
+            locked.setAvailable(false);
         }
-        recordMovement(product, order, StockMovementType.SALE, qty.negate(), after, "Venda " + order.getPublicCode());
+        recordMovement(locked, order, StockMovementType.SALE, qty.negate(), after, "Venda " + order.getPublicCode());
+    }
+
+    /** Devolve estoque baixado na venda quando o pedido é cancelado. */
+    @Transactional
+    public void restoreForCancelledOrder(Order order) {
+        List<StockMovement> sales = stockMovementRepository.findByOrder_IdAndMovementType(order.getId(), StockMovementType.SALE);
+        for (StockMovement sale : sales) {
+            boolean alreadyRestored = stockMovementRepository
+                    .existsByOrder_IdAndProduct_IdAndMovementType(order.getId(), sale.getProduct().getId(), StockMovementType.RESTOCK);
+            if (alreadyRestored) {
+                continue;
+            }
+            Product product = productRepository.findByIdAndEstablishmentIdForUpdate(
+                            sale.getProduct().getId(),
+                            order.getEstablishmentId()
+                    )
+                    .orElse(null);
+            if (product == null || !product.isStockControlled()) {
+                continue;
+            }
+            BigDecimal restoreQty = Money.quantity(sale.getQuantityDelta().abs());
+            BigDecimal current = product.getStockQuantity() == null
+                    ? BigDecimal.ZERO
+                    : Money.quantity(product.getStockQuantity());
+            BigDecimal after = Money.quantity(current.add(restoreQty));
+            product.setStockQuantity(after);
+            if (after.compareTo(BigDecimal.ZERO) > 0) {
+                product.setAvailable(true);
+            }
+            recordMovement(
+                    product,
+                    order,
+                    StockMovementType.RESTOCK,
+                    restoreQty,
+                    after,
+                    "Estorno cancelamento " + order.getPublicCode()
+            );
+        }
     }
 
     private void recordMovement(

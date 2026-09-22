@@ -17,11 +17,14 @@ import com.sacolao.product.dto.ProductResponse;
 import com.sacolao.product.entity.Product;
 import com.sacolao.product.mapper.ProductMapper;
 import com.sacolao.product.repository.ProductRepository;
+import com.sacolao.payment.entity.EstablishmentPaymentSettings;
+import com.sacolao.payment.repository.EstablishmentPaymentSettingsRepository;
 import com.sacolao.store.dto.CartQuoteItemRequest;
 import com.sacolao.store.dto.CartQuoteLineResponse;
 import com.sacolao.store.dto.CartQuoteRequest;
 import com.sacolao.store.dto.CartQuoteResponse;
 import com.sacolao.store.dto.PublicCatalogResponse;
+import com.sacolao.store.dto.PublicPaymentOptionsResponse;
 import com.sacolao.store.dto.PublicStoreResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +45,7 @@ public class StoreCatalogService {
     private final DeliveryService deliveryService;
     private final CouponService couponService;
     private final StoreAvailabilityService availabilityService;
+    private final EstablishmentPaymentSettingsRepository paymentSettingsRepository;
 
     public StoreCatalogService(
             EstablishmentRepository establishmentRepository,
@@ -49,7 +53,8 @@ public class StoreCatalogService {
             ProductRepository productRepository,
             DeliveryService deliveryService,
             CouponService couponService,
-            StoreAvailabilityService availabilityService
+            StoreAvailabilityService availabilityService,
+            EstablishmentPaymentSettingsRepository paymentSettingsRepository
     ) {
         this.establishmentRepository = establishmentRepository;
         this.categoryRepository = categoryRepository;
@@ -57,6 +62,7 @@ public class StoreCatalogService {
         this.deliveryService = deliveryService;
         this.couponService = couponService;
         this.availabilityService = availabilityService;
+        this.paymentSettingsRepository = paymentSettingsRepository;
     }
 
     @Transactional(readOnly = true)
@@ -187,6 +193,8 @@ public class StoreCatalogService {
 
     private PublicStoreResponse toPublicStore(Establishment establishment) {
         EstablishmentDeliverySettings settings = deliveryService.findOrDefaults(establishment.getId());
+        EstablishmentPaymentSettings payment = paymentSettingsRepository.findById(establishment.getId()).orElse(null);
+        boolean pixEnabled = payment == null || payment.isPixEnabled();
         return new PublicStoreResponse(
                 establishment.getId(),
                 establishment.getName(),
@@ -207,7 +215,8 @@ public class StoreCatalogService {
                 availabilityService.parseHours(establishment.getOpeningHours()),
                 establishment.getRatingAvg(),
                 establishment.getRatingCount(),
-                DeliveryService.toResponse(settings)
+                DeliveryService.toResponse(settings),
+                new PublicPaymentOptionsResponse(pixEnabled, true, true, true)
         );
     }
 }

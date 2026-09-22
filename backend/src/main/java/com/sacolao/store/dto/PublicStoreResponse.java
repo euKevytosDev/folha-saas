@@ -27,6 +27,7 @@ public record PublicStoreResponse(
         Map<String, List<OpeningInterval>> openingHours,
         BigDecimal ratingAvg,
         int ratingCount,
-        DeliverySettingsResponse delivery
+        DeliverySettingsResponse delivery,
+        PublicPaymentOptionsResponse payments
 ) {
 }

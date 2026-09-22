@@ -20,6 +20,7 @@ public record UpdateProductRequest(
         Boolean featured,
         Boolean stockControlled,
         @DecimalMin(value = "0.000") @Digits(integer = 9, fraction = 3) BigDecimal stockQuantity,
-        @DecimalMin(value = "0.001") @Digits(integer = 9, fraction = 3) BigDecimal minimumQuantity
+        @DecimalMin(value = "0.001") @Digits(integer = 9, fraction = 3) BigDecimal minimumQuantity,
+        @Size(max = 8) String ncm
 ) {
 }

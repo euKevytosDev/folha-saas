@@ -25,6 +25,7 @@ public final class ProductMapper {
                 product.isStockControlled(),
                 product.getStockQuantity(),
                 product.getMinimumQuantity(),
+                product.getNcm(),
                 product.getCreatedAt(),
                 product.getUpdatedAt()
         );

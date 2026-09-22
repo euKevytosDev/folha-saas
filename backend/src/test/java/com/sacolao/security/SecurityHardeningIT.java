@@ -25,7 +25,7 @@ class SecurityHardeningIT extends CatalogSupport {
         String categoryId = createCategory(token, "Frutas");
         String productId = createProduct(token, categoryId, "Maçã", "4.00", "KG");
 
-        String publicCode = AuthApi.read(mockMvc.perform(post("/api/v1/store/" + slug + "/orders")
+        var created = mockMvc.perform(post("/api/v1/store/" + slug + "/orders")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -33,13 +33,17 @@ class SecurityHardeningIT extends CatalogSupport {
                                   "customerName":"Cliente",
                                   "customerPhone":"11970009999",
                                   "fulfillmentType":"PICKUP",
+                                  "customerCpf":"52998224725",
                                   "paymentMethod":"PIX"
                                 }
                                 """.formatted(productId)))
                 .andExpect(status().isCreated())
-                .andReturn(), "$.publicCode");
+                .andReturn();
+        String publicCode = AuthApi.read(created, "$.publicCode");
+        String viewToken = AuthApi.read(created, "$.viewToken");
 
-        mockMvc.perform(post("/api/v1/store/" + slug + "/orders/" + publicCode + "/payment/simulate"))
+        mockMvc.perform(post("/api/v1/store/" + slug + "/orders/" + publicCode + "/payment/simulate")
+                        .param("token", viewToken))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.code").value("SIMULATE_DISABLED"));
     }

@@ -44,6 +44,8 @@ async function boot() {
         }
 
         applyFulfillmentOptions(state.store.delivery);
+        applyPaymentOptions(state.store.payments);
+        syncCpfRequirement();
         await refreshQuote();
         if (state.quote?.acceptingOrders === false) {
             showError("Loja fechada. Não é possível finalizar o pedido agora.");
@@ -86,6 +88,45 @@ function applyFulfillmentOptions(delivery) {
     }
     if (pickupRadio?.disabled && deliveryRadio && !deliveryRadio.disabled) {
         deliveryRadio.checked = true;
+    }
+}
+
+function applyPaymentOptions(payments) {
+    const options = payments || { pixEnabled: true, cashEnabled: true, cardEnabled: true, onDeliveryEnabled: true };
+    const map = {
+        PIX: options.pixEnabled !== false,
+        CASH: options.cashEnabled !== false,
+        CARD: options.cardEnabled !== false,
+        ON_DELIVERY: options.onDeliveryEnabled !== false
+    };
+    let firstEnabled = null;
+    form.querySelectorAll('input[name="paymentMethod"]').forEach((input) => {
+        const enabled = map[input.value] !== false;
+        input.disabled = !enabled;
+        input.closest("label")?.classList.toggle("is-disabled", !enabled);
+        if (enabled && !firstEnabled) {
+            firstEnabled = input;
+        }
+        if (!enabled && input.checked) {
+            input.checked = false;
+        }
+    });
+    if (firstEnabled && !form.querySelector('input[name="paymentMethod"]:checked')) {
+        firstEnabled.checked = true;
+    }
+}
+
+function syncCpfRequirement() {
+    const method = form.paymentMethod?.value;
+    const cpfInput = form.customerCpf;
+    const hint = $("#cpf-required-hint");
+    if (!cpfInput) {
+        return;
+    }
+    const required = method === "PIX";
+    cpfInput.required = required;
+    if (hint) {
+        hint.textContent = required ? "(obrigatório no PIX)" : "(opcional)";
     }
 }
 
@@ -175,6 +216,10 @@ async function lookupCep(raw) {
 }
 
 on(form, "change", async (event) => {
+    if (event.target.name === "paymentMethod") {
+        syncCpfRequirement();
+        return;
+    }
     if (event.target.name === "fulfillmentType") {
         syncAddressVisibility();
         try {
@@ -216,6 +261,7 @@ on(form, "submit", async (event) => {
             customerName: form.customerName.value.trim(),
             customerPhone: form.customerPhone.value.trim(),
             customerEmail: form.customerEmail.value.trim() || null,
+            customerCpf: form.customerCpf?.value?.trim() || null,
             fulfillmentType: form.fulfillmentType.value,
             paymentMethod: form.paymentMethod.value,
             notes: form.notes.value.trim() || null,
@@ -237,7 +283,7 @@ on(form, "submit", async (event) => {
             headers: { "Idempotency-Key": idempotencyKey }
         });
         clearCart(state.store.id);
-        window.location.href = orderUrl(slug, order.publicCode);
+        window.location.href = orderUrl(slug, order.publicCode, order.viewToken);
     } catch (error) {
         showError(error instanceof ApiError ? error.message : "Não foi possível finalizar o pedido.");
         button.classList.remove("is-loading");

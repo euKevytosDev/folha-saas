@@ -139,6 +139,13 @@ public class CouponService {
         coupon.setUsedCount(coupon.getUsedCount() + 1);
     }
 
+    @Transactional
+    public void releaseUsed(Coupon coupon) {
+        if (coupon.getUsedCount() > 0) {
+            coupon.setUsedCount(coupon.getUsedCount() - 1);
+        }
+    }
+
     private BigDecimal calculateDiscount(Coupon coupon, BigDecimal subtotal) {
         BigDecimal discount;
         if (coupon.getDiscountType() == DiscountType.PERCENT) {

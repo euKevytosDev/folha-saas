@@ -297,6 +297,9 @@ public class FiscalService {
         if (order.getCustomerName() != null && !order.getCustomerName().isBlank()) {
             body.put("nome_destinatario", order.getCustomerName().trim());
         }
+        if (order.getCustomerCpf() != null && !order.getCustomerCpf().isBlank()) {
+            body.put("cpf_destinatario", order.getCustomerCpf());
+        }
 
         List<Map<String, Object>> items = new ArrayList<>();
         int index = 1;
@@ -307,7 +310,10 @@ public class FiscalService {
                     ? item.getProduct().getId().toString().replace("-", "").substring(0, 16)
                     : ("ITEM" + index));
             row.put("descricao", truncate(item.getProductName(), 120));
-            row.put("codigo_ncm", settings.getDefaultNcm());
+            String itemNcm = item.getProduct() != null && item.getProduct().getNcm() != null && !item.getProduct().getNcm().isBlank()
+                    ? item.getProduct().getNcm()
+                    : settings.getDefaultNcm();
+            row.put("codigo_ncm", itemNcm);
             row.put("cfop", settings.getDefaultCfop());
             BigDecimal qty = item.getQuantity().setScale(4, RoundingMode.HALF_UP);
             BigDecimal unit = item.getUnitPrice().setScale(4, RoundingMode.HALF_UP);

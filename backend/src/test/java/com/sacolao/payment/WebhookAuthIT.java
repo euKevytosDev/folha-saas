@@ -25,7 +25,7 @@ class WebhookAuthIT extends CatalogSupport {
         String categoryId = createCategory(token, "Frutas");
         String productId = createProduct(token, categoryId, "Limão", "2.00", "KG");
 
-        String publicCode = AuthApi.read(mockMvc.perform(post("/api/v1/store/" + slug + "/orders")
+        var created = mockMvc.perform(post("/api/v1/store/" + slug + "/orders")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -33,13 +33,17 @@ class WebhookAuthIT extends CatalogSupport {
                                   "customerName":"Cliente",
                                   "customerPhone":"11966667777",
                                   "fulfillmentType":"PICKUP",
+                                  "customerCpf":"52998224725",
                                   "paymentMethod":"PIX"
                                 }
                                 """.formatted(productId)))
                 .andExpect(status().isCreated())
-                .andReturn(), "$.publicCode");
+                .andReturn();
+        String publicCode = AuthApi.read(created, "$.publicCode");
+        String viewToken = AuthApi.read(created, "$.viewToken");
 
-        String externalId = AuthApi.read(mockMvc.perform(get("/api/v1/store/" + slug + "/orders/" + publicCode + "/payment"))
+        String externalId = AuthApi.read(mockMvc.perform(get("/api/v1/store/" + slug + "/orders/" + publicCode + "/payment")
+                        .param("token", viewToken))
                         .andExpect(status().isOk())
                         .andReturn(), "$.externalId");
 

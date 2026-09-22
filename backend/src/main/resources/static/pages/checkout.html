@@ -45,6 +45,10 @@
                         <label for="customer-email">E-mail (opcional)</label>
                         <input id="customer-email" name="customerEmail" type="email" maxlength="255" autocomplete="email">
                     </div>
+                    <div class="field" id="cpf-field">
+                        <label for="customer-cpf">CPF <span class="muted" id="cpf-required-hint">(obrigatório no PIX)</span></label>
+                        <input id="customer-cpf" name="customerCpf" type="text" maxlength="14" inputmode="numeric" autocomplete="off" placeholder="000.000.000-00">
+                    </div>
                 </section>
                 <section class="checkout-section">
                     <h2>Como receber</h2>
@@ -132,6 +136,6 @@
             </form>
         </div>
     </main>
-    <script type="module" src="/js/pages/checkout.js?v=5"></script>
+    <script type="module" src="/js/pages/checkout.js?v=6"></script>
 </body>
 </html>

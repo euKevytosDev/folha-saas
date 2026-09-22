@@ -3,7 +3,10 @@ package com.sacolao.order.service;
 import com.sacolao.common.exception.ConflictException;
 import com.sacolao.common.exception.ResourceNotFoundException;
 import com.sacolao.common.exception.UnprocessableException;
+import com.sacolao.common.util.CpfValidator;
 import com.sacolao.common.util.Money;
+import com.sacolao.coupon.entity.Coupon;
+import com.sacolao.coupon.repository.CouponRepository;
 import com.sacolao.coupon.service.CouponService;
 import com.sacolao.customer.entity.Customer;
 import com.sacolao.customer.service.CustomerService;
@@ -20,12 +23,15 @@ import com.sacolao.order.entity.FulfillmentType;
 import com.sacolao.order.entity.Order;
 import com.sacolao.order.entity.OrderItem;
 import com.sacolao.order.entity.OrderStatus;
+import com.sacolao.order.entity.PaymentMethod;
 import com.sacolao.order.mapper.OrderMapper;
 import com.sacolao.order.repository.OrderRepository;
 import com.sacolao.payment.dto.PaymentResponse;
+import com.sacolao.payment.entity.EstablishmentPaymentSettings;
 import com.sacolao.payment.entity.IdempotencyKey;
 import com.sacolao.payment.entity.Payment;
 import com.sacolao.payment.mapper.PaymentMapper;
+import com.sacolao.payment.repository.EstablishmentPaymentSettingsRepository;
 import com.sacolao.payment.repository.PaymentRepository;
 import com.sacolao.payment.service.IdempotencyService;
 import com.sacolao.payment.service.PaymentService;
@@ -41,6 +47,7 @@ import tools.jackson.databind.json.JsonMapper;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.security.SecureRandom;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -64,6 +71,8 @@ public class OrderService {
     private final CouponService couponService;
     private final StockService stockService;
     private final StoreAvailabilityService availabilityService;
+    private final EstablishmentPaymentSettingsRepository paymentSettingsRepository;
+    private final CouponRepository couponRepository;
     private final JsonMapper jsonMapper;
 
     public OrderService(
@@ -78,6 +87,8 @@ public class OrderService {
             CouponService couponService,
             StockService stockService,
             StoreAvailabilityService availabilityService,
+            EstablishmentPaymentSettingsRepository paymentSettingsRepository,
+            CouponRepository couponRepository,
             JsonMapper jsonMapper
     ) {
         this.orderRepository = orderRepository;
@@ -91,6 +102,8 @@ public class OrderService {
         this.couponService = couponService;
         this.stockService = stockService;
         this.availabilityService = availabilityService;
+        this.paymentSettingsRepository = paymentSettingsRepository;
+        this.couponRepository = couponRepository;
         this.jsonMapper = jsonMapper;
     }
 
@@ -103,6 +116,8 @@ public class OrderService {
         EstablishmentDeliverySettings deliverySettings = deliveryService.requireSettings(store.getId());
         deliveryService.assertFulfillmentAllowed(deliverySettings, request.fulfillmentType());
         validateFulfillment(request);
+        validatePaymentMethod(store.getId(), request.paymentMethod());
+        validateCustomerCpf(request);
         Map<UUID, BigDecimal> quantities = mergeQuantities(request.items());
         if (quantities.isEmpty()) {
             throw new UnprocessableException("EMPTY_CART", "Carrinho vazio");
@@ -139,6 +154,8 @@ public class OrderService {
         order.setCustomerName(request.customerName().trim());
         order.setCustomerPhone(CustomerService.normalizePhone(request.customerPhone()));
         order.setCustomerEmail(blankToNull(request.customerEmail()));
+        order.setCustomerCpf(normalizeCpf(request.customerCpf()));
+        order.setViewToken(nextViewToken());
         order.setNotes(blankToNull(request.notes()));
         applyAddress(order, request);
 
@@ -204,10 +221,12 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public OrderResponse getPublic(String slug, String publicCode) {
+    public OrderResponse getPublic(String slug, String publicCode, String viewToken) {
         Establishment store = requireActiveStore(slug);
-        return toResponse(orderRepository.findDetailedByPublicCodeAndEstablishmentId(normalizeCode(publicCode), store.getId())
-                .orElseThrow(this::notFound));
+        Order order = orderRepository.findDetailedByPublicCodeAndEstablishmentId(normalizeCode(publicCode), store.getId())
+                .orElseThrow(this::notFound);
+        assertViewToken(order, viewToken);
+        return toResponse(order);
     }
 
     @Transactional(readOnly = true)
@@ -232,7 +251,14 @@ public class OrderService {
                     "Não é possível mudar de " + order.getStatus() + " para " + next
             );
         }
+        OrderStatus previous = order.getStatus();
         order.setStatus(next);
+        if (next == OrderStatus.CANCELLED && previous != OrderStatus.CANCELLED) {
+            stockService.restoreForCancelledOrder(order);
+            if (order.getCouponId() != null) {
+                couponRepository.findById(order.getCouponId()).ifPresent(couponService::releaseUsed);
+            }
+        }
         return toResponse(order);
     }
 
@@ -322,6 +348,49 @@ public class OrderService {
                 && quantity.compareTo(product.getStockQuantity()) > 0) {
             throw new UnprocessableException("OUT_OF_STOCK", "Estoque insuficiente para " + product.getName());
         }
+    }
+
+    private void validatePaymentMethod(UUID establishmentId, PaymentMethod method) {
+        EstablishmentPaymentSettings settings = paymentSettingsRepository.findById(establishmentId).orElse(null);
+        if (method == PaymentMethod.PIX) {
+            if (settings != null && !settings.isPixEnabled()) {
+                throw new UnprocessableException("PIX_DISABLED", "PIX não está habilitado nesta loja");
+            }
+        }
+    }
+
+    private void validateCustomerCpf(CheckoutRequest request) {
+        String digits = CpfValidator.onlyDigits(request.customerCpf());
+        if (request.paymentMethod() == PaymentMethod.PIX) {
+            if (digits.isBlank()) {
+                throw new UnprocessableException("CPF_REQUIRED", "Informe um CPF válido para pagar com PIX");
+            }
+            if (!CpfValidator.isValid(digits)) {
+                throw new UnprocessableException("INVALID_CPF", "CPF inválido");
+            }
+            return;
+        }
+        if (!digits.isBlank() && !CpfValidator.isValid(digits)) {
+            throw new UnprocessableException("INVALID_CPF", "CPF inválido");
+        }
+    }
+
+    private void assertViewToken(Order order, String viewToken) {
+        if (viewToken == null || viewToken.isBlank() || order.getViewToken() == null
+                || !order.getViewToken().equals(viewToken.trim())) {
+            throw notFound();
+        }
+    }
+
+    private String nextViewToken() {
+        byte[] bytes = new byte[18];
+        RANDOM.nextBytes(bytes);
+        return HexFormat.of().formatHex(bytes);
+    }
+
+    private static String normalizeCpf(String value) {
+        String digits = CpfValidator.onlyDigits(value);
+        return digits.isBlank() ? null : digits;
     }
 
     private String nextPublicCode() {
