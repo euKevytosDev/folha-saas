@@ -1,7 +1,7 @@
 import { api, ApiError } from "../api/client.js";
 import { currentStoreSlug, checkoutUrl } from "../utils/nav.js";
 import { $, on } from "../utils/dom.js";
-import { formatBRL, formatQuantity, unitStep } from "../utils/format.js";
+import { formatBRL, formatQuantity, quantityHint, unitStep } from "../utils/format.js";
 import { createThumb, optimizedImageUrl } from "../utils/media.js";
 import { addToCart, cartCount, clearCart, loadCart, setCartQuantity } from "../store/cart.js";
 
@@ -206,7 +206,9 @@ function body(product) {
     title.textContent = product.name;
     const unit = document.createElement("p");
     unit.className = "muted";
-    unit.textContent = `Por ${product.unit.toLowerCase()}`;
+    unit.textContent = product.unit === "KG"
+        ? "Preço por kg · escolha em gramas ou quilos"
+        : `Por ${product.unit.toLowerCase()}`;
     const price = document.createElement("div");
     price.className = "product-price";
     const current = document.createElement("span");
@@ -224,6 +226,10 @@ function body(product) {
 function addControl(product) {
     const actions = document.createElement("div");
     actions.className = "product-actions";
+
+    const qtyBlock = document.createElement("div");
+    qtyBlock.className = "qty-block";
+
     const qty = document.createElement("div");
     qty.className = "qty-control";
     const minus = document.createElement("button");
@@ -234,16 +240,36 @@ function addControl(product) {
     input.min = product.minimumQuantity;
     input.step = unitStep(product.unit);
     input.value = product.minimumQuantity;
+    input.setAttribute("aria-label", "Quantidade");
     const plus = document.createElement("button");
     plus.type = "button";
     plus.textContent = "+";
+
+    const hint = document.createElement("p");
+    hint.className = "muted qty-hint";
+    const syncHint = () => {
+        const text = quantityHint(Number(input.value), product.unit);
+        hint.textContent = text;
+        hint.hidden = !text;
+    };
+    syncHint();
+
     minus.addEventListener("click", () => {
         input.value = nextQty(Number(input.value), -unitStep(product.unit), product);
+        syncHint();
     });
     plus.addEventListener("click", () => {
         input.value = nextQty(Number(input.value), unitStep(product.unit), product);
+        syncHint();
+    });
+    input.addEventListener("input", syncHint);
+    input.addEventListener("change", () => {
+        input.value = nextQty(Number(input.value), 0, product);
+        syncHint();
     });
     qty.append(minus, input, plus);
+    qtyBlock.append(qty, hint);
+
     const add = document.createElement("button");
     add.className = "btn btn-primary";
     add.type = "button";
@@ -252,7 +278,7 @@ function addControl(product) {
         addToCart(state.store.id, product.id, Number(input.value));
         refreshLocalCart();
     });
-    actions.append(qty, add);
+    actions.append(qtyBlock, add);
     return actions;
 }
 

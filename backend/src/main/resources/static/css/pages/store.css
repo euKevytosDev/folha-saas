@@ -398,8 +398,24 @@
 
 .product-actions {
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.qty-block {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+}
+
+.qty-hint {
+    margin: 0;
+    font-size: 0.8rem;
+    line-height: 1.2;
+    font-weight: 600;
+    color: var(--color-text, #1a1a1a);
 }
 
 .qty-control {
