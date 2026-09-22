@@ -173,11 +173,18 @@ public class AuthService {
                     resendEmailClient.sendPasswordReset(user.getEmail(), resetUrl);
                 } catch (Exception ex) {
                     log.error("Falha ao enviar e-mail de recuperação userId={}", user.getId(), ex);
+                    // onboarding@resend.dev só entrega no e-mail da conta Resend; loga o link p/ destravar teste
+                    if (resendEmailClient.isTestSender() || environment.matchesProfiles("dev", "test")) {
+                        log.warn("Link de recuperação (fallback após falha Resend): {}", resetUrl);
+                    }
                 }
             } else if (environment.matchesProfiles("dev", "test")) {
                 log.info("Link de recuperação (Resend off): {}", resetUrl);
             } else {
                 log.warn("RESEND_API_KEY ausente — e-mail de recuperação não enviado userId={}", user.getId());
+                if (resendEmailClient.isTestSender()) {
+                    log.warn("Link de recuperação (fallback Resend off): {}", resetUrl);
+                }
             }
         });
         return new MessageResponse(GENERIC_RESET);

@@ -41,6 +41,15 @@ public class ResendEmailClient {
                 && !resend.from().isBlank();
     }
 
+    /** true quando o remetente é o domínio de teste da Resend (só entrega na conta Resend). */
+    public boolean isTestSender() {
+        AppProperties.Resend resend = properties.resend();
+        if (resend == null || resend.from() == null) {
+            return false;
+        }
+        return resend.from().toLowerCase().contains("@resend.dev");
+    }
+
     public void send(String to, String subject, String html, String text) {
         if (!isConfigured()) {
             throw new IllegalStateException("Resend não configurado");

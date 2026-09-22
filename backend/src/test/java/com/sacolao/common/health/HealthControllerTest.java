@@ -19,6 +19,9 @@ class HealthControllerTest extends IntegrationTest {
         mockMvc.perform(get("/api/v1/health"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("UP"))
-                .andExpect(jsonPath("$.application").value("folha"));
+                .andExpect(jsonPath("$.application").value("folha"))
+                .andExpect(jsonPath("$.emailConfigured").exists())
+                .andExpect(jsonPath("$.emailTestMode").exists())
+                .andExpect(jsonPath("$.publicFrontendConfigured").exists());
     }
 }
