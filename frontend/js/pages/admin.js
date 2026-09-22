@@ -50,6 +50,8 @@ wireAdminNav();
 
 const mediaState = { enabled: false, uploading: false };
 let catalogCategories = [];
+/** @type {string | null} */
+let editingProductId = null;
 const formCarousels = new Map();
 const DAY_LABELS = {
     mon: "Segunda",
@@ -352,34 +354,50 @@ function wireCatalogForms() {
         try {
             const stockRaw = form.stockQuantity.value.trim();
             const hasStock = stockRaw !== "";
-            await api("/products", {
-                method: "POST",
-                body: {
-                    name: control(form, "name")?.value,
-                    categoryId: form.categoryId.value,
-                    price: Number(form.price.value),
-                    unit: form.unit.value,
-                    imageUrl: form.imageUrl.value || null,
-                    featured: form.featured.checked,
-                    available: true,
-                    stockControlled: hasStock,
-                    stockQuantity: hasStock ? Number(stockRaw) : null,
-                    minimumQuantity: form.unit.value === "KG" ? 0.2 : 1,
-                    ncm: form.ncm?.value?.trim() || null
-                }
-            });
+            const body = {
+                name: control(form, "name")?.value,
+                categoryId: form.categoryId.value,
+                price: Number(form.price.value),
+                unit: form.unit.value,
+                imageUrl: form.imageUrl.value || null,
+                featured: form.featured.checked,
+                stockControlled: hasStock,
+                stockQuantity: hasStock ? Number(stockRaw) : null,
+                minimumQuantity: form.unit.value === "KG" ? 0.2 : 1,
+                ncm: form.ncm?.value?.trim() || null
+            };
+            if (editingProductId) {
+                await api(`/products/${editingProductId}`, {
+                    method: "PUT",
+                    body
+                });
+                showFormSuccess(alertBox, "Produto atualizado.");
+            } else {
+                await api("/products", {
+                    method: "POST",
+                    body: {
+                        ...body,
+                        available: true
+                    }
+                });
+                showFormSuccess(alertBox, "Produto salvo no catálogo.");
+            }
             await refreshCatalog();
             clearProductForm(form);
-            showFormSuccess(alertBox, "Produto salvo no catálogo.");
             showAdminPanel("produtos");
         } catch (error) {
             showFormAlert(alertBox, error, "Não foi possível salvar o produto.");
         } finally {
             if (submitBtn) {
                 submitBtn.disabled = false;
-                submitBtn.textContent = "Salvar produto";
+                submitBtn.textContent = editingProductId ? "Salvar alterações" : "Salvar produto";
             }
         }
+    });
+
+    $("#product-cancel-edit")?.addEventListener("click", () => {
+        clearProductForm($("#product-form"));
+        hideAlert($("#product-alert"));
     });
 }
 
@@ -605,6 +623,19 @@ function clearProductForm(form) {
     if (!form) {
         return;
     }
+    editingProductId = null;
+    const title = $("#product-form-title");
+    if (title) {
+        title.textContent = "Novo produto";
+    }
+    const cancelBtn = $("#product-cancel-edit");
+    if (cancelBtn) {
+        cancelBtn.hidden = true;
+    }
+    const submitBtn = form.querySelector("[data-carousel-submit]");
+    if (submitBtn) {
+        submitBtn.textContent = "Salvar produto";
+    }
     const nameInput = control(form, "name");
     if (nameInput) {
         nameInput.value = "";
@@ -624,6 +655,56 @@ function clearProductForm(form) {
     clearProductImagePreview();
     renderCategoryOptions(catalogCategories);
     resetFormCarousel(form);
+}
+
+function beginEditProduct(item) {
+    const form = $("#product-form");
+    if (!form || !item) {
+        return;
+    }
+    editingProductId = item.id;
+    const title = $("#product-form-title");
+    if (title) {
+        title.textContent = `Editar · ${item.name}`;
+    }
+    const cancelBtn = $("#product-cancel-edit");
+    if (cancelBtn) {
+        cancelBtn.hidden = false;
+    }
+    const submitBtn = form.querySelector("[data-carousel-submit]");
+    if (submitBtn) {
+        submitBtn.textContent = "Salvar alterações";
+    }
+    renderCategoryOptions(catalogCategories);
+    const nameInput = control(form, "name");
+    if (nameInput) {
+        nameInput.value = item.name || "";
+    }
+    form.categoryId.value = item.categoryId || "";
+    form.price.value = item.price != null ? String(item.price) : "";
+    form.unit.value = item.unit || "UN";
+    form.imageUrl.value = item.imageUrl || "";
+    form.stockQuantity.value = item.stockControlled && item.stockQuantity != null
+        ? String(item.stockQuantity)
+        : "";
+    if (form.ncm) {
+        form.ncm.value = item.ncm || "";
+    }
+    form.featured.checked = !!item.featured;
+    const fileInput = $("#product-image-file");
+    if (fileInput) {
+        fileInput.value = "";
+    }
+    if (item.imageUrl) {
+        setProductImagePreview(item.imageUrl);
+    } else {
+        clearProductImagePreview();
+    }
+    resetFormCarousel(form);
+    formCarousels.get(form)?.go(0);
+    hideAlert($("#product-alert"));
+    showAdminPanel("produtos");
+    form.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function renderCategories(categories) {
@@ -686,13 +767,20 @@ function renderProducts(products) {
         const actions = document.createElement("div");
         actions.style.display = "flex";
         actions.style.gap = "0.4rem";
+        actions.style.flexWrap = "wrap";
+        const editBtn = document.createElement("button");
+        editBtn.type = "button";
+        editBtn.className = "btn btn-secondary";
+        editBtn.textContent = "Editar";
+        editBtn.addEventListener("click", () => beginEditProduct(item));
         actions.append(
+            editBtn,
             flagButton(item.available ? "Pausar" : "Publicar", `/products/${item.id}/availability`, !item.available),
             flagButton(item.featured ? "Tirar destaque" : "Destacar", `/products/${item.id}/featured`, !item.featured)
         );
         const stockBtn = document.createElement("button");
         stockBtn.type = "button";
-        stockBtn.className = "btn btn-ghost";
+        stockBtn.className = "btn btn-secondary";
         stockBtn.textContent = "Estoque";
         stockBtn.addEventListener("click", async () => {
             const raw = window.prompt(

@@ -117,7 +117,7 @@
                             </form>
                         </article>
                         <article class="admin-block">
-                            <h3 class="admin-block-title">Novo produto</h3>
+                            <h3 class="admin-block-title" id="product-form-title">Novo produto</h3>
                             <div class="alert" id="product-alert" hidden></div>
                             <form id="product-form" class="auth-form form-carousel" data-carousel onsubmit="return false;" novalidate>
                                 <div class="form-slides">
@@ -190,6 +190,7 @@
                                     <button class="btn btn-ghost" type="button" data-carousel-prev>Voltar</button>
                                     <div class="form-dots" data-carousel-dots></div>
                                     <button class="btn btn-secondary" type="button" data-carousel-next>Continuar</button>
+                                    <button class="btn btn-ghost" type="button" id="product-cancel-edit" hidden>Cancelar edição</button>
                                     <button class="btn btn-primary" type="submit" data-carousel-submit hidden>Salvar produto</button>
                                 </div>
                             </form>
@@ -452,6 +453,6 @@
             </div>
         </div>
     </main>
-    <script type="module" src="/js/pages/admin.js?v=038d4e37cb"></script>
+    <script type="module" src="/js/pages/admin.js?v=1f1937cfe2"></script>
 </body>
 </html>
