@@ -21,7 +21,7 @@ public class ResendEmailClient {
 
     private static final Logger log = LoggerFactory.getLogger(ResendEmailClient.class);
     private static final HttpClient HTTP = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(15))
+            .connectTimeout(Duration.ofSeconds(8))
             .build();
 
     private final AppProperties properties;
@@ -68,7 +68,7 @@ public class ResendEmailClient {
                 body.put("text", text);
             }
             HttpRequest request = HttpRequest.newBuilder(URI.create("https://api.resend.com/emails"))
-                    .timeout(Duration.ofSeconds(30))
+                    .timeout(Duration.ofSeconds(12))
                     .header("Authorization", "Bearer " + resend.apiKey().trim())
                     .header("Content-Type", "application/json")
                     .header("User-Agent", "folha-saas/1.0")
@@ -76,8 +76,11 @@ public class ResendEmailClient {
                     .build();
             HttpResponse<String> response = HTTP.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
             if (response.statusCode() >= 400) {
-                log.warn("Resend HTTP {} body={}", response.statusCode(), truncate(response.body()));
-                throw new IllegalStateException("Falha ao enviar e-mail");
+                log.warn("Resend HTTP {} from={} body={}",
+                        response.statusCode(),
+                        maskFrom(resend.from()),
+                        truncate(response.body()));
+                throw new IllegalStateException("Falha ao enviar e-mail (HTTP " + response.statusCode() + ")");
             }
             log.info("E-mail enviado via Resend para {}", mask(to));
         } catch (IllegalStateException ex) {
@@ -109,6 +112,19 @@ public class ResendEmailClient {
             return "***";
         }
         return email.charAt(0) + "***" + email.substring(at);
+    }
+
+    private static String maskFrom(String from) {
+        if (from == null || from.isBlank()) {
+            return "(vazio)";
+        }
+        int at = from.indexOf('@');
+        if (at < 0) {
+            return "***";
+        }
+        int end = from.indexOf('>', at);
+        String domain = end > at ? from.substring(at + 1, end) : from.substring(at + 1).trim();
+        return "***@" + domain;
     }
 
     private static String truncate(String body) {

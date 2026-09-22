@@ -37,8 +37,11 @@ import org.springframework.core.env.Environment;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Instant;
+import java.util.UUID;
 
 @Service
 public class AuthService {
@@ -167,27 +170,44 @@ public class AuthService {
             reset.setExpiresAt(now.plusMillis(properties.auth().passwordResetExpirationMs()));
             passwordResetTokenRepository.save(reset);
             log.info("Recuperação de senha solicitada userId={}", user.getId());
-            String resetUrl = buildResetUrl(rawToken);
-            if (resendEmailClient.isConfigured()) {
-                try {
-                    resendEmailClient.sendPasswordReset(user.getEmail(), resetUrl);
-                } catch (Exception ex) {
-                    log.error("Falha ao enviar e-mail de recuperação userId={}", user.getId(), ex);
-                    // onboarding@resend.dev só entrega no e-mail da conta Resend; loga o link p/ destravar teste
-                    if (resendEmailClient.isTestSender() || environment.matchesProfiles("dev", "test")) {
-                        log.warn("Link de recuperação (fallback após falha Resend): {}", resetUrl);
-                    }
-                }
-            } else if (environment.matchesProfiles("dev", "test")) {
-                log.info("Link de recuperação (Resend off): {}", resetUrl);
-            } else {
-                log.warn("RESEND_API_KEY ausente — e-mail de recuperação não enviado userId={}", user.getId());
-                if (resendEmailClient.isTestSender()) {
-                    log.warn("Link de recuperação (fallback Resend off): {}", resetUrl);
-                }
-            }
+            PendingPasswordReset pending = new PendingPasswordReset(
+                    user.getId(), user.getEmail(), buildResetUrl(rawToken));
+            schedulePasswordResetEmail(pending);
         });
         return new MessageResponse(GENERIC_RESET);
+    }
+
+    private void schedulePasswordResetEmail(PendingPasswordReset pending) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(
+                    new TransactionSynchronization() {
+                        @Override
+                        public void afterCommit() {
+                            dispatchPasswordResetEmail(pending);
+                        }
+                    });
+        } else {
+            dispatchPasswordResetEmail(pending);
+        }
+    }
+
+    private void dispatchPasswordResetEmail(PendingPasswordReset pending) {
+        if (resendEmailClient.isConfigured()) {
+            try {
+                resendEmailClient.sendPasswordReset(pending.email(), pending.resetUrl());
+            } catch (Exception ex) {
+                log.error("Falha ao enviar e-mail de recuperação userId={}", pending.userId(), ex);
+                log.warn("Link de recuperação (fallback após falha Resend): {}", pending.resetUrl());
+            }
+        } else if (environment.matchesProfiles("dev", "test")) {
+            log.info("Link de recuperação (Resend off): {}", pending.resetUrl());
+        } else {
+            log.warn("RESEND_API_KEY ausente — e-mail de recuperação não enviado userId={}", pending.userId());
+            log.warn("Link de recuperação (fallback Resend off): {}", pending.resetUrl());
+        }
+    }
+
+    private record PendingPasswordReset(UUID userId, String email, String resetUrl) {
     }
 
     private String buildResetUrl(String rawToken) {
