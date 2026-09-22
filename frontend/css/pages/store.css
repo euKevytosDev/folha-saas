@@ -442,6 +442,15 @@
     width: 3.2rem;
     text-align: center;
     padding: 0;
+    /* +/− já controlam a quantidade; esconde spinner nativo do browser */
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+.qty-control input::-webkit-outer-spin-button,
+.qty-control input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
 }
 
 .cart-bar {
