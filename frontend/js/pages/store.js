@@ -440,7 +440,16 @@ function cartLine(line) {
 }
 
 function changeLine(line, delta) {
-    setCartQuantity(state.store.id, line.productId, Number(line.quantity) + delta);
+    const product = state.productMap.get(line.productId);
+    const min = Number(
+        product?.minimumQuantity
+        ?? line.minimumQuantity
+        ?? unitStep(line.unit)
+    );
+    const next = Math.round((Number(line.quantity) + Number(delta)) * 1000) / 1000;
+    // abaixo do mínimo não vende; para tirar o item use Excluir
+    const clamped = Math.max(min, next);
+    setCartQuantity(state.store.id, line.productId, clamped);
     refreshLocalCart();
 }
 
