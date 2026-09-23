@@ -496,3 +496,4 @@ on($("#clear-cart"), "click", () => {
     clearCart(state.store.id);
     refreshLocalCart();
 });
+
