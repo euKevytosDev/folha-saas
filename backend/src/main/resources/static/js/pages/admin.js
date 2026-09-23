@@ -1198,6 +1198,13 @@ function renderOrders(orders) {
         const actions = document.createElement("div");
         actions.className = "order-admin-actions";
 
+        const printBtn = document.createElement("button");
+        printBtn.type = "button";
+        printBtn.className = "btn btn-secondary";
+        printBtn.textContent = "Imprimir notinha";
+        printBtn.addEventListener("click", () => printNonFiscalReceipt(order));
+        actions.append(printBtn);
+
         const waGeneral = whatsappLink(
             order.customerPhone,
             `Olá ${order.customerName}! Aqui é da ${storeName}. Sobre o pedido ${order.publicCode}:`
@@ -1303,6 +1310,203 @@ function formatOrderAddress(order) {
         order.addressZipCode
     ].filter(Boolean);
     return parts.length ? `Entrega: ${parts.join(" · ")}` : null;
+}
+
+function orderDeliveryAddress(order) {
+    return [
+        [order.addressStreet, order.addressNumber].filter(Boolean).join(", "),
+        order.addressComplement,
+        order.addressNeighborhood,
+        [order.addressCity, order.addressState].filter(Boolean).join(" - "),
+        order.addressZipCode
+    ].filter(Boolean).join(" · ");
+}
+
+function escapeHtml(value) {
+    return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+}
+
+function formatOrderDateTime(value) {
+    if (!value) {
+        return "—";
+    }
+    try {
+        return new Date(value).toLocaleString("pt-BR", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit"
+        });
+    } catch {
+        return String(value);
+    }
+}
+
+function paymentMethodLabel(method) {
+    switch (String(method || "").toUpperCase()) {
+        case "PIX":
+            return "PIX";
+        case "CASH":
+            return "Dinheiro";
+        case "ON_DELIVERY":
+            return "Na entrega";
+        case "CARD":
+            return "Cartão";
+        default:
+            return method || "—";
+    }
+}
+
+/** Cupom / notinha sem valor fiscal — separação e entrega (NFC-e no caixa/balança). */
+function printNonFiscalReceipt(order) {
+    const store = establishment || {};
+    const addressLine = orderDeliveryAddress(order);
+    const isDelivery = String(order.fulfillmentType || "").toUpperCase() === "DELIVERY";
+    const itemsHtml = (order.items || []).map((item) => {
+        const qty = formatQuantity(item.quantity, item.productUnit);
+        return `<tr>
+            <td class="qty">${escapeHtml(qty)}</td>
+            <td class="name">${escapeHtml(item.productName)}</td>
+            <td class="money">${escapeHtml(formatBRL(item.unitPrice))}</td>
+            <td class="money">${escapeHtml(formatBRL(item.subtotal))}</td>
+        </tr>`;
+    }).join("");
+
+    const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Notinha ${escapeHtml(order.publicCode)}</title>
+<style>
+  @page { margin: 6mm; size: 80mm auto; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Courier New", Courier, monospace;
+    font-size: 12px;
+    color: #111;
+    background: #fff;
+  }
+  .ticket {
+    width: 72mm;
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 4mm 2mm 8mm;
+  }
+  .center { text-align: center; }
+  .muted { color: #444; }
+  h1 {
+    margin: 0 0 2px;
+    font-size: 14px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .banner {
+    margin: 8px 0;
+    padding: 4px 0;
+    border-top: 1px dashed #111;
+    border-bottom: 1px dashed #111;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .line { margin: 2px 0; }
+  .sep { border: 0; border-top: 1px dashed #111; margin: 8px 0; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 2px 0; vertical-align: top; }
+  th { font-size: 10px; text-align: left; border-bottom: 1px solid #111; }
+  td.qty { width: 22%; }
+  td.name { width: 40%; word-break: break-word; }
+  td.money { width: 19%; text-align: right; white-space: nowrap; }
+  .totals .label { text-align: left; }
+  .totals .value { text-align: right; font-weight: 700; }
+  .totals .grand .value { font-size: 14px; }
+  .foot {
+    margin-top: 10px;
+    font-size: 10px;
+    text-align: center;
+  }
+  .blank { margin-top: 10px; font-size: 11px; }
+  .no-print { margin: 12px auto; text-align: center; }
+  @media print {
+    .no-print { display: none !important; }
+  }
+</style>
+</head>
+<body>
+  <div class="no-print">
+    <button onclick="window.print()" style="padding:8px 14px;font-size:14px;cursor:pointer;">Imprimir</button>
+  </div>
+  <div class="ticket">
+    <div class="center">
+      <h1>${escapeHtml(store.name || "Loja")}</h1>
+      ${store.phone ? `<div class="line muted">${escapeHtml(formatPhoneDisplay(store.phone))}</div>` : ""}
+      ${store.address ? `<div class="line muted">${escapeHtml(store.address)}</div>` : ""}
+    </div>
+    <div class="banner center">Documento não fiscal</div>
+    <div class="line"><strong>Pedido:</strong> ${escapeHtml(order.publicCode)}</div>
+    <div class="line"><strong>Data:</strong> ${escapeHtml(formatOrderDateTime(order.createdAt))}</div>
+    <div class="line"><strong>Status:</strong> ${escapeHtml(statusLabel(order.status))}</div>
+    <div class="line"><strong>Tipo:</strong> ${escapeHtml(fulfillmentLabel(order.fulfillmentType))}</div>
+    <hr class="sep">
+    <div class="line"><strong>Cliente:</strong> ${escapeHtml(order.customerName)}</div>
+    <div class="line"><strong>Telefone:</strong> ${escapeHtml(formatPhoneDisplay(order.customerPhone))}</div>
+    ${isDelivery && addressLine
+        ? `<div class="line"><strong>Endereço:</strong> ${escapeHtml(addressLine)}</div>`
+        : `<div class="line"><strong>Retirada</strong> na loja</div>`}
+    ${order.notes ? `<div class="line"><strong>Obs.:</strong> ${escapeHtml(order.notes)}</div>` : ""}
+    <hr class="sep">
+    <table>
+      <thead>
+        <tr>
+          <th>Qtd</th>
+          <th>Item</th>
+          <th style="text-align:right">Unit.</th>
+          <th style="text-align:right">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${itemsHtml || `<tr><td colspan="4">Sem itens</td></tr>`}
+      </tbody>
+    </table>
+    <hr class="sep">
+    <table class="totals">
+      <tr><td class="label">Subtotal</td><td class="value">${escapeHtml(formatBRL(order.subtotal))}</td></tr>
+      <tr><td class="label">Desconto</td><td class="value">${escapeHtml(formatBRL(order.discount || 0))}</td></tr>
+      <tr><td class="label">Entrega</td><td class="value">${escapeHtml(formatBRL(order.deliveryFee || 0))}</td></tr>
+      <tr class="grand"><td class="label">TOTAL</td><td class="value">${escapeHtml(formatBRL(order.total))}</td></tr>
+    </table>
+    <hr class="sep">
+    <div class="line"><strong>Pagamento:</strong> ${escapeHtml(paymentMethodLabel(order.paymentMethod || order.payment?.method))}
+      ${order.payment?.status ? ` (${escapeHtml(paymentStatusLabel(order.payment.status))})` : ""}</div>
+    <div class="blank">
+      <div>Peso real (balança): _______________</div>
+      <div>Conferido por: ___________________</div>
+    </div>
+    <div class="foot">
+      SEM VALOR FISCAL<br>
+      NFC-e / cupom fiscal emitidos no caixa após pesagem.
+    </div>
+  </div>
+  <script>
+    window.addEventListener("load", () => setTimeout(() => window.print(), 250));
+  </script>
+</body>
+</html>`;
+
+    const popup = window.open("", "_blank", "noopener,noreferrer,width=420,height=720");
+    if (!popup) {
+        window.alert("Permita pop-ups para imprimir a notinha.");
+        return;
+    }
+    popup.document.open();
+    popup.document.write(html);
+    popup.document.close();
 }
 
 async function loadPaymentSettings() {
