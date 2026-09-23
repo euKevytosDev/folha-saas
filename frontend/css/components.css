@@ -54,6 +54,16 @@
     color: var(--color-text);
 }
 
+.btn-danger {
+    background: var(--color-danger);
+    color: #fff;
+    border-color: var(--color-danger);
+}
+
+.btn-danger:hover {
+    filter: brightness(0.92);
+}
+
 .btn-block {
     width: 100%;
 }
