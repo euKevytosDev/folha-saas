@@ -70,13 +70,7 @@ class StoreOperationsIT extends CatalogSupport {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.minOrderAmount").value(50.00));
 
-        mockMvc.perform(put("/api/v1/establishments/me")
-                        .header("Authorization", AuthApi.bearer(token))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"storeOpenMode":"OPEN"}
-                                """))
-                .andExpect(status().isOk());
+        forceStoreOpen(token, AuthApi.establishmentId(registered));
 
         mockMvc.perform(post("/api/v1/store/" + slug + "/orders")
                         .contentType(MediaType.APPLICATION_JSON)
