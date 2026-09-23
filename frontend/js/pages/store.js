@@ -335,6 +335,7 @@ function refreshLocalCart() {
             quantity,
             unitPrice,
             subtotal: lineTotal,
+            minimumQuantity: Number(product.minimumQuantity) || unitStep(product.unit),
             issue: null
         });
     });
@@ -416,6 +417,12 @@ function cartLine(line) {
     plus.textContent = "+";
     minus.addEventListener("click", () => changeLine(line, -unitStep(line.unit)));
     plus.addEventListener("click", () => changeLine(line, unitStep(line.unit)));
+    const minQty = Number(line.minimumQuantity) || unitStep(line.unit);
+    if (Number(line.quantity) <= minQty + 1e-9) {
+        minus.disabled = true;
+        minus.setAttribute("aria-disabled", "true");
+        minus.title = "Quantidade mínima do produto";
+    }
     qty.append(minus, plus);
     const price = document.createElement("strong");
     price.textContent = formatBRL(line.subtotal);
