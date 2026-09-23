@@ -103,6 +103,7 @@ class StoreOperationsIT extends CatalogSupport {
                                   "paymentMethod":"CASH"
                                 }
                                 """.formatted(productId)))
-                .andExpect(status().isCreated());
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("MIN_ORDER"));
     }
 }

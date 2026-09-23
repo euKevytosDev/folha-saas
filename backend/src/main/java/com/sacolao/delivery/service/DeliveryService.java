@@ -105,15 +105,7 @@ public class DeliveryService {
         return fee;
     }
 
-    public void assertMinOrder(
-            EstablishmentDeliverySettings settings,
-            BigDecimal subtotal,
-            FulfillmentType fulfillmentType
-    ) {
-        // Pedido mínimo vale só para entrega (padrão sacolão / Multipedidos).
-        if (fulfillmentType != FulfillmentType.DELIVERY) {
-            return;
-        }
+    public void assertMinOrder(EstablishmentDeliverySettings settings, BigDecimal subtotal) {
         if (settings.getMinOrderAmount() == null) {
             return;
         }
@@ -121,7 +113,7 @@ public class DeliveryService {
         if (min.compareTo(BigDecimal.ZERO) > 0 && Money.of(subtotal).compareTo(min) < 0) {
             throw new UnprocessableException(
                     "MIN_ORDER",
-                    "Pedido mínimo de R$ " + min.toPlainString().replace('.', ',') + " para entrega"
+                    "Pedido mínimo de R$ " + min.toPlainString().replace('.', ',')
             );
         }
     }

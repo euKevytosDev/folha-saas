@@ -480,19 +480,14 @@ function syncCheckoutLink() {
     const open = state.store.acceptingOrders !== false;
     const minOrder = Number(state.store.delivery?.minOrderAmount || 0);
     const subtotal = Number(state.quote?.subtotal || 0);
-    const pickupOk = state.store.delivery?.pickupEnabled !== false;
-    const belowDeliveryMin = minOrder > 0 && subtotal + 1e-9 < minOrder;
-    // Só bloqueia na loja se estiver abaixo do mínimo E não houver retirada
-    const blockedByMin = belowDeliveryMin && !pickupOk;
+    const belowMin = minOrder > 0 && subtotal + 1e-9 < minOrder;
     let reason = "";
     if (!open) {
         reason = "Loja fechada — não é possível finalizar o pedido agora.";
-    } else if (belowDeliveryMin) {
-        reason = pickupOk
-            ? `Pedido mínimo de ${formatBRL(minOrder)} para entrega. Retirada liberada.`
-            : `Pedido mínimo de ${formatBRL(minOrder)} para entrega.`;
+    } else if (belowMin) {
+        reason = `Pedido mínimo de ${formatBRL(minOrder)}.`;
     }
-    const enabled = items.length > 0 && open && !blockedByMin;
+    const enabled = items.length > 0 && open && !belowMin;
     if (els.cartBlock) {
         els.cartBlock.hidden = !reason;
         els.cartBlock.textContent = reason;
@@ -501,7 +496,7 @@ function syncCheckoutLink() {
     link.setAttribute("aria-disabled", enabled ? "false" : "true");
     link.style.pointerEvents = enabled ? "" : "none";
     link.style.opacity = enabled ? "" : "0.6";
-    link.textContent = !open ? "Loja fechada" : blockedByMin ? "Abaixo do mínimo" : "Finalizar pedido";
+    link.textContent = !open ? "Loja fechada" : belowMin ? "Abaixo do mínimo" : "Finalizar pedido";
 }
 
 let searchTimer = 0;
