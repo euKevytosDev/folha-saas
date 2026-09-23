@@ -38,9 +38,17 @@ export function addToCart(storeId, productId, quantity) {
 }
 
 export function setCartQuantity(storeId, productId, quantity) {
-    const items = loadCart(storeId).filter((item) => item.productId !== productId);
-    if (quantity > 0) {
-        items.push({ productId, quantity: roundQty(quantity) });
+    const qty = roundQty(quantity);
+    const items = loadCart(storeId);
+    const index = items.findIndex((item) => item.productId === productId);
+    if (qty <= 0) {
+        if (index >= 0) {
+            items.splice(index, 1);
+        }
+    } else if (index >= 0) {
+        items[index] = { ...items[index], quantity: qty };
+    } else {
+        items.push({ productId, quantity: qty });
     }
     saveCart(storeId, items);
     return items;
