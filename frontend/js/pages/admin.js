@@ -426,22 +426,22 @@ function syncMinQtyField(form, options = {}) {
     const unit = String(form.unit?.value || "UN").toUpperCase();
     if (unit === "KG") {
         if (label) {
-            label.textContent = "Quantidade mínima (gramas)";
+            label.textContent = "Quantidade mínima de compra (gramas)";
         }
         if (hint) {
-            hint.textContent = "O cliente não consegue pedir abaixo disso. Ex.: 700 = mínimo 700 g no mamão.";
+            hint.textContent = "Só restringe se você quiser (ex.: mamão mín. 700 g). Use 100 se não houver limite especial. Na loja o seletor ainda começa em 500 g.";
         }
         input.min = "50";
         input.step = "50";
         if (options.resetValue || !input.value) {
-            input.value = "500";
+            input.value = "100";
         }
     } else {
         if (label) {
-            label.textContent = "Quantidade mínima";
+            label.textContent = "Quantidade mínima de compra";
         }
         if (hint) {
-            hint.textContent = "Quantidade mínima por item no pedido. Em geral 1 unidade.";
+            hint.textContent = "Mínimo por item no pedido. Em geral 1. Só aumente se quiser restringir.";
         }
         input.min = "1";
         input.step = "1";
@@ -474,7 +474,7 @@ function fillMinimumQuantityInput(form, item) {
     const unit = String(item?.unit || form.unit?.value || "UN").toUpperCase();
     const min = Number(item?.minimumQuantity);
     if (!Number.isFinite(min) || min <= 0) {
-        input.value = unit === "KG" ? "500" : "1";
+        input.value = unit === "KG" ? "100" : "1";
         return;
     }
     if (unit === "KG") {
@@ -871,10 +871,11 @@ function renderProducts(products) {
         const stockLabel = item.stockControlled
             ? ` · estoque ${item.stockQuantity ?? 0}`
             : " · venda livre";
+        const minKg = Number(item.minimumQuantity || 0);
         const minLabel = item.unit === "KG"
-            ? ` · mín. ${Math.round(Number(item.minimumQuantity || 0) * 1000)} g`
+            ? (minKg > 0.1 + 1e-9 ? ` · mín. compra ${Math.round(minKg * 1000)} g` : "")
             : Number(item.minimumQuantity) > 1
-                ? ` · mín. ${item.minimumQuantity}`
+                ? ` · mín. compra ${item.minimumQuantity}`
                 : "";
         meta.textContent = `${item.categoryName} · ${formatBRL(item.price)} / ${item.unit} · ${item.available ? "à venda" : "oculto"}${stockLabel}${minLabel}`;
         const body = document.createElement("div");

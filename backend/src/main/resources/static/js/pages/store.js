@@ -248,9 +248,11 @@ function addControl(product) {
     minus.textContent = "−";
     const input = document.createElement("input");
     input.type = "number";
-    input.min = product.minimumQuantity;
+    const minQty = Number(product.minimumQuantity) || unitStep(product.unit);
+    input.min = minQty;
     input.step = unitStep(product.unit);
-    input.value = product.minimumQuantity;
+    // 500 g é só o valor inicial na vitrine; o mínimo obrigatório vem do cadastro
+    input.value = startQuantity(product);
     input.setAttribute("aria-label", "Quantidade");
     const plus = document.createElement("button");
     plus.type = "button";
@@ -296,6 +298,16 @@ function addControl(product) {
 function nextQty(current, delta, product) {
     const min = Number(product.minimumQuantity || unitStep(product.unit));
     return Math.max(min, Math.round((current + delta) * 1000) / 1000);
+}
+
+/** Valor inicial do seletor (KG começa em 500 g se o mínimo permitir). */
+function startQuantity(product) {
+    const min = Number(product.minimumQuantity || unitStep(product.unit));
+    const unit = String(product.unit || "").toUpperCase();
+    if (unit === "KG") {
+        return Math.max(min, 0.5);
+    }
+    return min;
 }
 
 /** Monta totais no cliente a partir do catálogo já carregado + localStorage. */
