@@ -153,6 +153,11 @@
                                                 <option value="PCT">PCT</option>
                                             </select>
                                         </div>
+                                        <div class="field">
+                                            <label for="product-min-qty" id="product-min-qty-label">Quantidade mínima (gramas)</label>
+                                            <input id="product-min-qty" name="minimumQuantityInput" type="number" min="50" step="50" value="500" required>
+                                            <p class="muted" id="product-min-qty-hint">O cliente não consegue pedir abaixo disso. Ex.: 700 = mínimo 700 g no mamão.</p>
+                                        </div>
                                     </div>
                                     <div class="form-slide">
                                         <p class="form-step-label">3 de 4 · Foto</p>
@@ -453,6 +458,6 @@
             </div>
         </div>
     </main>
-    <script type="module" src="/js/pages/admin.js?v=616d87f4da"></script>
+    <script type="module" src="/js/pages/admin.js?v=114781b05e"></script>
 </body>
 </html>

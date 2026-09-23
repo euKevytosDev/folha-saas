@@ -347,6 +347,12 @@ function wireCatalogForms() {
         if (submitBtn?.disabled) {
             return;
         }
+        const minimumQuantity = readMinimumQuantity(form);
+        if (minimumQuantity == null) {
+            showFormAlert(alertBox, null, "Informe a quantidade mínima válida.");
+            formCarousels.get(form)?.go(1);
+            return;
+        }
         if (submitBtn) {
             submitBtn.disabled = true;
             submitBtn.textContent = "Salvando…";
@@ -363,7 +369,7 @@ function wireCatalogForms() {
                 featured: form.featured.checked,
                 stockControlled: hasStock,
                 stockQuantity: hasStock ? Number(stockRaw) : null,
-                minimumQuantity: form.unit.value === "KG" ? 0.5 : 1,
+                minimumQuantity,
                 ncm: form.ncm?.value?.trim() || null
             };
             if (editingProductId) {
@@ -399,6 +405,83 @@ function wireCatalogForms() {
         clearProductForm($("#product-form"));
         hideAlert($("#product-alert"));
     });
+
+    const productForm = $("#product-form");
+    productForm?.unit?.addEventListener("change", () => syncMinQtyField(productForm, { resetValue: true }));
+    if (productForm) {
+        syncMinQtyField(productForm);
+    }
+}
+
+function syncMinQtyField(form, options = {}) {
+    if (!form) {
+        return;
+    }
+    const input = control(form, "minimumQuantityInput") || $("#product-min-qty");
+    const label = $("#product-min-qty-label");
+    const hint = $("#product-min-qty-hint");
+    if (!input) {
+        return;
+    }
+    const unit = String(form.unit?.value || "UN").toUpperCase();
+    if (unit === "KG") {
+        if (label) {
+            label.textContent = "Quantidade mínima (gramas)";
+        }
+        if (hint) {
+            hint.textContent = "O cliente não consegue pedir abaixo disso. Ex.: 700 = mínimo 700 g no mamão.";
+        }
+        input.min = "50";
+        input.step = "50";
+        if (options.resetValue || !input.value) {
+            input.value = "500";
+        }
+    } else {
+        if (label) {
+            label.textContent = "Quantidade mínima";
+        }
+        if (hint) {
+            hint.textContent = "Quantidade mínima por item no pedido. Em geral 1 unidade.";
+        }
+        input.min = "1";
+        input.step = "1";
+        if (options.resetValue || !input.value || Number(input.value) >= 50) {
+            input.value = "1";
+        }
+    }
+}
+
+/** Converte o campo do admin para o valor da API (KG em kg; demais na própria unidade). */
+function readMinimumQuantity(form) {
+    const input = control(form, "minimumQuantityInput") || $("#product-min-qty");
+    const raw = Number(input?.value);
+    if (!Number.isFinite(raw) || raw <= 0) {
+        return null;
+    }
+    const unit = String(form.unit?.value || "UN").toUpperCase();
+    if (unit === "KG") {
+        return Math.round(raw) / 1000;
+    }
+    return Math.round(raw * 1000) / 1000;
+}
+
+function fillMinimumQuantityInput(form, item) {
+    const input = control(form, "minimumQuantityInput") || $("#product-min-qty");
+    if (!input) {
+        return;
+    }
+    syncMinQtyField(form);
+    const unit = String(item?.unit || form.unit?.value || "UN").toUpperCase();
+    const min = Number(item?.minimumQuantity);
+    if (!Number.isFinite(min) || min <= 0) {
+        input.value = unit === "KG" ? "500" : "1";
+        return;
+    }
+    if (unit === "KG") {
+        input.value = String(Math.round(min * 1000));
+    } else {
+        input.value = String(min);
+    }
 }
 
 async function saveCategory(form) {
@@ -648,6 +731,7 @@ function clearProductForm(form) {
         form.ncm.value = "";
     }
     form.featured.checked = false;
+    syncMinQtyField(form, { resetValue: true });
     const fileInput = $("#product-image-file");
     if (fileInput) {
         fileInput.value = "";
@@ -691,6 +775,7 @@ function beginEditProduct(item) {
         form.ncm.value = item.ncm || "";
     }
     form.featured.checked = !!item.featured;
+    fillMinimumQuantityInput(form, item);
     const fileInput = $("#product-image-file");
     if (fileInput) {
         fileInput.value = "";
@@ -786,7 +871,12 @@ function renderProducts(products) {
         const stockLabel = item.stockControlled
             ? ` · estoque ${item.stockQuantity ?? 0}`
             : " · venda livre";
-        meta.textContent = `${item.categoryName} · ${formatBRL(item.price)} / ${item.unit} · ${item.available ? "à venda" : "oculto"}${stockLabel}`;
+        const minLabel = item.unit === "KG"
+            ? ` · mín. ${Math.round(Number(item.minimumQuantity || 0) * 1000)} g`
+            : Number(item.minimumQuantity) > 1
+                ? ` · mín. ${item.minimumQuantity}`
+                : "";
+        meta.textContent = `${item.categoryName} · ${formatBRL(item.price)} / ${item.unit} · ${item.available ? "à venda" : "oculto"}${stockLabel}${minLabel}`;
         const body = document.createElement("div");
         const actions = document.createElement("div");
         actions.style.display = "flex";
