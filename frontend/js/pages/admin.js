@@ -825,6 +825,30 @@ function renderProducts(products) {
             }
         });
         actions.append(stockBtn);
+        const deleteBtn = document.createElement("button");
+        deleteBtn.type = "button";
+        deleteBtn.className = "btn btn-danger";
+        deleteBtn.textContent = "Apagar";
+        deleteBtn.addEventListener("click", async () => {
+            const ok = window.confirm(
+                `Apagar o produto "${item.name}"?\n\nEssa ação não pode ser desfeita.`
+            );
+            if (!ok) {
+                return;
+            }
+            try {
+                await api(`/products/${item.id}`, { method: "DELETE" });
+                if (editingProductId === item.id) {
+                    clearProductForm($("#product-form"));
+                }
+                hideAlert($("#product-alert"));
+                showFormSuccess($("#product-alert"), `Produto "${item.name}" apagado.`);
+                await refreshCatalog();
+            } catch (error) {
+                showFormAlert($("#product-alert"), error, "Não foi possível apagar o produto.");
+            }
+        });
+        actions.append(deleteBtn);
         body.append(title, meta, actions);
         row.append(createThumb(item.imageUrl, item.name, "product-admin-thumb"), body);
         list.append(row);
