@@ -118,6 +118,21 @@
     color: var(--panel-color, var(--color-primary-dark));
 }
 
+.admin-bulk-min {
+    margin: 0 0 1rem;
+    padding: 0.85rem 0.9rem;
+    border: 1px dashed color-mix(in srgb, var(--panel-color, var(--color-primary)) 35%, var(--color-border));
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--panel-color, var(--color-primary)) 8%, white);
+}
+
+.admin-bulk-min-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    align-items: flex-end;
+}
+
 .admin-inline-form {
     display: grid;
     gap: 0.75rem;

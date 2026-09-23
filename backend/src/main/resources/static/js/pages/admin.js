@@ -411,6 +411,73 @@ function wireCatalogForms() {
     if (productForm) {
         syncMinQtyField(productForm);
     }
+
+    $("#bulk-kg-min-btn")?.addEventListener("click", () => applyBulkKgMinimum());
+}
+
+async function applyBulkKgMinimum() {
+    const alertBox = $("#bulk-kg-min-alert");
+    const input = $("#bulk-kg-min-grams");
+    const btn = $("#bulk-kg-min-btn");
+    const grams = Math.round(Number(input?.value));
+    if (!Number.isFinite(grams) || grams < 50) {
+        showFormAlert(alertBox, null, "Informe um mínimo válido em gramas (ex.: 500 ou 700).");
+        return;
+    }
+    let products = [];
+    try {
+        products = await api("/products");
+    } catch (error) {
+        showFormAlert(alertBox, error, "Não foi possível carregar os produtos.");
+        return;
+    }
+    const kgProducts = (products || []).filter((item) => String(item.unit || "").toUpperCase() === "KG");
+    if (!kgProducts.length) {
+        showFormAlert(alertBox, null, "Não há produtos por kg no catálogo.");
+        return;
+    }
+    const ok = window.confirm(
+        `Aplicar mínimo de compra de ${grams} g em ${kgProducts.length} produto(s) por peso?\n\nIsso substitui o mínimo atual de todos os itens KG.`
+    );
+    if (!ok) {
+        return;
+    }
+    const minimumQuantity = grams / 1000;
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Aplicando…";
+    }
+    hideAlert(alertBox);
+    let done = 0;
+    let failed = 0;
+    try {
+        for (const item of kgProducts) {
+            try {
+                await api(`/products/${item.id}`, {
+                    method: "PUT",
+                    body: { minimumQuantity }
+                });
+                done += 1;
+            } catch {
+                failed += 1;
+            }
+        }
+        await refreshCatalog();
+        if (failed > 0) {
+            showFormAlert(
+                alertBox,
+                null,
+                `Atualizados ${done} produto(s). Falha em ${failed}. Tente de novo nos que faltaram.`
+            );
+        } else {
+            showFormSuccess(alertBox, `Mínimo de ${grams} g aplicado em ${done} produto(s) por kg.`);
+        }
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = "Aplicar em todos os KG";
+        }
+    }
 }
 
 function syncMinQtyField(form, options = {}) {

@@ -16,7 +16,7 @@
     <link rel="stylesheet" href="/css/pages/placeholder.css">
     <link rel="stylesheet" href="/css/pages/store.css?v=1abb2d03a5">
     <link rel="stylesheet" href="/css/pages/checkout.css?v=a597b38512">
-    <link rel="stylesheet" href="/css/pages/admin.css?v=8911981022">
+    <link rel="stylesheet" href="/css/pages/admin.css?v=d6870a5d35">
     <script src="/js/env.js"></script>
 </head>
 <body class="page-shell admin-shell">
@@ -202,6 +202,19 @@
                         </article>
                         <article class="admin-block">
                             <h3 class="admin-block-title">Catálogo</h3>
+                            <div class="admin-bulk-min" id="bulk-kg-min-box">
+                                <p class="muted" style="margin:0 0 0.65rem;">
+                                    Atalho: aplicar a mesma quantidade mínima de compra em <strong>todos os produtos por kg</strong> de uma vez.
+                                </p>
+                                <div class="admin-bulk-min-row">
+                                    <div class="field" style="margin:0; min-width:10rem;">
+                                        <label for="bulk-kg-min-grams">Mínimo (gramas)</label>
+                                        <input id="bulk-kg-min-grams" type="number" min="50" step="50" value="500" inputmode="numeric">
+                                    </div>
+                                    <button class="btn btn-secondary" type="button" id="bulk-kg-min-btn">Aplicar em todos os KG</button>
+                                </div>
+                                <div class="alert" id="bulk-kg-min-alert" hidden style="margin-top:0.75rem;"></div>
+                            </div>
                             <div id="products-list"></div>
                         </article>
                     </div>
@@ -458,6 +471,6 @@
             </div>
         </div>
     </main>
-    <script type="module" src="/js/pages/admin.js?v=6c6d664e36"></script>
+    <script type="module" src="/js/pages/admin.js?v=152418e321"></script>
 </body>
 </html>
