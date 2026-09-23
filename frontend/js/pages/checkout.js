@@ -52,23 +52,51 @@ async function boot() {
             form.hidden = true;
             return;
         }
-        const minOrder = Number(state.quote?.minOrderAmount ?? state.store.delivery?.minOrderAmount ?? 0);
-        if (minOrder > 0 && Number(state.quote.subtotal) < minOrder) {
-            showError(`Pedido mínimo de ${formatBRL(minOrder)}. Adicione mais itens para continuar.`);
-            form.hidden = true;
-            return;
-        }
         const valid = (state.quote?.items || []).filter((line) => !line.issue);
         if (!valid.length) {
-            showError("Nenhum item disponível no carrinho.");
+            const issues = (state.quote?.items || [])
+                .filter((line) => line.issue)
+                .map((line) => `${line.name || "Item"}: ${line.issue}`)
+                .slice(0, 5);
+            showError(
+                issues.length
+                    ? `Nenhum item disponível no carrinho. ${issues.join(" · ")}`
+                    : "Nenhum item disponível no carrinho."
+            );
             form.hidden = true;
             return;
         }
-        renderSummary(valid);
+        renderSummary(valid, (state.quote?.items || []).filter((line) => line.issue));
         syncAddressVisibility();
+        syncMinOrderGate();
     } catch (error) {
         showError(error instanceof ApiError ? error.message : "Não foi possível abrir o checkout.");
         form.hidden = true;
+    }
+}
+
+function syncMinOrderGate() {
+    const button = $("#submit-order");
+    const minOrder = Number(state.quote?.minOrderAmount ?? state.store?.delivery?.minOrderAmount ?? 0);
+    const subtotal = Number(state.quote?.subtotal || 0);
+    const isDelivery = form.fulfillmentType?.value === "DELIVERY";
+    const belowMin = isDelivery && minOrder > 0 && subtotal + 1e-9 < minOrder;
+    const issueLines = (state.quote?.items || []).filter((line) => line.issue);
+    if (belowMin) {
+        const extra = issueLines.length
+            ? ` (${issueLines.length} item(ns) indisponível(is) não entram no total)`
+            : "";
+        showError(
+            `Pedido mínimo de ${formatBRL(minOrder)} para entrega. Subtotal atual: ${formatBRL(subtotal)}.${extra} Adicione itens ou escolha retirada.`
+        );
+        if (button) {
+            button.disabled = true;
+        }
+        return;
+    }
+    hideAlert();
+    if (button) {
+        button.disabled = false;
     }
 }
 
@@ -145,10 +173,11 @@ async function refreshQuote() {
         couponHint.className = state.quote.couponCode ? "muted ok-hint" : "muted";
     }
     const valid = state.quote.items.filter((line) => !line.issue);
-    renderSummary(valid);
+    const blocked = state.quote.items.filter((line) => line.issue);
+    renderSummary(valid, blocked);
 }
 
-function renderSummary(lines) {
+function renderSummary(lines, blocked = []) {
     const box = $("#summary-lines");
     box.replaceChildren();
     lines.forEach((line) => {
@@ -162,6 +191,18 @@ function renderSummary(lines) {
         );
         const right = document.createElement("strong");
         right.textContent = formatBRL(line.subtotal);
+        row.append(left, right);
+        box.append(row);
+    });
+    blocked.forEach((line) => {
+        const row = document.createElement("div");
+        row.className = "summary-line summary-line-blocked";
+        const left = document.createElement("span");
+        left.className = "summary-line-copy muted";
+        left.textContent = `${line.name || "Item"} · ${line.issue || "indisponível"}`;
+        const right = document.createElement("strong");
+        right.className = "muted";
+        right.textContent = "—";
         row.append(left, right);
         box.append(row);
     });
@@ -224,6 +265,7 @@ on(form, "change", async (event) => {
         syncAddressVisibility();
         try {
             await refreshQuote();
+            syncMinOrderGate();
         } catch (error) {
             showError(error instanceof ApiError ? error.message : "Não foi possível recalcular o frete.");
         }

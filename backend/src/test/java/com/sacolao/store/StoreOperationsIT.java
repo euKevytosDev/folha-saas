@@ -70,6 +70,34 @@ class StoreOperationsIT extends CatalogSupport {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.minOrderAmount").value(50.00));
 
+        mockMvc.perform(put("/api/v1/establishments/me")
+                        .header("Authorization", AuthApi.bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"storeOpenMode":"OPEN"}
+                                """))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/store/" + slug + "/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "items":[{"productId":"%s","quantity":1}],
+                                  "customerName":"Cliente",
+                                  "customerPhone":"11977776666",
+                                  "fulfillmentType":"DELIVERY",
+                                  "paymentMethod":"CASH",
+                                  "addressZipCode":"01310100",
+                                  "addressStreet":"Av Paulista",
+                                  "addressNumber":"1000",
+                                  "addressNeighborhood":"Bela Vista",
+                                  "addressCity":"São Paulo",
+                                  "addressState":"SP"
+                                }
+                                """.formatted(productId)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("MIN_ORDER"));
+
         mockMvc.perform(post("/api/v1/store/" + slug + "/orders")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -81,7 +109,6 @@ class StoreOperationsIT extends CatalogSupport {
                                   "paymentMethod":"CASH"
                                 }
                                 """.formatted(productId)))
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.code").value("MIN_ORDER"));
+                .andExpect(status().isCreated());
     }
 }

@@ -182,7 +182,7 @@ public class OrderService {
             stockConsumptions.put(product, quantity);
         }
 
-        deliveryService.assertMinOrder(deliverySettings, subtotal);
+        deliveryService.assertMinOrder(deliverySettings, subtotal, request.fulfillmentType());
 
         CouponService.AppliedCoupon applied = couponService.apply(store.getId(), request.couponCode(), subtotal);
         BigDecimal discount = applied.discount();
