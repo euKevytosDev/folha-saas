@@ -55,13 +55,14 @@ public class ProductService {
         product.setCompareAtPrice(normalizeCompare(request.compareAtPrice(), product.getPrice()));
         product.setUnit(request.unit());
         product.setAvailable(request.available() == null || request.available());
-        product.setFeatured(Boolean.TRUE.equals(request.featured()));
+        product.setFeatured(false);
         boolean controlled = request.stockQuantity() != null;
         product.setStockControlled(controlled);
         product.setStockQuantity(controlled ? Money.quantity(request.stockQuantity()) : null);
         product.setMinimumQuantity(normalizeMinimum(request.minimumQuantity(), request.unit()));
         product.setNcm(normalizeNcm(request.ncm()));
         validateStock(product);
+        syncPromotionFeatured(product);
         return ProductMapper.toResponse(productRepository.save(product));
     }
 
@@ -123,6 +124,7 @@ public class ProductService {
         }
         validateStock(product);
         product.setCompareAtPrice(normalizeCompare(product.getCompareAtPrice(), product.getPrice()));
+        syncPromotionFeatured(product);
         return ProductMapper.toResponse(product);
     }
 
@@ -136,8 +138,23 @@ public class ProductService {
     @Transactional
     public ProductResponse setFeatured(UUID id, boolean featured) {
         Product product = requireInTenant(id);
-        product.setFeatured(featured);
+        if (!featured) {
+            product.setCompareAtPrice(null);
+            product.setFeatured(false);
+        } else if (product.getCompareAtPrice() != null) {
+            product.setFeatured(true);
+        } else {
+            throw new UnprocessableException(
+                    "PROMO_REQUIRES_COMPARE_PRICE",
+                    "Para colocar em promoção, informe o preço antigo e o preço novo no cadastro do produto"
+            );
+        }
         return ProductMapper.toResponse(product);
+    }
+
+    /** Produtos com preço antigo entram na seção Promoção da vitrine. */
+    private void syncPromotionFeatured(Product product) {
+        product.setFeatured(product.getCompareAtPrice() != null);
     }
 
     @Transactional

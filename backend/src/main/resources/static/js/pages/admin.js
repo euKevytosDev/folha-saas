@@ -1,7 +1,7 @@
 import { api, apiUpload, ApiError } from "../api/client.js";
 import { logout, requirePageAuth } from "../auth/api.js";
 import { $ } from "../utils/dom.js";
-import { formatBRL, formatQuantity } from "../utils/format.js";
+import { formatBRL, formatQuantity, discountPercent } from "../utils/format.js";
 import { compressImageFile } from "../utils/image.js";
 import { createThumb, optimizedImageUrl, setPreviewImage } from "../utils/media.js";
 import { storeUrl } from "../utils/nav.js";
@@ -353,6 +353,12 @@ function wireCatalogForms() {
             formCarousels.get(form)?.go(1);
             return;
         }
+        const promo = readPromotionFields(form);
+        if (!promo.ok) {
+            showFormAlert(alertBox, null, promo.error);
+            formCarousels.get(form)?.go(1);
+            return;
+        }
         if (submitBtn) {
             submitBtn.disabled = true;
             submitBtn.textContent = "Salvando…";
@@ -364,9 +370,10 @@ function wireCatalogForms() {
                 name: control(form, "name")?.value,
                 categoryId: form.categoryId.value,
                 price: Number(form.price.value),
+                compareAtPrice: promo.compareAtPrice,
                 unit: form.unit.value,
                 imageUrl: form.imageUrl.value || null,
-                featured: form.featured.checked,
+                featured: promo.enabled,
                 stockControlled: hasStock,
                 stockQuantity: hasStock ? Number(stockRaw) : null,
                 minimumQuantity,
@@ -410,9 +417,77 @@ function wireCatalogForms() {
     productForm?.unit?.addEventListener("change", () => syncMinQtyField(productForm, { resetValue: true }));
     if (productForm) {
         syncMinQtyField(productForm);
+        wireProductPromoFields(productForm);
     }
 
     $("#bulk-kg-min-btn")?.addEventListener("click", () => applyBulkKgMinimum());
+}
+
+function wireProductPromoFields(form) {
+    const toggle = form.promoEnabled || $("#product-promo");
+    const priceInput = form.price;
+    const compareInput = form.compareAtPrice || $("#product-compare-price");
+    const refresh = () => syncProductPromoFields(form);
+    toggle?.addEventListener("change", refresh);
+    priceInput?.addEventListener("input", refresh);
+    compareInput?.addEventListener("input", refresh);
+    syncProductPromoFields(form);
+}
+
+function syncProductPromoFields(form) {
+    if (!form) {
+        return;
+    }
+    const enabled = !!(form.promoEnabled?.checked);
+    const fields = $("#product-promo-fields");
+    const preview = $("#product-promo-preview");
+    const compareInput = form.compareAtPrice || $("#product-compare-price");
+    if (fields) {
+        fields.hidden = !enabled;
+    }
+    if (compareInput) {
+        compareInput.required = enabled;
+        if (!enabled) {
+            compareInput.value = "";
+        }
+    }
+    if (!preview) {
+        return;
+    }
+    if (!enabled) {
+        preview.hidden = true;
+        preview.textContent = "";
+        return;
+    }
+    const price = Number(form.price?.value);
+    const compare = Number(compareInput?.value);
+    const pct = discountPercent(price, compare);
+    if (pct == null) {
+        preview.hidden = true;
+        preview.textContent = "";
+        return;
+    }
+    preview.hidden = false;
+    preview.textContent = `Etiqueta na loja: −${pct}% · de ${formatBRL(compare)} por ${formatBRL(price)}`;
+}
+
+function readPromotionFields(form) {
+    const enabled = !!(form.promoEnabled?.checked);
+    if (!enabled) {
+        return { ok: true, enabled: false, compareAtPrice: 0 };
+    }
+    const price = Number(form.price?.value);
+    const compare = Number(form.compareAtPrice?.value || $("#product-compare-price")?.value);
+    if (!Number.isFinite(compare) || compare <= 0) {
+        return { ok: false, error: "Informe o preço antigo da promoção." };
+    }
+    if (!Number.isFinite(price) || price <= 0) {
+        return { ok: false, error: "Informe o preço atual da promoção." };
+    }
+    if (compare <= price) {
+        return { ok: false, error: "O preço antigo precisa ser maior que o preço atual." };
+    }
+    return { ok: true, enabled: true, compareAtPrice: compare };
 }
 
 async function applyBulkKgMinimum() {
@@ -797,7 +872,13 @@ function clearProductForm(form) {
     if (form.ncm) {
         form.ncm.value = "";
     }
-    form.featured.checked = false;
+    if (form.promoEnabled) {
+        form.promoEnabled.checked = false;
+    }
+    if (form.compareAtPrice) {
+        form.compareAtPrice.value = "";
+    }
+    syncProductPromoFields(form);
     syncMinQtyField(form, { resetValue: true });
     const fileInput = $("#product-image-file");
     if (fileInput) {
@@ -841,7 +922,14 @@ function beginEditProduct(item) {
     if (form.ncm) {
         form.ncm.value = item.ncm || "";
     }
-    form.featured.checked = !!item.featured;
+    const hasPromo = item.compareAtPrice != null && Number(item.compareAtPrice) > Number(item.price);
+    if (form.promoEnabled) {
+        form.promoEnabled.checked = hasPromo;
+    }
+    if (form.compareAtPrice) {
+        form.compareAtPrice.value = hasPromo ? String(item.compareAtPrice) : "";
+    }
+    syncProductPromoFields(form);
     fillMinimumQuantityInput(form, item);
     const fileInput = $("#product-image-file");
     if (fileInput) {
@@ -944,7 +1032,11 @@ function renderProducts(products) {
             : Number(item.minimumQuantity) > 1
                 ? ` · mín. compra ${item.minimumQuantity}`
                 : "";
-        meta.textContent = `${item.categoryName} · ${formatBRL(item.price)} / ${item.unit} · ${item.available ? "à venda" : "oculto"}${stockLabel}${minLabel}`;
+        const pct = discountPercent(item.price, item.compareAtPrice);
+        const promoLabel = pct != null
+            ? ` · promo −${pct}% (de ${formatBRL(item.compareAtPrice)})`
+            : "";
+        meta.textContent = `${item.categoryName} · ${formatBRL(item.price)} / ${item.unit} · ${item.available ? "à venda" : "oculto"}${stockLabel}${minLabel}${promoLabel}`;
         const body = document.createElement("div");
         const actions = document.createElement("div");
         actions.style.display = "flex";
@@ -957,9 +1049,26 @@ function renderProducts(products) {
         editBtn.addEventListener("click", () => beginEditProduct(item));
         actions.append(
             editBtn,
-            flagButton(item.available ? "Pausar" : "Publicar", `/products/${item.id}/availability`, !item.available),
-            flagButton(item.featured ? "Tirar destaque" : "Destacar", `/products/${item.id}/featured`, !item.featured)
+            flagButton(item.available ? "Pausar" : "Publicar", `/products/${item.id}/availability`, !item.available)
         );
+        if (pct != null) {
+            const clearPromoBtn = document.createElement("button");
+            clearPromoBtn.type = "button";
+            clearPromoBtn.className = "btn btn-secondary";
+            clearPromoBtn.textContent = "Tirar promoção";
+            clearPromoBtn.addEventListener("click", async () => {
+                try {
+                    await api(`/products/${item.id}`, {
+                        method: "PUT",
+                        body: { compareAtPrice: 0, featured: false }
+                    });
+                    await refreshCatalog();
+                } catch (error) {
+                    showFormAlert($("#product-alert"), error, "Não foi possível remover a promoção.");
+                }
+            });
+            actions.append(clearPromoBtn);
+        }
         const stockBtn = document.createElement("button");
         stockBtn.type = "button";
         stockBtn.className = "btn btn-secondary";

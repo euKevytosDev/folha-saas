@@ -1,7 +1,7 @@
 import { api, ApiError } from "../api/client.js";
 import { currentStoreSlug, checkoutUrl } from "../utils/nav.js";
 import { $, on } from "../utils/dom.js";
-import { formatBRL, formatQuantity, quantityHint, unitStep } from "../utils/format.js";
+import { formatBRL, formatQuantity, quantityHint, unitStep, discountPercent } from "../utils/format.js";
 import { nextOpenHint } from "../utils/hours.js";
 import { createThumb, optimizedImageUrl } from "../utils/media.js";
 import { addToCart, cartCount, clearCart, loadCart, setCartQuantity } from "../store/cart.js";
@@ -187,7 +187,7 @@ function renderCatalog() {
     const products = visibleProducts();
     const featured = state.categoryId || state.query.trim()
         ? []
-        : state.allProducts.filter((product) => product.featured);
+        : state.allProducts.filter((product) => product.compareAtPrice != null);
     els.featuredSection.hidden = featured.length === 0;
     fillGrid(els.featuredGrid, featured);
     fillGrid(els.grid, products);
@@ -202,12 +202,26 @@ function fillGrid(root, products) {
 function productCard(product) {
     const card = document.createElement("article");
     card.className = "product-card";
-    card.append(thumb(product), body(product));
+    if (discountPercent(product.price, product.compareAtPrice) != null) {
+        card.classList.add("is-promo");
+    }
+    card.append(media(product), body(product));
     return card;
 }
 
-function thumb(product) {
-    return createThumb(product.imageUrl, product.name || "Produto");
+function media(product) {
+    const wrap = document.createElement("div");
+    wrap.className = "product-media";
+    const pct = discountPercent(product.price, product.compareAtPrice);
+    if (pct != null) {
+        const badge = document.createElement("span");
+        badge.className = "product-discount-badge";
+        badge.textContent = `−${pct}%`;
+        badge.setAttribute("aria-label", `${pct}% de desconto`);
+        wrap.append(badge);
+    }
+    wrap.append(createThumb(product.imageUrl, product.name || "Produto"));
+    return wrap;
 }
 
 function body(product) {
@@ -220,18 +234,29 @@ function body(product) {
     unit.textContent = product.unit === "KG"
         ? "Preço por kg · escolha em gramas ou quilos"
         : `Por ${product.unit.toLowerCase()}`;
+    wrap.append(title, unit, priceBlock(product), addControl(product));
+    return wrap;
+}
+
+function priceBlock(product) {
     const price = document.createElement("div");
     price.className = "product-price";
-    const current = document.createElement("span");
-    current.textContent = formatBRL(product.price);
-    price.append(current);
-    if (product.compareAtPrice) {
+    const pct = discountPercent(product.price, product.compareAtPrice);
+    if (pct != null && product.compareAtPrice != null) {
         const old = document.createElement("s");
+        old.className = "product-price-old";
         old.textContent = formatBRL(product.compareAtPrice);
-        price.append(old);
+        const current = document.createElement("span");
+        current.className = "product-price-now";
+        current.textContent = formatBRL(product.price);
+        price.append(old, current);
+    } else {
+        const current = document.createElement("span");
+        current.className = "product-price-now";
+        current.textContent = formatBRL(product.price);
+        price.append(current);
     }
-    wrap.append(title, unit, price, addControl(product));
-    return wrap;
+    return price;
 }
 
 function addControl(product) {

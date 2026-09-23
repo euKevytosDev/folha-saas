@@ -6,6 +6,23 @@ export function formatBRL(value) {
 }
 
 /**
+ * Percentual de desconto (preço antigo → preço atual), arredondado.
+ * Retorna null se não houver promoção válida.
+ */
+export function discountPercent(price, compareAtPrice) {
+    const current = Number(price);
+    const previous = Number(compareAtPrice);
+    if (!Number.isFinite(current) || !Number.isFinite(previous) || previous <= 0 || current <= 0) {
+        return null;
+    }
+    if (previous <= current) {
+        return null;
+    }
+    const pct = Math.round((1 - current / previous) * 100);
+    return pct > 0 ? pct : null;
+}
+
+/**
  * Exibe quantidade de forma clara para o cliente.
  * Em KG, frações viram gramas para evitar confusão (0,1 kg → 100 g).
  */

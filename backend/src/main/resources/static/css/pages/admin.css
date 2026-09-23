@@ -147,6 +147,22 @@
     font-weight: 600;
 }
 
+.product-promo-fields {
+    display: grid;
+    gap: 0.65rem;
+    padding: 0.85rem 0.95rem;
+    margin: 0 0 0.35rem;
+    border: 1px solid color-mix(in srgb, #B91C1C 22%, var(--color-border));
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, #B91C1C 6%, var(--color-surface));
+}
+
+.product-promo-preview {
+    margin: 0;
+    font-weight: 700;
+    color: #B91C1C !important;
+}
+
 .form-carousel .form-slides {
     position: relative;
 }

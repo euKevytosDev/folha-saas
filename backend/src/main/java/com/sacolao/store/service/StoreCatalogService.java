@@ -85,7 +85,7 @@ public class StoreCatalogService {
                 .map(ProductMapper::toResponse)
                 .toList();
         List<ProductResponse> featured = products.stream()
-                .filter(ProductResponse::featured)
+                .filter(product -> product.compareAtPrice() != null)
                 .toList();
         return new PublicCatalogResponse(toPublicStore(store), categories, featured, products);
     }

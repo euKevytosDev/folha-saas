@@ -14,9 +14,9 @@
     <link rel="stylesheet" href="/css/layout.css">
     <link rel="stylesheet" href="/css/components.css?v=2ceaa7501d">
     <link rel="stylesheet" href="/css/pages/placeholder.css">
-    <link rel="stylesheet" href="/css/pages/store.css?v=1abb2d03a5">
+    <link rel="stylesheet" href="/css/pages/store.css?v=65cf7c4c3a">
     <link rel="stylesheet" href="/css/pages/checkout.css?v=a597b38512">
-    <link rel="stylesheet" href="/css/pages/admin.css?v=d6870a5d35">
+    <link rel="stylesheet" href="/css/pages/admin.css?v=b668105e50">
     <script src="/js/env.js"></script>
 </head>
 <body class="page-shell admin-shell">
@@ -138,8 +138,20 @@
                                     <div class="form-slide">
                                         <p class="form-step-label">2 de 4 · Preço</p>
                                         <div class="field">
-                                            <label for="product-price">Preço (R$)</label>
+                                            <label for="product-price">Preço atual (R$)</label>
                                             <input id="product-price" name="price" type="number" min="0.01" step="0.01" required>
+                                        </div>
+                                        <label class="admin-check">
+                                            <input id="product-promo" name="promoEnabled" type="checkbox">
+                                            Produto em promoção
+                                        </label>
+                                        <div class="product-promo-fields" id="product-promo-fields" hidden>
+                                            <div class="field">
+                                                <label for="product-compare-price">Preço antigo (de)</label>
+                                                <input id="product-compare-price" name="compareAtPrice" type="number" min="0.01" step="0.01" placeholder="Ex.: 12,90">
+                                                <p class="muted">Aparece riscado na loja. Precisa ser maior que o preço atual.</p>
+                                            </div>
+                                            <p class="product-promo-preview muted" id="product-promo-preview" hidden></p>
                                         </div>
                                         <div class="field">
                                             <label for="product-unit">Unidade</label>
@@ -185,10 +197,7 @@
                                             <label for="product-ncm">NCM (opcional, NFC-e)</label>
                                             <input id="product-ncm" name="ncm" type="text" maxlength="8" inputmode="numeric" placeholder="Ex.: 07019000">
                                         </div>
-                                        <label class="admin-check">
-                                            <input id="product-featured" name="featured" type="checkbox">
-                                            Destacar na vitrine
-                                        </label>
+                                        <p class="muted" style="margin:0;">Para aparecer na seção <strong>Promoção</strong> da loja, marque “Produto em promoção” no passo do preço e informe o valor antigo.</p>
                                     </div>
                                 </div>
                                 <div class="form-carousel-bar">
@@ -472,6 +481,6 @@
             </div>
         </div>
     </main>
-    <script type="module" src="/js/pages/admin.js?v=a464d94e81"></script>
+    <script type="module" src="/js/pages/admin.js?v=0131b94823"></script>
 </body>
 </html>
