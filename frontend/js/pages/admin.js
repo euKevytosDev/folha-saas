@@ -363,7 +363,7 @@ function wireCatalogForms() {
                 featured: form.featured.checked,
                 stockControlled: hasStock,
                 stockQuantity: hasStock ? Number(stockRaw) : null,
-                minimumQuantity: form.unit.value === "KG" ? 0.2 : 1,
+                minimumQuantity: form.unit.value === "KG" ? 0.5 : 1,
                 ncm: form.ncm?.value?.trim() || null
             };
             if (editingProductId) {
