@@ -224,6 +224,10 @@ function media(product) {
     return wrap;
 }
 
+function thumb(product) {
+    return createThumb(product.imageUrl, product.name || "Produto");
+}
+
 function body(product) {
     const wrap = document.createElement("div");
     wrap.className = "product-body";
