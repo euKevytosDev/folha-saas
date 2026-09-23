@@ -490,6 +490,89 @@ function readPromotionFields(form) {
     return { ok: true, enabled: true, compareAtPrice: compare };
 }
 
+function parseMoneyPrompt(raw) {
+    if (raw == null) {
+        return null;
+    }
+    const normalized = String(raw).trim().replace(/\s/g, "").replace(",", ".");
+    if (!normalized) {
+        return null;
+    }
+    const value = Number(normalized);
+    return Number.isFinite(value) ? value : NaN;
+}
+
+async function beginProductPromotion(item) {
+    const alertBox = $("#product-alert");
+    const oldRaw = window.prompt(
+        `Promoção · ${item.name}\n\nPreço ANTIGO (aparece riscado na loja):`,
+        item.compareAtPrice != null ? String(item.compareAtPrice) : ""
+    );
+    if (oldRaw == null) {
+        return;
+    }
+    const compareAtPrice = parseMoneyPrompt(oldRaw);
+    if (!Number.isFinite(compareAtPrice) || compareAtPrice <= 0) {
+        showFormAlert(alertBox, null, "Informe um preço antigo válido.");
+        return;
+    }
+    const newRaw = window.prompt(
+        `Promoção · ${item.name}\n\nPreço NOVO (valor de venda na promoção):`,
+        item.price != null ? String(item.price) : ""
+    );
+    if (newRaw == null) {
+        return;
+    }
+    const price = parseMoneyPrompt(newRaw);
+    if (!Number.isFinite(price) || price <= 0) {
+        showFormAlert(alertBox, null, "Informe um preço novo válido.");
+        return;
+    }
+    if (compareAtPrice <= price) {
+        showFormAlert(alertBox, null, "O preço antigo precisa ser maior que o preço novo.");
+        return;
+    }
+    const pct = discountPercent(price, compareAtPrice);
+    const ok = window.confirm(
+        `Confirmar promoção de ${item.name}?\n\nDe ${formatBRL(compareAtPrice)} por ${formatBRL(price)}${pct != null ? ` (−${pct}%)` : ""}\n\nO produto entra na seção Promoção da loja.`
+    );
+    if (!ok) {
+        return;
+    }
+    try {
+        await api(`/products/${item.id}`, {
+            method: "PUT",
+            body: {
+                price,
+                compareAtPrice,
+                featured: true
+            }
+        });
+        showFormSuccess(alertBox, `Promoção ativa${pct != null ? ` (−${pct}%)` : ""}.`);
+        await refreshCatalog();
+    } catch (error) {
+        showFormAlert(alertBox, error, "Não foi possível ativar a promoção.");
+    }
+}
+
+async function clearProductPromotion(item) {
+    const alertBox = $("#product-alert");
+    const ok = window.confirm(`Tirar a promoção de "${item.name}"?`);
+    if (!ok) {
+        return;
+    }
+    try {
+        await api(`/products/${item.id}`, {
+            method: "PUT",
+            body: { compareAtPrice: 0, featured: false }
+        });
+        showFormSuccess(alertBox, "Promoção removida.");
+        await refreshCatalog();
+    } catch (error) {
+        showFormAlert(alertBox, error, "Não foi possível remover a promoção.");
+    }
+}
+
 async function applyBulkKgMinimum() {
     const alertBox = $("#bulk-kg-min-alert");
     const input = $("#bulk-kg-min-grams");
@@ -941,7 +1024,8 @@ function beginEditProduct(item) {
         clearProductImagePreview();
     }
     resetFormCarousel(form);
-    formCarousels.get(form)?.go(0);
+    // Preço/promoção ficam no passo 2 — abre direto nele ao editar
+    formCarousels.get(form)?.go(1);
     hideAlert($("#product-alert"));
     showAdminPanel("produtos");
     scrollToProductEditor();
@@ -1051,24 +1135,18 @@ function renderProducts(products) {
             editBtn,
             flagButton(item.available ? "Pausar" : "Publicar", `/products/${item.id}/availability`, !item.available)
         );
+        const promoBtn = document.createElement("button");
+        promoBtn.type = "button";
         if (pct != null) {
-            const clearPromoBtn = document.createElement("button");
-            clearPromoBtn.type = "button";
-            clearPromoBtn.className = "btn btn-secondary";
-            clearPromoBtn.textContent = "Tirar promoção";
-            clearPromoBtn.addEventListener("click", async () => {
-                try {
-                    await api(`/products/${item.id}`, {
-                        method: "PUT",
-                        body: { compareAtPrice: 0, featured: false }
-                    });
-                    await refreshCatalog();
-                } catch (error) {
-                    showFormAlert($("#product-alert"), error, "Não foi possível remover a promoção.");
-                }
-            });
-            actions.append(clearPromoBtn);
+            promoBtn.className = "btn btn-secondary";
+            promoBtn.textContent = "Tirar promoção";
+            promoBtn.addEventListener("click", () => clearProductPromotion(item));
+        } else {
+            promoBtn.className = "btn btn-primary";
+            promoBtn.textContent = "Promoção";
+            promoBtn.addEventListener("click", () => beginProductPromotion(item));
         }
+        actions.append(promoBtn);
         const stockBtn = document.createElement("button");
         stockBtn.type = "button";
         stockBtn.className = "btn btn-secondary";

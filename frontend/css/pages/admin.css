@@ -147,6 +147,14 @@
     font-weight: 600;
 }
 
+.admin-check-promo {
+    padding: 0.7rem 0.85rem;
+    border: 1px solid color-mix(in srgb, #B91C1C 28%, var(--color-border));
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, #B91C1C 7%, var(--color-surface));
+    color: #7F1D1D;
+}
+
 .product-promo-fields {
     display: grid;
     gap: 0.65rem;

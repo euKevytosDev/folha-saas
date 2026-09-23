@@ -16,7 +16,7 @@
     <link rel="stylesheet" href="/css/pages/placeholder.css">
     <link rel="stylesheet" href="/css/pages/store.css?v=65cf7c4c3a">
     <link rel="stylesheet" href="/css/pages/checkout.css?v=a597b38512">
-    <link rel="stylesheet" href="/css/pages/admin.css?v=b668105e50">
+    <link rel="stylesheet" href="/css/pages/admin.css?v=a36d3af755">
     <script src="/js/env.js"></script>
 </head>
 <body class="page-shell admin-shell">
@@ -136,20 +136,20 @@
                                         </div>
                                     </div>
                                     <div class="form-slide">
-                                        <p class="form-step-label">2 de 4 · Preço</p>
+                                        <p class="form-step-label">2 de 4 · Preço e promoção</p>
                                         <div class="field">
-                                            <label for="product-price">Preço atual (R$)</label>
+                                            <label for="product-price">Preço atual / promocional (R$)</label>
                                             <input id="product-price" name="price" type="number" min="0.01" step="0.01" required>
                                         </div>
-                                        <label class="admin-check">
+                                        <label class="admin-check admin-check-promo">
                                             <input id="product-promo" name="promoEnabled" type="checkbox">
-                                            Produto em promoção
+                                            Produto em promoção (aparece na seção Promoção da loja)
                                         </label>
                                         <div class="product-promo-fields" id="product-promo-fields" hidden>
                                             <div class="field">
                                                 <label for="product-compare-price">Preço antigo (de)</label>
                                                 <input id="product-compare-price" name="compareAtPrice" type="number" min="0.01" step="0.01" placeholder="Ex.: 12,90">
-                                                <p class="muted">Aparece riscado na loja. Precisa ser maior que o preço atual.</p>
+                                                <p class="muted">Aparece cinza e riscado na loja. Precisa ser maior que o preço atual.</p>
                                             </div>
                                             <p class="product-promo-preview muted" id="product-promo-preview" hidden></p>
                                         </div>
@@ -211,6 +211,9 @@
                         </article>
                         <article class="admin-block">
                             <h3 class="admin-block-title">Catálogo</h3>
+                            <p class="muted" style="margin:0 0 0.85rem;">
+                                Em cada produto use <strong>Promoção</strong> para definir preço antigo e novo (entra na seção Promoção da loja), ou <strong>Tirar promoção</strong> para remover.
+                            </p>
                             <div class="admin-bulk-min" id="bulk-kg-min-box">
                                 <p class="muted" style="margin:0 0 0.65rem;">
                                     Atalho: aplicar a mesma quantidade mínima de compra em <strong>todos os produtos por kg</strong> de uma vez.
@@ -481,6 +484,6 @@
             </div>
         </div>
     </main>
-    <script type="module" src="/js/pages/admin.js?v=0131b94823"></script>
+    <script type="module" src="/js/pages/admin.js?v=fb919636ab"></script>
 </body>
 </html>
