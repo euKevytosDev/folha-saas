@@ -50,6 +50,8 @@ wireAdminNav();
 
 const mediaState = { enabled: false, uploading: false };
 let catalogCategories = [];
+/** @type {any[]} */
+let catalogProducts = [];
 /** @type {string | null} */
 let editingProductId = null;
 const formCarousels = new Map();
@@ -436,6 +438,14 @@ function wireCatalogForms() {
     }
 
     $("#bulk-kg-min-btn")?.addEventListener("click", () => applyBulkKgMinimum());
+
+    let productSearchTimer = 0;
+    $("#product-search")?.addEventListener("input", () => {
+        window.clearTimeout(productSearchTimer);
+        productSearchTimer = window.setTimeout(() => {
+            renderProducts(catalogProducts);
+        }, 120);
+    });
 }
 
 function wireProductPromoFields(form) {
@@ -1031,9 +1041,29 @@ async function renderUsers() {
 async function refreshCatalog() {
     const [categories, products] = await Promise.all([api("/categories"), api("/products")]);
     catalogCategories = Array.isArray(categories) ? categories : [];
+    catalogProducts = Array.isArray(products) ? products : [];
     renderCategoryOptions(catalogCategories);
     renderCategories(catalogCategories);
-    renderProducts(products);
+    renderProducts(catalogProducts);
+}
+
+function filteredCatalogProducts(products) {
+    const query = ($("#product-search")?.value || "").trim().toLowerCase();
+    if (!query) {
+        return products || [];
+    }
+    return (products || []).filter((item) => {
+        const haystack = [
+            item.name,
+            item.categoryName,
+            item.unit,
+            ...(Array.isArray(item.variants) ? item.variants.map((variant) => variant.name) : [])
+        ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+        return haystack.includes(query);
+    });
 }
 
 function renderCategoryOptions(categories) {
@@ -1237,6 +1267,8 @@ function renderCategories(categories) {
 function renderProducts(products) {
     const list = $("#products-list");
     list.replaceChildren();
+    const visible = filteredCatalogProducts(products);
+    const query = ($("#product-search")?.value || "").trim();
     if (!products.length) {
         const empty = document.createElement("p");
         empty.className = "muted";
@@ -1244,7 +1276,16 @@ function renderProducts(products) {
         list.append(empty);
         return;
     }
-    products.forEach((item) => {
+    if (!visible.length) {
+        const empty = document.createElement("p");
+        empty.className = "muted";
+        empty.textContent = query
+            ? `Nenhum produto encontrado para “${query}”.`
+            : "Nenhum produto ainda.";
+        list.append(empty);
+        return;
+    }
+    visible.forEach((item) => {
         const row = document.createElement("div");
         row.className = "product-admin-row";
         const title = document.createElement("strong");

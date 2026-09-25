@@ -133,6 +133,14 @@
     align-items: flex-end;
 }
 
+.admin-product-search {
+    margin: 0 0 0.85rem;
+}
+
+.admin-product-search input {
+    width: 100%;
+}
+
 .admin-inline-form {
     display: grid;
     gap: 0.75rem;
