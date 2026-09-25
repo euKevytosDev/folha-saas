@@ -8,6 +8,7 @@ import java.util.UUID;
 
 public record CartQuoteItemRequest(
         @NotNull UUID productId,
+        UUID variantId,
         @NotNull @DecimalMin(value = "0.001") BigDecimal quantity
 ) {
 }

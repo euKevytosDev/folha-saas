@@ -1,11 +1,13 @@
 package com.sacolao.product.dto;
 
 import com.sacolao.product.entity.ProductUnit;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 public record UpdateProductRequest(
@@ -21,6 +23,7 @@ public record UpdateProductRequest(
         Boolean stockControlled,
         @DecimalMin(value = "0.000") @Digits(integer = 9, fraction = 3) BigDecimal stockQuantity,
         @DecimalMin(value = "0.001") @Digits(integer = 9, fraction = 3) BigDecimal minimumQuantity,
-        @Size(max = 8) String ncm
+        @Size(max = 8) String ncm,
+        List<@Valid ProductVariantRequest> variants
 ) {
 }

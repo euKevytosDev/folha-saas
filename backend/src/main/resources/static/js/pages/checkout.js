@@ -296,7 +296,11 @@ on(form, "submit", async (event) => {
     hideAlert();
     try {
         const items = loadCart(state.store.id)
-            .map((item) => ({ productId: item.productId, quantity: item.quantity }));
+            .map((item) => ({
+                productId: item.productId,
+                variantId: item.variantId || null,
+                quantity: item.quantity
+            }));
         const payload = {
             items,
             customerName: form.customerName.value.trim(),

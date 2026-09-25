@@ -359,6 +359,12 @@ function wireCatalogForms() {
             formCarousels.get(form)?.go(1);
             return;
         }
+        const variants = readProductVariants(form);
+        if (!variants.ok) {
+            showFormAlert(alertBox, null, variants.error);
+            formCarousels.get(form)?.go(1);
+            return;
+        }
         if (submitBtn) {
             submitBtn.disabled = true;
             submitBtn.textContent = "Salvando…";
@@ -366,10 +372,17 @@ function wireCatalogForms() {
         try {
             const stockRaw = form.stockQuantity.value.trim();
             const hasStock = stockRaw !== "";
+            let price = Number(form.price.value);
+            if (variants.items.length) {
+                const minVariant = Math.min(...variants.items.map((item) => item.price));
+                if (!Number.isFinite(price) || price <= 0) {
+                    price = minVariant;
+                }
+            }
             const body = {
                 name: control(form, "name")?.value,
                 categoryId: form.categoryId.value,
-                price: Number(form.price.value),
+                price,
                 compareAtPrice: promo.compareAtPrice,
                 unit: form.unit.value,
                 imageUrl: form.imageUrl.value || null,
@@ -377,7 +390,8 @@ function wireCatalogForms() {
                 stockControlled: hasStock,
                 stockQuantity: hasStock ? Number(stockRaw) : null,
                 minimumQuantity,
-                ncm: form.ncm?.value?.trim() || null
+                ncm: form.ncm?.value?.trim() || null,
+                variants: variants.items
             };
             if (editingProductId) {
                 await api(`/products/${editingProductId}`, {
@@ -418,6 +432,7 @@ function wireCatalogForms() {
     if (productForm) {
         syncMinQtyField(productForm);
         wireProductPromoFields(productForm);
+        wireProductVariantFields(productForm);
     }
 
     $("#bulk-kg-min-btn")?.addEventListener("click", () => applyBulkKgMinimum());
@@ -488,6 +503,133 @@ function readPromotionFields(form) {
         return { ok: false, error: "O preço antigo precisa ser maior que o preço atual." };
     }
     return { ok: true, enabled: true, compareAtPrice: compare };
+}
+
+function wireProductVariantFields(form) {
+    const toggle = form.hasVariants || $("#product-has-variants");
+    const addBtn = $("#product-variant-add");
+    toggle?.addEventListener("change", () => syncProductVariantFields(form));
+    addBtn?.addEventListener("click", () => {
+        appendVariantRow();
+        syncProductVariantFields(form);
+    });
+    syncProductVariantFields(form);
+}
+
+function syncProductVariantFields(form) {
+    const enabled = !!(form.hasVariants?.checked || $("#product-has-variants")?.checked);
+    const box = $("#product-variants-box");
+    if (box) {
+        box.hidden = !enabled;
+    }
+    if (enabled) {
+        const list = $("#product-variants-list");
+        if (list && !list.children.length) {
+            appendVariantRow();
+        }
+    }
+}
+
+function appendVariantRow(variant = null) {
+    const list = $("#product-variants-list");
+    if (!list) {
+        return;
+    }
+    const row = document.createElement("div");
+    row.className = "product-variant-row";
+    if (variant?.id) {
+        row.dataset.variantId = variant.id;
+    }
+    const nameField = document.createElement("div");
+    nameField.className = "field";
+    const nameLabel = document.createElement("label");
+    nameLabel.textContent = "Sabor / opção";
+    const nameInput = document.createElement("input");
+    nameInput.type = "text";
+    nameInput.name = "variantName";
+    nameInput.placeholder = "Ex.: Morango";
+    nameInput.maxLength = 120;
+    nameInput.value = variant?.name || "";
+    nameInput.required = true;
+    nameField.append(nameLabel, nameInput);
+
+    const priceField = document.createElement("div");
+    priceField.className = "field";
+    const priceLabel = document.createElement("label");
+    priceLabel.textContent = "Preço (R$)";
+    const priceInput = document.createElement("input");
+    priceInput.type = "number";
+    priceInput.name = "variantPrice";
+    priceInput.min = "0.01";
+    priceInput.step = "0.01";
+    priceInput.placeholder = "0,00";
+    priceInput.value = variant?.price != null ? String(variant.price) : "";
+    priceInput.required = true;
+    priceField.append(priceLabel, priceInput);
+
+    const removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.className = "btn btn-ghost";
+    removeBtn.textContent = "Remover";
+    removeBtn.addEventListener("click", () => {
+        row.remove();
+        const listEl = $("#product-variants-list");
+        if (listEl && !listEl.children.length && ($("#product-has-variants")?.checked)) {
+            appendVariantRow();
+        }
+    });
+
+    row.append(nameField, priceField, removeBtn);
+    list.append(row);
+}
+
+function fillProductVariants(variants) {
+    const list = $("#product-variants-list");
+    const toggle = $("#product-has-variants");
+    if (!list || !toggle) {
+        return;
+    }
+    list.replaceChildren();
+    const items = Array.isArray(variants) ? variants : [];
+    toggle.checked = items.length > 0;
+    if (items.length) {
+        items.forEach((item) => appendVariantRow(item));
+    }
+    syncProductVariantFields($("#product-form"));
+}
+
+function readProductVariants(form) {
+    const enabled = !!(form.hasVariants?.checked || $("#product-has-variants")?.checked);
+    if (!enabled) {
+        return { ok: true, items: [] };
+    }
+    const rows = [...document.querySelectorAll("#product-variants-list .product-variant-row")];
+    const items = [];
+    for (let i = 0; i < rows.length; i += 1) {
+        const row = rows[i];
+        const name = row.querySelector('[name="variantName"]')?.value?.trim() || "";
+        const price = Number(row.querySelector('[name="variantPrice"]')?.value);
+        if (!name && !Number.isFinite(price)) {
+            continue;
+        }
+        if (!name) {
+            return { ok: false, error: "Informe o nome de cada sabor." };
+        }
+        if (!Number.isFinite(price) || price <= 0) {
+            return { ok: false, error: `Informe o preço do sabor "${name}".` };
+        }
+        items.push({
+            id: row.dataset.variantId || null,
+            name,
+            price,
+            available: true,
+            sortOrder: i
+        });
+    }
+    if (!items.length) {
+        return { ok: false, error: "Adicione pelo menos um sabor ou desmarque a opção." };
+    }
+    return { ok: true, items };
 }
 
 function parseMoneyPrompt(raw) {
@@ -962,6 +1104,7 @@ function clearProductForm(form) {
         form.compareAtPrice.value = "";
     }
     syncProductPromoFields(form);
+    fillProductVariants([]);
     syncMinQtyField(form, { resetValue: true });
     const fileInput = $("#product-image-file");
     if (fileInput) {
@@ -1013,6 +1156,7 @@ function beginEditProduct(item) {
         form.compareAtPrice.value = hasPromo ? String(item.compareAtPrice) : "";
     }
     syncProductPromoFields(form);
+    fillProductVariants(item.variants || []);
     fillMinimumQuantityInput(form, item);
     const fileInput = $("#product-image-file");
     if (fileInput) {
@@ -1120,7 +1264,11 @@ function renderProducts(products) {
         const promoLabel = pct != null
             ? ` · promo −${pct}% (de ${formatBRL(item.compareAtPrice)})`
             : "";
-        meta.textContent = `${item.categoryName} · ${formatBRL(item.price)} / ${item.unit} · ${item.available ? "à venda" : "oculto"}${stockLabel}${minLabel}${promoLabel}`;
+        const variantCount = Array.isArray(item.variants) ? item.variants.length : 0;
+        const variantLabel = variantCount > 0
+            ? ` · ${variantCount} sabor${variantCount === 1 ? "" : "es"}`
+            : "";
+        meta.textContent = `${item.categoryName} · ${formatBRL(item.price)} / ${item.unit} · ${item.available ? "à venda" : "oculto"}${stockLabel}${minLabel}${promoLabel}${variantLabel}`;
         const body = document.createElement("div");
         const actions = document.createElement("div");
         actions.style.display = "flex";

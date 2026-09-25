@@ -9,9 +9,11 @@ import com.sacolao.establishment.entity.Establishment;
 import com.sacolao.establishment.repository.EstablishmentRepository;
 import com.sacolao.product.dto.CreateProductRequest;
 import com.sacolao.product.dto.ProductResponse;
+import com.sacolao.product.dto.ProductVariantRequest;
 import com.sacolao.product.dto.UpdateProductRequest;
 import com.sacolao.product.entity.Product;
 import com.sacolao.product.entity.ProductUnit;
+import com.sacolao.product.entity.ProductVariant;
 import com.sacolao.product.mapper.ProductMapper;
 import com.sacolao.product.repository.ProductRepository;
 import com.sacolao.tenant.TenantContext;
@@ -63,6 +65,7 @@ public class ProductService {
         product.setNcm(normalizeNcm(request.ncm()));
         validateStock(product);
         syncPromotionFeatured(product);
+        syncVariants(product, request.variants());
         return ProductMapper.toResponse(productRepository.save(product));
     }
 
@@ -125,6 +128,9 @@ public class ProductService {
         validateStock(product);
         product.setCompareAtPrice(normalizeCompare(product.getCompareAtPrice(), product.getPrice()));
         syncPromotionFeatured(product);
+        if (request.variants() != null) {
+            syncVariants(product, request.variants());
+        }
         return ProductMapper.toResponse(product);
     }
 
@@ -155,6 +161,27 @@ public class ProductService {
     /** Produtos com preço antigo entram na seção Promoção da vitrine. */
     private void syncPromotionFeatured(Product product) {
         product.setFeatured(product.getCompareAtPrice() != null);
+    }
+
+    private void syncVariants(Product product, List<ProductVariantRequest> requests) {
+        product.getVariants().clear();
+        if (requests == null || requests.isEmpty()) {
+            return;
+        }
+        int index = 0;
+        for (ProductVariantRequest request : requests) {
+            if (request == null || request.name() == null || request.name().isBlank()) {
+                continue;
+            }
+            ProductVariant variant = new ProductVariant();
+            variant.setProduct(product);
+            variant.setName(request.name().trim());
+            variant.setPrice(requirePrice(request.price()));
+            variant.setAvailable(request.available() == null || request.available());
+            variant.setSortOrder(request.sortOrder() != null ? request.sortOrder() : index);
+            product.getVariants().add(variant);
+            index++;
+        }
     }
 
     @Transactional

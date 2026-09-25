@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="/css/reset.css">
     <link rel="stylesheet" href="/css/layout.css">
     <link rel="stylesheet" href="/css/components.css">
-    <link rel="stylesheet" href="/css/pages/store.css?v=65cf7c4c3a">
+    <link rel="stylesheet" href="/css/pages/store.css?v=a88db85675">
     <script src="/js/env.js"></script>
 </head>
 <body class="page-shell">
@@ -80,6 +80,19 @@
             </div>
         </div>
     </div>
-    <script type="module" src="/js/pages/store.js?v=9494e0785b"></script>
+    <div class="variant-sheet" id="variant-sheet" hidden>
+        <button class="variant-sheet-backdrop" id="variant-sheet-close" type="button" aria-label="Fechar"></button>
+        <div class="variant-sheet-panel" role="dialog" aria-modal="true" aria-labelledby="variant-sheet-title">
+            <div class="variant-sheet-head">
+                <h2 id="variant-sheet-title">Escolha o sabor</h2>
+                <button class="btn btn-ghost" id="variant-sheet-dismiss" type="button">Fechar</button>
+            </div>
+            <p class="muted" id="variant-sheet-product"></p>
+            <div class="variant-sheet-list" id="variant-sheet-list"></div>
+            <div class="variant-sheet-qty" id="variant-sheet-qty"></div>
+            <button class="btn btn-primary btn-block" id="variant-sheet-confirm" type="button">Adicionar ao carrinho</button>
+        </div>
+    </div>
+    <script type="module" src="/js/pages/store.js?v=a495955f77"></script>
 </body>
 </html>

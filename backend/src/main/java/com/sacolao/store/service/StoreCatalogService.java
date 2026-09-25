@@ -15,6 +15,7 @@ import com.sacolao.establishment.service.StoreAvailabilityService;
 import com.sacolao.order.entity.FulfillmentType;
 import com.sacolao.product.dto.ProductResponse;
 import com.sacolao.product.entity.Product;
+import com.sacolao.product.entity.ProductVariant;
 import com.sacolao.product.mapper.ProductMapper;
 import com.sacolao.product.repository.ProductRepository;
 import com.sacolao.payment.entity.EstablishmentPaymentSettings;
@@ -34,6 +35,7 @@ import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -113,20 +115,44 @@ public class StoreCatalogService {
             Product product = productRepository.findPublicById(item.productId(), store.getId()).orElse(null);
             BigDecimal quantity = Money.quantity(item.quantity());
             if (product == null) {
-                lines.add(unavailableLine(item.productId(), quantity, "Produto indisponível"));
+                lines.add(unavailableLine(item.productId(), item.variantId(), quantity, "Produto indisponível"));
                 continue;
             }
             String issue = validateQuantity(product, quantity);
-            BigDecimal unitPrice = Money.of(product.getPrice());
+            ProductVariant variant = null;
+            if (issue == null) {
+                if (product.hasAvailableVariants()) {
+                    if (item.variantId() == null) {
+                        issue = "Escolha um sabor/opção";
+                    } else {
+                        variant = product.getVariants().stream()
+                                .filter(candidate -> Objects.equals(candidate.getId(), item.variantId()))
+                                .filter(ProductVariant::isAvailable)
+                                .findFirst()
+                                .orElse(null);
+                        if (variant == null) {
+                            issue = "Sabor/opção indisponível";
+                        }
+                    }
+                } else if (item.variantId() != null) {
+                    issue = "Este produto não possui sabores/opções";
+                }
+            }
+            BigDecimal unitPrice = Money.of(variant != null ? variant.getPrice() : product.getPrice());
             BigDecimal lineTotal = issue == null
                     ? unitPrice.multiply(quantity).setScale(2, RoundingMode.HALF_UP)
                     : BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
             if (issue == null) {
                 subtotal = subtotal.add(lineTotal);
             }
+            String displayName = variant != null
+                    ? product.getName() + " · " + variant.getName()
+                    : product.getName();
             lines.add(new CartQuoteLineResponse(
                     product.getId(),
-                    product.getName(),
+                    variant != null ? variant.getId() : null,
+                    displayName,
+                    variant != null ? variant.getName() : null,
                     product.getImageUrl(),
                     product.getUnit(),
                     quantity,
@@ -181,8 +207,19 @@ public class StoreCatalogService {
         return null;
     }
 
-    private CartQuoteLineResponse unavailableLine(UUID productId, BigDecimal quantity, String issue) {
-        return new CartQuoteLineResponse(productId, null, null, null, quantity, null, BigDecimal.ZERO.setScale(2), issue);
+    private CartQuoteLineResponse unavailableLine(UUID productId, UUID variantId, BigDecimal quantity, String issue) {
+        return new CartQuoteLineResponse(
+                productId,
+                variantId,
+                null,
+                null,
+                null,
+                null,
+                quantity,
+                null,
+                BigDecimal.ZERO.setScale(2),
+                issue
+        );
     }
 
     private Establishment requireActiveStore(String slug) {

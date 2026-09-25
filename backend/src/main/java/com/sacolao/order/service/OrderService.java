@@ -36,6 +36,7 @@ import com.sacolao.payment.repository.PaymentRepository;
 import com.sacolao.payment.service.IdempotencyService;
 import com.sacolao.payment.service.PaymentService;
 import com.sacolao.product.entity.Product;
+import com.sacolao.product.entity.ProductVariant;
 import com.sacolao.product.repository.ProductRepository;
 import com.sacolao.stock.service.StockService;
 import com.sacolao.tenant.TenantContext;
@@ -52,6 +53,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -118,7 +120,7 @@ public class OrderService {
         validateFulfillment(request);
         validatePaymentMethod(store.getId(), request.paymentMethod());
         validateCustomerCpf(request);
-        Map<UUID, BigDecimal> quantities = mergeQuantities(request.items());
+        Map<LineKey, BigDecimal> quantities = mergeQuantities(request.items());
         if (quantities.isEmpty()) {
             throw new UnprocessableException("EMPTY_CART", "Carrinho vazio");
         }
@@ -161,17 +163,20 @@ public class OrderService {
 
         BigDecimal subtotal = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
         Map<Product, BigDecimal> stockConsumptions = new LinkedHashMap<>();
-        for (Map.Entry<UUID, BigDecimal> entry : quantities.entrySet()) {
-            Product product = productRepository.findPublicById(entry.getKey(), store.getId())
+        for (Map.Entry<LineKey, BigDecimal> entry : quantities.entrySet()) {
+            Product product = productRepository.findPublicById(entry.getKey().productId(), store.getId())
                     .orElseThrow(() -> new UnprocessableException("PRODUCT_UNAVAILABLE", "Produto indisponível"));
             BigDecimal quantity = Money.quantity(entry.getValue());
             validateQuantity(product, quantity);
-            BigDecimal unitPrice = Money.of(product.getPrice());
+            ResolvedVariant resolved = resolveVariant(product, entry.getKey().variantId());
+            BigDecimal unitPrice = Money.of(resolved.unitPrice());
             BigDecimal lineTotal = unitPrice.multiply(quantity).setScale(2, RoundingMode.HALF_UP);
 
             OrderItem item = new OrderItem();
             item.setProduct(product);
-            item.setProductName(product.getName());
+            item.setProductName(resolved.lineName());
+            item.setVariantId(resolved.variantId());
+            item.setVariantName(resolved.variantName());
             item.setImageUrl(product.getImageUrl());
             item.setProductUnit(product.getUnit());
             item.setQuantity(quantity);
@@ -179,7 +184,7 @@ public class OrderService {
             item.setSubtotal(lineTotal);
             order.addItem(item);
             subtotal = subtotal.add(lineTotal);
-            stockConsumptions.put(product, quantity);
+            stockConsumptions.merge(product, quantity, BigDecimal::add);
         }
 
         deliveryService.assertMinOrder(deliverySettings, subtotal);
@@ -327,13 +332,51 @@ public class OrderService {
         order.setAddressState(request.addressState().trim().toUpperCase(Locale.ROOT));
     }
 
-    private Map<UUID, BigDecimal> mergeQuantities(List<CheckoutRequest.CheckoutItemRequest> items) {
-        Map<UUID, BigDecimal> quantities = new LinkedHashMap<>();
+    private Map<LineKey, BigDecimal> mergeQuantities(List<CheckoutRequest.CheckoutItemRequest> items) {
+        Map<LineKey, BigDecimal> quantities = new LinkedHashMap<>();
         for (CheckoutRequest.CheckoutItemRequest item : items) {
             BigDecimal quantity = Money.quantity(item.quantity());
-            quantities.merge(item.productId(), quantity, BigDecimal::add);
+            quantities.merge(new LineKey(item.productId(), item.variantId()), quantity, BigDecimal::add);
         }
         return quantities;
+    }
+
+    private ResolvedVariant resolveVariant(Product product, UUID variantId) {
+        if (product.hasAvailableVariants()) {
+            if (variantId == null) {
+                throw new UnprocessableException(
+                        "VARIANT_REQUIRED",
+                        "Escolha um sabor/opção para " + product.getName()
+                );
+            }
+            ProductVariant variant = product.getVariants().stream()
+                    .filter(item -> Objects.equals(item.getId(), variantId))
+                    .filter(ProductVariant::isAvailable)
+                    .findFirst()
+                    .orElseThrow(() -> new UnprocessableException(
+                            "VARIANT_UNAVAILABLE",
+                            "Sabor/opção indisponível para " + product.getName()
+                    ));
+            return new ResolvedVariant(
+                    variant.getId(),
+                    variant.getName(),
+                    product.getName() + " · " + variant.getName(),
+                    variant.getPrice()
+            );
+        }
+        if (variantId != null) {
+            throw new UnprocessableException(
+                    "VARIANT_NOT_ALLOWED",
+                    "Este produto não possui sabores/opções"
+            );
+        }
+        return new ResolvedVariant(null, null, product.getName(), product.getPrice());
+    }
+
+    private record LineKey(UUID productId, UUID variantId) {
+    }
+
+    private record ResolvedVariant(UUID variantId, String variantName, String lineName, BigDecimal unitPrice) {
     }
 
     private void validateQuantity(Product product, BigDecimal quantity) {

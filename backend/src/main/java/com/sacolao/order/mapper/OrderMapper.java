@@ -59,7 +59,9 @@ public final class OrderMapper {
         return new OrderResponse.OrderItemResponse(
                 item.getId(),
                 item.getProduct() == null ? null : item.getProduct().getId(),
+                item.getVariantId(),
                 item.getProductName(),
+                item.getVariantName(),
                 resolveImageUrl(item),
                 item.getProductUnit(),
                 item.getQuantity(),

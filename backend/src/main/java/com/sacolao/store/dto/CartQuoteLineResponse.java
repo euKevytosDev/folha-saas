@@ -7,7 +7,9 @@ import java.util.UUID;
 
 public record CartQuoteLineResponse(
         UUID productId,
+        UUID variantId,
         String name,
+        String variantName,
         String imageUrl,
         ProductUnit unit,
         BigDecimal quantity,

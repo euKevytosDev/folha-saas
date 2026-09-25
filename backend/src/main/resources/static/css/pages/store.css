@@ -526,8 +526,102 @@
 .cart-drawer[hidden],
 .cart-bar[hidden],
 .store-section[hidden],
-.store-empty[hidden] {
+.store-empty[hidden],
+.variant-sheet[hidden] {
     display: none !important;
+}
+
+.product-price-from {
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: lowercase;
+}
+
+.variant-sheet {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: flex-end;
+}
+
+.variant-sheet-backdrop {
+    position: absolute;
+    inset: 0;
+    border: 0;
+    background: rgba(23, 32, 26, 0.42);
+    cursor: pointer;
+}
+
+.variant-sheet-panel {
+    position: relative;
+    z-index: 1;
+    width: min(100%, 560px);
+    margin: 0 auto;
+    max-height: min(88dvh, 720px);
+    overflow: auto;
+    background: var(--color-surface);
+    border-radius: 24px 24px 0 0;
+    padding: 1.1rem 1.1rem calc(1.1rem + env(safe-area-inset-bottom));
+    display: grid;
+    gap: 0.85rem;
+}
+
+.variant-sheet-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.variant-sheet-head h2 {
+    margin: 0;
+    font-size: 1.15rem;
+}
+
+.variant-sheet-list {
+    display: grid;
+    gap: 0.55rem;
+}
+
+.variant-option {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.85rem 1rem;
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    text-align: left;
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+}
+
+.variant-option strong {
+    font-weight: 700;
+}
+
+.variant-option span {
+    font-weight: 700;
+    color: var(--color-primary-dark);
+}
+
+.variant-option.is-selected {
+    border-color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 10%, white);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-primary) 35%, transparent);
+}
+
+.variant-sheet-qty {
+    display: flex;
+    justify-content: center;
+}
+
+body.sheet-open {
+    overflow: hidden;
 }
 
 .cart-panel {

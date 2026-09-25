@@ -155,6 +155,49 @@
     color: #7F1D1D;
 }
 
+.admin-check-variants {
+    padding: 0.7rem 0.85rem;
+    border: 1px solid color-mix(in srgb, var(--color-primary) 30%, var(--color-border));
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface));
+}
+
+.product-variants-box {
+    display: grid;
+    gap: 0.65rem;
+    padding: 0.85rem 0.95rem;
+    margin: 0 0 0.35rem;
+    border: 1px solid color-mix(in srgb, var(--color-primary) 22%, var(--color-border));
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--color-primary) 5%, var(--color-surface));
+}
+
+.product-variants-list {
+    display: grid;
+    gap: 0.55rem;
+}
+
+.product-variant-row {
+    display: grid;
+    grid-template-columns: 1fr 6.5rem auto;
+    gap: 0.45rem;
+    align-items: end;
+}
+
+.product-variant-row .field {
+    margin: 0;
+}
+
+.product-variant-row .field label {
+    font-size: 0.78rem;
+}
+
+@media (max-width: 560px) {
+    .product-variant-row {
+        grid-template-columns: 1fr;
+    }
+}
+
 .product-promo-fields {
     display: grid;
     gap: 0.65rem;

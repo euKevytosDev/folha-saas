@@ -1,7 +1,10 @@
 package com.sacolao.product.mapper;
 
 import com.sacolao.product.dto.ProductResponse;
+import com.sacolao.product.dto.ProductVariantResponse;
 import com.sacolao.product.entity.Product;
+
+import java.util.List;
 
 public final class ProductMapper {
 
@@ -9,6 +12,15 @@ public final class ProductMapper {
     }
 
     public static ProductResponse toResponse(Product product) {
+        List<ProductVariantResponse> variants = product.getVariants().stream()
+                .map(variant -> new ProductVariantResponse(
+                        variant.getId(),
+                        variant.getName(),
+                        variant.getPrice(),
+                        variant.isAvailable(),
+                        variant.getSortOrder()
+                ))
+                .toList();
         return new ProductResponse(
                 product.getId(),
                 product.getEstablishmentId(),
@@ -26,6 +38,7 @@ public final class ProductMapper {
                 product.getStockQuantity(),
                 product.getMinimumQuantity(),
                 product.getNcm(),
+                variants,
                 product.getCreatedAt(),
                 product.getUpdatedAt()
         );

@@ -47,7 +47,9 @@ public record OrderResponse(
     public record OrderItemResponse(
             UUID id,
             UUID productId,
+            UUID variantId,
             String productName,
+            String variantName,
             String imageUrl,
             ProductUnit productUnit,
             BigDecimal quantity,

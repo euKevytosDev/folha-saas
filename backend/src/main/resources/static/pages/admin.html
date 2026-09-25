@@ -14,9 +14,9 @@
     <link rel="stylesheet" href="/css/layout.css">
     <link rel="stylesheet" href="/css/components.css?v=2ceaa7501d">
     <link rel="stylesheet" href="/css/pages/placeholder.css">
-    <link rel="stylesheet" href="/css/pages/store.css?v=f2ff7d6bff">
+    <link rel="stylesheet" href="/css/pages/store.css?v=a88db85675">
     <link rel="stylesheet" href="/css/pages/checkout.css?v=a597b38512">
-    <link rel="stylesheet" href="/css/pages/admin.css?v=f2ff7d6bff">
+    <link rel="stylesheet" href="/css/pages/admin.css?v=6e40a434bb">
     <script src="/js/env.js"></script>
 </head>
 <body class="page-shell admin-shell">
@@ -152,6 +152,17 @@
                                                 <p class="muted">Aparece cinza e riscado na loja. Precisa ser maior que o preço atual.</p>
                                             </div>
                                             <p class="product-promo-preview muted" id="product-promo-preview" hidden></p>
+                                        </div>
+                                        <label class="admin-check admin-check-variants">
+                                            <input id="product-has-variants" name="hasVariants" type="checkbox">
+                                            Este produto tem sabores / opções
+                                        </label>
+                                        <div class="product-variants-box" id="product-variants-box" hidden>
+                                            <p class="muted" style="margin:0 0 0.55rem;">
+                                                Cada sabor tem nome e preço próprio. Na loja o cliente escolhe antes de adicionar.
+                                            </p>
+                                            <div id="product-variants-list" class="product-variants-list"></div>
+                                            <button class="btn btn-secondary" type="button" id="product-variant-add">+ Adicionar sabor</button>
                                         </div>
                                         <div class="field">
                                             <label for="product-unit">Unidade</label>
@@ -484,6 +495,6 @@
             </div>
         </div>
     </main>
-    <script type="module" src="/js/pages/admin.js?v=f2ff7d6bff"></script>
+    <script type="module" src="/js/pages/admin.js?v=caeabda412"></script>
 </body>
 </html>

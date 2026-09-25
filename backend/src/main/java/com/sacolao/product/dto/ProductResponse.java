@@ -4,6 +4,7 @@ import com.sacolao.product.entity.ProductUnit;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 public record ProductResponse(
@@ -23,6 +24,7 @@ public record ProductResponse(
         BigDecimal stockQuantity,
         BigDecimal minimumQuantity,
         String ncm,
+        List<ProductVariantResponse> variants,
         Instant createdAt,
         Instant updatedAt
 ) {

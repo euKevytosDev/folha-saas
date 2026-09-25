@@ -43,6 +43,12 @@ public class OrderItem {
     @Column(name = "product_name", nullable = false, length = 160)
     private String productName;
 
+    @Column(name = "variant_id")
+    private UUID variantId;
+
+    @Column(name = "variant_name", length = 120)
+    private String variantName;
+
     @Column(name = "image_url", length = 500)
     private String imageUrl;
 
@@ -101,6 +107,22 @@ public class OrderItem {
 
     public void setProductName(String productName) {
         this.productName = productName;
+    }
+
+    public UUID getVariantId() {
+        return variantId;
+    }
+
+    public void setVariantId(UUID variantId) {
+        this.variantId = variantId;
+    }
+
+    public String getVariantName() {
+        return variantName;
+    }
+
+    public void setVariantName(String variantName) {
+        this.variantName = variantName;
     }
 
     public String getImageUrl() {

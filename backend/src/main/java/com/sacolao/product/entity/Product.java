@@ -2,6 +2,7 @@ package com.sacolao.product.entity;
 
 import com.sacolao.category.entity.Category;
 import com.sacolao.establishment.entity.Establishment;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -12,12 +13,17 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.BatchSize;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -72,6 +78,11 @@ public class Product {
 
     @Column(length = 8)
     private String ncm;
+
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("sortOrder asc, name asc")
+    @BatchSize(size = 50)
+    private List<ProductVariant> variants = new ArrayList<>();
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -211,11 +222,28 @@ public class Product {
         this.ncm = ncm;
     }
 
+    public List<ProductVariant> getVariants() {
+        return variants;
+    }
+
+    public void setVariants(List<ProductVariant> variants) {
+        this.variants = variants;
+    }
+
     public Instant getCreatedAt() {
         return createdAt;
     }
 
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+
+    /** Sabores disponíveis para venda na vitrine. */
+    public List<ProductVariant> availableVariants() {
+        return variants.stream().filter(ProductVariant::isAvailable).toList();
+    }
+
+    public boolean hasAvailableVariants() {
+        return !availableVariants().isEmpty();
     }
 }

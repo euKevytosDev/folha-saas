@@ -235,16 +235,39 @@ function body(product) {
     title.textContent = product.name;
     const unit = document.createElement("p");
     unit.className = "muted";
-    unit.textContent = product.unit === "KG"
-        ? "Preço por kg · escolha em gramas ou quilos"
-        : `Por ${product.unit.toLowerCase()}`;
+    const variants = availableVariants(product);
+    if (variants.length) {
+        unit.textContent = variants.length === 1
+            ? "1 sabor disponível · escolha ao adicionar"
+            : `${variants.length} sabores · escolha ao adicionar`;
+    } else if (product.unit === "KG") {
+        unit.textContent = "Preço por kg · escolha em gramas ou quilos";
+    } else {
+        unit.textContent = `Por ${product.unit.toLowerCase()}`;
+    }
     wrap.append(title, unit, priceBlock(product), addControl(product));
     return wrap;
+}
+
+function availableVariants(product) {
+    return (product.variants || []).filter((variant) => variant && variant.available !== false);
 }
 
 function priceBlock(product) {
     const price = document.createElement("div");
     price.className = "product-price";
+    const variants = availableVariants(product);
+    if (variants.length) {
+        const minPrice = Math.min(...variants.map((variant) => Number(variant.price)));
+        const prefix = document.createElement("span");
+        prefix.className = "product-price-from muted";
+        prefix.textContent = "a partir de";
+        const current = document.createElement("span");
+        current.className = "product-price-now";
+        current.textContent = formatBRL(minPrice);
+        price.append(prefix, current);
+        return price;
+    }
     const pct = discountPercent(product.price, product.compareAtPrice);
     if (pct != null && product.compareAtPrice != null) {
         const old = document.createElement("s");
@@ -266,6 +289,17 @@ function priceBlock(product) {
 function addControl(product) {
     const actions = document.createElement("div");
     actions.className = "product-actions";
+    const variants = availableVariants(product);
+
+    if (variants.length) {
+        const add = document.createElement("button");
+        add.className = "btn btn-primary";
+        add.type = "button";
+        add.textContent = "Escolher";
+        add.addEventListener("click", () => openVariantSheet(product));
+        actions.append(add);
+        return actions;
+    }
 
     const qtyBlock = document.createElement("div");
     qtyBlock.className = "qty-block";
@@ -280,7 +314,6 @@ function addControl(product) {
     const minQty = Number(product.minimumQuantity) || unitStep(product.unit);
     input.min = minQty;
     input.step = unitStep(product.unit);
-    // 500 g é só o valor inicial na vitrine; o mínimo obrigatório vem do cadastro
     input.value = startQuantity(product);
     input.setAttribute("aria-label", "Quantidade");
     const plus = document.createElement("button");
@@ -317,7 +350,7 @@ function addControl(product) {
     add.type = "button";
     add.textContent = "Adicionar";
     add.addEventListener("click", () => {
-        addToCart(state.store.id, product.id, Number(input.value));
+        addToCart(state.store.id, product.id, Number(input.value), null);
         refreshLocalCart();
     });
     actions.append(qtyBlock, add);
@@ -353,9 +386,11 @@ function refreshLocalCart() {
     items.forEach((item) => {
         const product = state.productMap.get(item.productId);
         const quantity = Number(item.quantity) || 0;
+        const variantId = item.variantId || null;
         if (!product) {
             lines.push({
                 productId: item.productId,
+                variantId,
                 name: "Produto indisponível",
                 unit: null,
                 quantity,
@@ -365,19 +400,32 @@ function refreshLocalCart() {
             });
             return;
         }
-        const unitPrice = Number(product.price) || 0;
-        const lineTotal = Math.round(unitPrice * quantity * 100) / 100;
-        subtotal += lineTotal;
+        const variants = availableVariants(product);
+        let variant = null;
+        let issue = null;
+        if (variants.length) {
+            variant = variants.find((candidate) => candidate.id === variantId) || null;
+            if (!variant) {
+                issue = "Escolha um sabor novamente";
+            }
+        }
+        const unitPrice = Number(variant?.price ?? product.price) || 0;
+        const lineTotal = issue ? 0 : Math.round(unitPrice * quantity * 100) / 100;
+        if (!issue) {
+            subtotal += lineTotal;
+        }
         lines.push({
             productId: product.id,
-            name: product.name,
+            variantId: variant?.id || null,
+            name: variant ? `${product.name} · ${variant.name}` : product.name,
+            variantName: variant?.name || null,
             imageUrl: product.imageUrl,
             unit: product.unit,
             quantity,
             unitPrice,
             subtotal: lineTotal,
             minimumQuantity: Number(product.minimumQuantity) || unitStep(product.unit),
-            issue: null
+            issue
         });
     });
     subtotal = Math.round(subtotal * 100) / 100;
@@ -472,7 +520,7 @@ function cartLine(line) {
     remove.type = "button";
     remove.textContent = "Excluir";
     remove.addEventListener("click", () => {
-        setCartQuantity(state.store.id, line.productId, 0);
+        setCartQuantity(state.store.id, line.productId, 0, line.variantId || null);
         refreshLocalCart();
     });
     actions.append(qty, price, remove);
@@ -488,9 +536,112 @@ function changeLine(line, delta) {
         ?? unitStep(line.unit)
     );
     const next = Math.round((Number(line.quantity) + Number(delta)) * 1000) / 1000;
-    // abaixo do mínimo não vende; para tirar o item use Excluir
     const clamped = Math.max(min, next);
-    setCartQuantity(state.store.id, line.productId, clamped);
+    setCartQuantity(state.store.id, line.productId, clamped, line.variantId || null);
+    refreshLocalCart();
+}
+
+const variantSheetState = {
+    product: null,
+    variantId: null,
+    quantity: 1
+};
+
+function openVariantSheet(product) {
+    const sheet = $("#variant-sheet");
+    const list = $("#variant-sheet-list");
+    const qtyBox = $("#variant-sheet-qty");
+    const title = $("#variant-sheet-title");
+    const productLabel = $("#variant-sheet-product");
+    if (!sheet || !list || !qtyBox) {
+        return;
+    }
+    const variants = availableVariants(product);
+    if (!variants.length) {
+        return;
+    }
+    variantSheetState.product = product;
+    variantSheetState.variantId = variants[0].id;
+    variantSheetState.quantity = startQuantity(product);
+    if (title) {
+        title.textContent = "Escolha o sabor";
+    }
+    if (productLabel) {
+        productLabel.textContent = product.name;
+    }
+    list.replaceChildren();
+    variants.forEach((variant) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "variant-option";
+        if (variant.id === variantSheetState.variantId) {
+            button.classList.add("is-selected");
+        }
+        const name = document.createElement("strong");
+        name.textContent = variant.name;
+        const price = document.createElement("span");
+        price.textContent = formatBRL(variant.price);
+        button.append(name, price);
+        button.addEventListener("click", () => {
+            variantSheetState.variantId = variant.id;
+            list.querySelectorAll(".variant-option").forEach((el) => el.classList.remove("is-selected"));
+            button.classList.add("is-selected");
+        });
+        list.append(button);
+    });
+
+    qtyBox.replaceChildren();
+    const qty = document.createElement("div");
+    qty.className = "qty-control";
+    const minus = document.createElement("button");
+    minus.type = "button";
+    minus.textContent = "−";
+    const input = document.createElement("input");
+    input.type = "number";
+    input.value = variantSheetState.quantity;
+    input.min = Number(product.minimumQuantity) || unitStep(product.unit);
+    input.step = unitStep(product.unit);
+    const plus = document.createElement("button");
+    plus.type = "button";
+    plus.textContent = "+";
+    const sync = () => {
+        variantSheetState.quantity = nextQty(Number(input.value), 0, product);
+        input.value = variantSheetState.quantity;
+    };
+    minus.addEventListener("click", () => {
+        input.value = nextQty(Number(input.value), -unitStep(product.unit), product);
+        sync();
+    });
+    plus.addEventListener("click", () => {
+        input.value = nextQty(Number(input.value), unitStep(product.unit), product);
+        sync();
+    });
+    input.addEventListener("change", sync);
+    qty.append(minus, input, plus);
+    qtyBox.append(qty);
+
+    sheet.hidden = false;
+    document.body.classList.add("sheet-open");
+}
+
+function closeVariantSheet() {
+    const sheet = $("#variant-sheet");
+    if (sheet) {
+        sheet.hidden = true;
+    }
+    document.body.classList.remove("sheet-open");
+    variantSheetState.product = null;
+    variantSheetState.variantId = null;
+}
+
+function confirmVariantSheet() {
+    const product = variantSheetState.product;
+    const variantId = variantSheetState.variantId;
+    if (!product || !variantId) {
+        return;
+    }
+    addToCart(state.store.id, product.id, Number(variantSheetState.quantity), variantId);
+    closeVariantSheet();
     refreshLocalCart();
 }
 
@@ -553,4 +704,8 @@ on($("#clear-cart"), "click", () => {
     clearCart(state.store.id);
     refreshLocalCart();
 });
+
+on($("#variant-sheet-close"), "click", () => closeVariantSheet());
+on($("#variant-sheet-dismiss"), "click", () => closeVariantSheet());
+on($("#variant-sheet-confirm"), "click", () => confirmVariantSheet());
 
