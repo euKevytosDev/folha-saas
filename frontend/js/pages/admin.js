@@ -456,6 +456,7 @@ function wireCatalogForms() {
         syncMinQtyField(productForm);
         wireProductPromoFields(productForm);
         wireProductVariantFields(productForm);
+        syncProductFormMode();
     }
 
     $("#bulk-kg-min-btn")?.addEventListener("click", () => applyBulkKgMinimum());
@@ -1197,23 +1198,37 @@ function renderCategoryOptions(categories) {
     }
 }
 
+function syncProductFormMode(name = "") {
+    const block = $("#product-form-block");
+    const mode = $("#product-form-mode");
+    const title = $("#product-form-title");
+    const cancelBtn = $("#product-cancel-edit");
+    const form = $("#product-form");
+    const submitBtn = form?.querySelector("[data-carousel-submit]");
+    const editing = editingProductId != null;
+    block?.classList.toggle("is-editing", editing);
+    if (mode) {
+        mode.textContent = editing ? "Editando produto" : "Cadastrando novo";
+    }
+    if (title) {
+        title.textContent = editing
+            ? (name ? `Editar · ${name}` : "Editar produto")
+            : "Novo produto";
+    }
+    if (cancelBtn) {
+        cancelBtn.hidden = !editing;
+    }
+    if (submitBtn) {
+        submitBtn.textContent = editing ? "Salvar alterações" : "Salvar produto";
+    }
+}
+
 function clearProductForm(form) {
     if (!form) {
         return;
     }
     editingProductId = null;
-    const title = $("#product-form-title");
-    if (title) {
-        title.textContent = "Novo produto";
-    }
-    const cancelBtn = $("#product-cancel-edit");
-    if (cancelBtn) {
-        cancelBtn.hidden = true;
-    }
-    const submitBtn = form.querySelector("[data-carousel-submit]");
-    if (submitBtn) {
-        submitBtn.textContent = "Salvar produto";
-    }
+    syncProductFormMode();
     const nameInput = control(form, "name");
     if (nameInput) {
         nameInput.value = "";
@@ -1241,6 +1256,7 @@ function clearProductForm(form) {
     clearProductImagePreview();
     renderCategoryOptions(catalogCategories);
     resetFormCarousel(form);
+    renderProducts(catalogProducts);
 }
 
 function beginEditProduct(item) {
@@ -1249,18 +1265,7 @@ function beginEditProduct(item) {
         return;
     }
     editingProductId = item.id;
-    const title = $("#product-form-title");
-    if (title) {
-        title.textContent = `Editar · ${item.name}`;
-    }
-    const cancelBtn = $("#product-cancel-edit");
-    if (cancelBtn) {
-        cancelBtn.hidden = false;
-    }
-    const submitBtn = form.querySelector("[data-carousel-submit]");
-    if (submitBtn) {
-        submitBtn.textContent = "Salvar alterações";
-    }
+    syncProductFormMode(item.name || "");
     renderCategoryOptions(catalogCategories);
     const nameInput = control(form, "name");
     if (nameInput) {
@@ -1300,6 +1305,7 @@ function beginEditProduct(item) {
     formCarousels.get(form)?.go(1);
     hideAlert($("#product-alert"));
     showAdminPanel("produtos");
+    renderProducts(catalogProducts);
     scrollToProductEditor();
 }
 
@@ -1386,43 +1392,63 @@ function renderProducts(products) {
     visible.forEach((item) => {
         const row = document.createElement("div");
         row.className = "product-admin-row";
+        if (editingProductId === item.id) {
+            row.classList.add("is-editing");
+        }
         const title = document.createElement("strong");
         title.textContent = item.name;
-        const meta = document.createElement("p");
-        meta.className = "muted";
-        const stockLabel = item.stockControlled
-            ? ` · estoque ${item.stockQuantity ?? 0}`
-            : " · venda livre";
+        const meta = document.createElement("div");
+        meta.className = "product-admin-meta";
+        const chips = [];
+        chips.push({ text: item.categoryName || "Sem categoria" });
+        chips.push({ text: `${formatBRL(item.price)} / ${item.unit}`, cls: "is-price" });
+        if (!item.available) {
+            chips.push({ text: "Oculto", cls: "is-hidden" });
+        }
+        if (item.stockControlled) {
+            chips.push({ text: `Estoque ${item.stockQuantity ?? 0}` });
+        }
         const minKg = Number(item.minimumQuantity || 0);
-        const minLabel = item.unit === "KG"
-            ? (minKg > 0.1 + 1e-9 ? ` · mín. compra ${Math.round(minKg * 1000)} g` : "")
-            : Number(item.minimumQuantity) > 1
-                ? ` · mín. compra ${item.minimumQuantity}`
-                : "";
+        if (item.unit === "KG" && minKg > 0.1 + 1e-9) {
+            chips.push({ text: `Mín. ${Math.round(minKg * 1000)} g` });
+        } else if (item.unit !== "KG" && Number(item.minimumQuantity) > 1) {
+            chips.push({ text: `Mín. ${item.minimumQuantity}` });
+        }
         const maxQty = Number(item.maximumQuantity);
-        const maxLabel = Number.isFinite(maxQty) && maxQty > 0
-            ? (item.unit === "KG"
-                ? ` · máx. compra ${Math.round(maxQty * 1000)} g`
-                : ` · máx. compra ${maxQty}`)
-            : "";
+        if (Number.isFinite(maxQty) && maxQty > 0) {
+            chips.push({
+                text: item.unit === "KG"
+                    ? `Máx. ${Math.round(maxQty * 1000)} g`
+                    : `Máx. ${maxQty}`
+            });
+        }
         const pct = discountPercent(item.price, item.compareAtPrice);
-        const promoLabel = pct != null
-            ? ` · promo −${pct}% (de ${formatBRL(item.compareAtPrice)})`
-            : "";
+        if (pct != null) {
+            chips.push({ text: `Promo −${pct}%`, cls: "is-promo" });
+        }
         const variantCount = Array.isArray(item.variants) ? item.variants.length : 0;
-        const variantLabel = variantCount > 0
-            ? ` · ${variantCount} sabor${variantCount === 1 ? "" : "es"}`
-            : "";
-        meta.textContent = `${item.categoryName} · ${formatBRL(item.price)} / ${item.unit} · ${item.available ? "à venda" : "oculto"}${stockLabel}${minLabel}${maxLabel}${promoLabel}${variantLabel}`;
+        if (variantCount > 0) {
+            const minC = Math.max(1, Number(item.variantMinChoices) || 1);
+            const maxC = Math.max(minC, Number(item.variantMaxChoices) || minC);
+            chips.push({
+                text: minC === maxC
+                    ? `${variantCount} sabores · escolha ${minC}`
+                    : `${variantCount} sabores · ${minC}–${maxC}`
+            });
+        }
+        chips.forEach(({ text, cls }) => {
+            const chip = document.createElement("span");
+            chip.className = cls ? `product-admin-chip ${cls}` : "product-admin-chip";
+            chip.textContent = text;
+            meta.append(chip);
+        });
         const body = document.createElement("div");
         const actions = document.createElement("div");
-        actions.style.display = "flex";
-        actions.style.gap = "0.4rem";
-        actions.style.flexWrap = "wrap";
+        actions.className = "product-admin-actions";
         const editBtn = document.createElement("button");
         editBtn.type = "button";
-        editBtn.className = "btn btn-secondary";
-        editBtn.textContent = "Editar";
+        editBtn.className = editingProductId === item.id ? "btn btn-primary" : "btn btn-secondary";
+        editBtn.textContent = editingProductId === item.id ? "Editando" : "Editar";
         editBtn.addEventListener("click", () => beginEditProduct(item));
         actions.append(
             editBtn,
@@ -1435,7 +1461,7 @@ function renderProducts(products) {
             promoBtn.textContent = "Tirar promoção";
             promoBtn.addEventListener("click", () => clearProductPromotion(item));
         } else {
-            promoBtn.className = "btn btn-primary";
+            promoBtn.className = "btn btn-secondary";
             promoBtn.textContent = "Promoção";
             promoBtn.addEventListener("click", () => beginProductPromotion(item));
         }

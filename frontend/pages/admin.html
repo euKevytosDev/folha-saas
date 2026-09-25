@@ -16,7 +16,7 @@
     <link rel="stylesheet" href="/css/pages/placeholder.css">
     <link rel="stylesheet" href="/css/pages/store.css?v=a88db85675">
     <link rel="stylesheet" href="/css/pages/checkout.css?v=a597b38512">
-    <link rel="stylesheet" href="/css/pages/admin.css?v=a30cb2992c">
+    <link rel="stylesheet" href="/css/pages/admin.css?v=90670dc3c9">
     <script src="/js/env.js"></script>
 </head>
 <body class="page-shell admin-shell">
@@ -97,27 +97,35 @@
                 <section class="admin-panel" id="panel-produtos" data-panel="produtos" style="--panel-color:#16A34A">
                     <header class="admin-panel-head">
                         <h2 class="admin-panel-title">Produtos</h2>
-                        <p class="muted">Monte o cardápio em passos curtos: o que é, preço, foto e estoque.</p>
+                        <p class="muted">Categorias, cadastro e lista — um bloco de cada vez.</p>
                     </header>
                     <div class="admin-stack">
-                        <article class="admin-block">
-                            <h3 class="admin-block-title">Categorias</h3>
-                            <div id="categories-list"></div>
-                            <div class="alert" id="category-alert" hidden></div>
-                            <form id="category-form" class="auth-form admin-inline-form" onsubmit="return false;">
-                                <div class="field">
-                                    <label for="category-name">Nome</label>
-                                    <input id="category-name" name="name" type="text" required placeholder="Ex.: Frutas">
-                                </div>
-                                <div class="field">
-                                    <label for="category-order">Ordem</label>
-                                    <input id="category-order" name="sortOrder" type="number" value="0">
-                                </div>
-                                <button class="btn btn-primary" type="button" data-category-submit>Adicionar</button>
-                            </form>
+                        <article class="admin-block admin-block-compact" id="categories-block">
+                            <details class="admin-fold">
+                                <summary class="admin-fold-summary">Categorias do cardápio</summary>
+                                <div id="categories-list"></div>
+                                <div class="alert" id="category-alert" hidden></div>
+                                <form id="category-form" class="auth-form admin-inline-form" onsubmit="return false;">
+                                    <div class="field">
+                                        <label for="category-name">Nome</label>
+                                        <input id="category-name" name="name" type="text" required placeholder="Ex.: Frutas">
+                                    </div>
+                                    <div class="field">
+                                        <label for="category-order">Ordem</label>
+                                        <input id="category-order" name="sortOrder" type="number" value="0">
+                                    </div>
+                                    <button class="btn btn-primary" type="button" data-category-submit>Adicionar</button>
+                                </form>
+                            </details>
                         </article>
                         <article class="admin-block" id="product-form-block">
-                            <h3 class="admin-block-title" id="product-form-title">Novo produto</h3>
+                            <div class="product-form-head">
+                                <div>
+                                    <p class="product-form-mode" id="product-form-mode">Cadastrando novo</p>
+                                    <h3 class="admin-block-title" id="product-form-title">Novo produto</h3>
+                                </div>
+                                <button class="btn btn-ghost" type="button" id="product-cancel-edit" hidden>Cancelar edição</button>
+                            </div>
                             <div class="alert" id="product-alert" hidden></div>
                             <form id="product-form" class="auth-form form-carousel" data-carousel onsubmit="return false;" novalidate>
                                 <div class="form-slides">
@@ -136,76 +144,89 @@
                                         </div>
                                     </div>
                                     <div class="form-slide">
-                                        <p class="form-step-label">2 de 4 · Preço e promoção</p>
-                                        <div class="field">
-                                            <label for="product-price">Preço atual / promocional (R$)</label>
-                                            <input id="product-price" name="price" type="number" min="0.01" step="0.01" required>
-                                        </div>
-                                        <label class="admin-check admin-check-promo">
-                                            <input id="product-promo" name="promoEnabled" type="checkbox">
-                                            Produto em promoção (aparece na seção Promoção da loja)
-                                        </label>
-                                        <div class="product-promo-fields" id="product-promo-fields" hidden>
-                                            <div class="field">
-                                                <label for="product-compare-price">Preço antigo (de)</label>
-                                                <input id="product-compare-price" name="compareAtPrice" type="number" min="0.01" step="0.01" placeholder="Ex.: 12,90">
-                                                <p class="muted">Aparece cinza e riscado na loja. Precisa ser maior que o preço atual.</p>
-                                            </div>
-                                            <p class="product-promo-preview muted" id="product-promo-preview" hidden></p>
-                                        </div>
-                                        <label class="admin-check admin-check-variants">
-                                            <input id="product-has-variants" name="hasVariants" type="checkbox">
-                                            Este produto tem sabores / opções
-                                        </label>
-                                        <div class="product-variants-box" id="product-variants-box" hidden>
-                                            <p class="muted" style="margin:0 0 0.55rem;">
-                                                Cadastre os sabores. O preço de cada um é opcional: deixe vazio para usar só o preço do produto (ex.: suco R$ 15 com 3 sabores).
-                                            </p>
-                                            <div class="product-variant-choice-row">
+                                        <p class="form-step-label">2 de 4 · Preço e opções</p>
+                                        <section class="form-section">
+                                            <h4 class="form-section-title">Preço</h4>
+                                            <div class="form-section-grid">
                                                 <div class="field">
-                                                    <label for="product-variant-min">Mín. de sabores a escolher</label>
-                                                    <input id="product-variant-min" name="variantMinChoices" type="number" min="1" step="1" value="1">
+                                                    <label for="product-price">Preço (R$)</label>
+                                                    <input id="product-price" name="price" type="number" min="0.01" step="0.01" required>
                                                 </div>
                                                 <div class="field">
-                                                    <label for="product-variant-max">Máx. de sabores a escolher</label>
-                                                    <input id="product-variant-max" name="variantMaxChoices" type="number" min="1" step="1" value="1">
+                                                    <label for="product-unit">Unidade</label>
+                                                    <select id="product-unit" name="unit">
+                                                        <option value="UN">UN</option>
+                                                        <option value="KG">KG</option>
+                                                        <option value="G">G</option>
+                                                        <option value="L">L</option>
+                                                        <option value="ML">ML</option>
+                                                        <option value="CX">CX</option>
+                                                        <option value="PCT">PCT</option>
+                                                    </select>
                                                 </div>
                                             </div>
-                                            <p class="muted" style="margin:0 0 0.55rem;">
-                                                Ex.: mín. 3 e máx. 3 = a pessoa escolhe exatamente 3 sabores e paga o valor do produto.
-                                            </p>
-                                            <div id="product-variants-list" class="product-variants-list"></div>
-                                            <button class="btn btn-secondary" type="button" id="product-variant-add">+ Adicionar sabor</button>
-                                        </div>
-                                        <div class="field">
-                                            <label for="product-unit">Unidade</label>
-                                            <select id="product-unit" name="unit">
-                                                <option value="UN">UN</option>
-                                                <option value="KG">KG</option>
-                                                <option value="G">G</option>
-                                                <option value="L">L</option>
-                                                <option value="ML">ML</option>
-                                                <option value="CX">CX</option>
-                                                <option value="PCT">PCT</option>
-                                            </select>
-                                        </div>
-                                        <div class="field">
-                                            <label for="product-min-qty" id="product-min-qty-label">Quantidade mínima de compra (gramas)</label>
-                                            <input id="product-min-qty" name="minimumQuantityInput" type="number" min="50" step="50" value="100" required>
-                                            <p class="muted" id="product-min-qty-hint">Só restringe se você quiser (ex.: mamão mín. 700 g). Use 100 se não houver limite especial. Na loja o seletor ainda começa em 500 g.</p>
-                                        </div>
-                                        <div class="field">
-                                            <label for="product-max-qty" id="product-max-qty-label">Quantidade máxima de compra (gramas)</label>
-                                            <input id="product-max-qty" name="maximumQuantityInput" type="number" min="50" step="50" placeholder="Sem limite">
-                                            <p class="muted" id="product-max-qty-hint">Opcional. Deixe em branco para o cliente comprar à vontade (ainda limitado pelo estoque, se houver).</p>
-                                        </div>
+                                        </section>
+                                        <section class="form-section form-section-promo">
+                                            <h4 class="form-section-title">Promoção</h4>
+                                            <label class="admin-check admin-check-promo">
+                                                <input id="product-promo" name="promoEnabled" type="checkbox">
+                                                Em promoção na loja
+                                            </label>
+                                            <div class="product-promo-fields" id="product-promo-fields" hidden>
+                                                <div class="field">
+                                                    <label for="product-compare-price">Preço antigo (de)</label>
+                                                    <input id="product-compare-price" name="compareAtPrice" type="number" min="0.01" step="0.01" placeholder="Ex.: 12,90">
+                                                    <p class="muted">Precisa ser maior que o preço atual.</p>
+                                                </div>
+                                                <p class="product-promo-preview muted" id="product-promo-preview" hidden></p>
+                                            </div>
+                                        </section>
+                                        <section class="form-section form-section-variants">
+                                            <h4 class="form-section-title">Sabores / opções</h4>
+                                            <label class="admin-check admin-check-variants">
+                                                <input id="product-has-variants" name="hasVariants" type="checkbox">
+                                                Este produto tem sabores
+                                            </label>
+                                            <div class="product-variants-box" id="product-variants-box" hidden>
+                                                <p class="muted form-section-hint">
+                                                    Preço do sabor é opcional. Vazio = usa só o preço do produto (ex.: suco R$ 15, escolha 3 sabores).
+                                                </p>
+                                                <div class="product-variant-choice-row">
+                                                    <div class="field">
+                                                        <label for="product-variant-min">Mín. de sabores</label>
+                                                        <input id="product-variant-min" name="variantMinChoices" type="number" min="1" step="1" value="1">
+                                                    </div>
+                                                    <div class="field">
+                                                        <label for="product-variant-max">Máx. de sabores</label>
+                                                        <input id="product-variant-max" name="variantMaxChoices" type="number" min="1" step="1" value="1">
+                                                    </div>
+                                                </div>
+                                                <div id="product-variants-list" class="product-variants-list"></div>
+                                                <button class="btn btn-secondary" type="button" id="product-variant-add">+ Adicionar sabor</button>
+                                            </div>
+                                        </section>
+                                        <section class="form-section">
+                                            <h4 class="form-section-title">Limite de compra</h4>
+                                            <div class="form-section-grid">
+                                                <div class="field">
+                                                    <label for="product-min-qty" id="product-min-qty-label">Mínimo (gramas)</label>
+                                                    <input id="product-min-qty" name="minimumQuantityInput" type="number" min="50" step="50" value="100" required>
+                                                    <p class="muted" id="product-min-qty-hint">Ex.: mamão 700 g. Use 100 se não houver limite.</p>
+                                                </div>
+                                                <div class="field">
+                                                    <label for="product-max-qty" id="product-max-qty-label">Máximo (gramas)</label>
+                                                    <input id="product-max-qty" name="maximumQuantityInput" type="number" min="50" step="50" placeholder="Sem limite">
+                                                    <p class="muted" id="product-max-qty-hint">Opcional. Em branco = sem teto (além do estoque).</p>
+                                                </div>
+                                            </div>
+                                        </section>
                                     </div>
                                     <div class="form-slide">
                                         <p class="form-step-label">3 de 4 · Foto</p>
                                         <div class="field">
                                             <label for="product-image-file">Foto do produto</label>
                                             <input id="product-image-file" name="imageFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif">
-                                            <p class="muted" id="product-image-hint" style="margin-top:0.35rem;">Envie um arquivo ou cole uma URL abaixo.</p>
+                                            <p class="muted" id="product-image-hint" style="margin-top:0.35rem;">Arquivo ou URL abaixo.</p>
                                         </div>
                                         <div class="product-image-preview" id="product-image-preview" hidden>
                                             <img id="product-image-preview-img" alt="Prévia do produto">
@@ -220,34 +241,33 @@
                                         <div class="field">
                                             <label for="product-stock">Quantidade em estoque (opcional)</label>
                                             <input id="product-stock" name="stockQuantity" type="number" min="0" step="0.001" placeholder="Ex.: 20">
-                                            <p class="muted">Deixe em branco para o cliente comprar à vontade. Se preencher, a loja limita as compras a essa quantidade.</p>
+                                            <p class="muted">Em branco = venda livre. Com valor, a loja limita as compras.</p>
                                         </div>
                                         <div class="field">
                                             <label for="product-ncm">NCM (opcional, NFC-e)</label>
                                             <input id="product-ncm" name="ncm" type="text" maxlength="8" inputmode="numeric" placeholder="Ex.: 07019000">
                                         </div>
-                                        <p class="muted" style="margin:0;">Para aparecer na seção <strong>Promoção</strong> da loja, marque “Produto em promoção” no passo do preço e informe o valor antigo.</p>
                                     </div>
                                 </div>
                                 <div class="form-carousel-bar">
                                     <button class="btn btn-ghost" type="button" data-carousel-prev>Voltar</button>
                                     <div class="form-dots" data-carousel-dots></div>
                                     <button class="btn btn-secondary" type="button" data-carousel-next>Continuar</button>
-                                    <button class="btn btn-ghost" type="button" id="product-cancel-edit" hidden>Cancelar edição</button>
                                     <button class="btn btn-primary" type="submit" data-carousel-submit hidden>Salvar produto</button>
                                 </div>
                             </form>
                         </article>
-                        <article class="admin-block">
+                        <article class="admin-block" id="product-catalog-block">
                             <h3 class="admin-block-title">Catálogo</h3>
-                            <p class="muted" style="margin:0 0 0.85rem;">
-                                Em cada produto use <strong>Promoção</strong> para definir preço antigo e novo (entra na seção Promoção da loja), ou <strong>Tirar promoção</strong> para remover.
-                            </p>
-                            <div class="admin-bulk-min" id="bulk-kg-min-box">
-                                <p class="muted" style="margin:0 0 0.65rem;">
-                                    Atalho: aplicar a mesma quantidade mínima de compra em <strong>todos os produtos por kg</strong> de uma vez.
-                                </p>
-                                <div class="admin-bulk-min-row">
+                            <p class="muted admin-block-lead">Toque em <strong>Editar</strong> para carregar o produto no formulário acima.</p>
+                            <div class="field admin-product-search">
+                                <label for="product-search">Pesquisar produto</label>
+                                <input id="product-search" type="search" placeholder="Nome, categoria, sabor…" autocomplete="off">
+                            </div>
+                            <div id="products-list"></div>
+                            <details class="admin-bulk-min admin-bulk-details" id="bulk-kg-min-box">
+                                <summary>Atalho · mínimo em todos os produtos por kg</summary>
+                                <div class="admin-bulk-min-row" style="margin-top:0.75rem;">
                                     <div class="field" style="margin:0; min-width:10rem;">
                                         <label for="bulk-kg-min-grams">Mínimo (gramas)</label>
                                         <input id="bulk-kg-min-grams" type="number" min="50" step="50" value="500" inputmode="numeric">
@@ -255,12 +275,7 @@
                                     <button class="btn btn-secondary" type="button" id="bulk-kg-min-btn">Aplicar em todos os KG</button>
                                 </div>
                                 <div class="alert" id="bulk-kg-min-alert" hidden style="margin-top:0.75rem;"></div>
-                            </div>
-                            <div class="field admin-product-search">
-                                <label for="product-search">Pesquisar produto</label>
-                                <input id="product-search" type="search" placeholder="Nome, categoria, sabor…" autocomplete="off">
-                            </div>
-                            <div id="products-list"></div>
+                            </details>
                         </article>
                     </div>
                 </section>
@@ -517,6 +532,6 @@
             </div>
         </div>
     </main>
-    <script type="module" src="/js/pages/admin.js?v=5141080335"></script>
+    <script type="module" src="/js/pages/admin.js?v=e584c2923e"></script>
 </body>
 </html>
