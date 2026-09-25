@@ -35,6 +35,7 @@ public record CheckoutRequest(
     public record CheckoutItemRequest(
             @NotNull UUID productId,
             UUID variantId,
+            List<UUID> variantIds,
             @NotNull @DecimalMin(value = "0.001") BigDecimal quantity
     ) {
     }

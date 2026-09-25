@@ -79,6 +79,12 @@ public class Product {
     @Column(name = "maximum_quantity", precision = 12, scale = 3)
     private BigDecimal maximumQuantity;
 
+    @Column(name = "variant_min_choices", nullable = false)
+    private int variantMinChoices = 1;
+
+    @Column(name = "variant_max_choices", nullable = false)
+    private int variantMaxChoices = 1;
+
     @Column(length = 8)
     private String ncm;
 
@@ -223,6 +229,22 @@ public class Product {
 
     public void setMaximumQuantity(BigDecimal maximumQuantity) {
         this.maximumQuantity = maximumQuantity;
+    }
+
+    public int getVariantMinChoices() {
+        return variantMinChoices;
+    }
+
+    public void setVariantMinChoices(int variantMinChoices) {
+        this.variantMinChoices = variantMinChoices;
+    }
+
+    public int getVariantMaxChoices() {
+        return variantMaxChoices;
+    }
+
+    public void setVariantMaxChoices(int variantMaxChoices) {
+        this.variantMaxChoices = variantMaxChoices;
     }
 
     public String getNcm() {

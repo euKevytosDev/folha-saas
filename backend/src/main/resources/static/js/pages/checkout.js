@@ -298,7 +298,8 @@ on(form, "submit", async (event) => {
         const items = loadCart(state.store.id)
             .map((item) => ({
                 productId: item.productId,
-                variantId: item.variantId || null,
+                variantId: item.variantId || item.variantIds?.[0] || null,
+                variantIds: item.variantIds || (item.variantId ? [item.variantId] : []),
                 quantity: item.quantity
             }));
         const payload = {

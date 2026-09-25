@@ -4,12 +4,20 @@ function key(storeId) {
     return PREFIX + storeId;
 }
 
-function lineKey(productId, variantId) {
-    return `${productId}::${variantId || ""}`;
+function normalizeVariantIds(variantIds) {
+    const list = Array.isArray(variantIds)
+        ? variantIds
+        : (variantIds ? [variantIds] : []);
+    return [...new Set(list.filter(Boolean).map(String))].sort();
 }
 
-function sameLine(item, productId, variantId) {
-    return item.productId === productId && (item.variantId || null) === (variantId || null);
+function choiceKey(productId, variantIds) {
+    return `${productId}::${normalizeVariantIds(variantIds).join(",")}`;
+}
+
+function sameLine(item, productId, variantIds) {
+    return choiceKey(item.productId, item.variantIds || (item.variantId ? [item.variantId] : []))
+        === choiceKey(productId, variantIds);
 }
 
 export function loadCart(storeId) {
@@ -19,9 +27,17 @@ export function loadCart(storeId) {
     try {
         const raw = localStorage.getItem(key(storeId));
         const parsed = raw ? JSON.parse(raw) : [];
-        return Array.isArray(parsed)
-            ? parsed.filter((item) => item?.productId && item.quantity > 0)
-            : [];
+        if (!Array.isArray(parsed)) {
+            return [];
+        }
+        return parsed
+            .filter((item) => item?.productId && item.quantity > 0)
+            .map((item) => ({
+                productId: item.productId,
+                variantId: item.variantId || (item.variantIds?.[0] ?? null),
+                variantIds: normalizeVariantIds(item.variantIds || (item.variantId ? [item.variantId] : [])),
+                quantity: item.quantity
+            }));
     } catch {
         return [];
     }
@@ -35,15 +51,17 @@ export function clearCart(storeId) {
     localStorage.removeItem(key(storeId));
 }
 
-export function addToCart(storeId, productId, quantity, variantId = null) {
+export function addToCart(storeId, productId, quantity, variantIds = null) {
+    const ids = normalizeVariantIds(variantIds);
     const items = loadCart(storeId);
-    const existing = items.find((item) => sameLine(item, productId, variantId));
+    const existing = items.find((item) => sameLine(item, productId, ids));
     if (existing) {
         existing.quantity = roundQty(existing.quantity + quantity);
     } else {
         items.push({
             productId,
-            variantId: variantId || null,
+            variantId: ids[0] || null,
+            variantIds: ids,
             quantity: roundQty(quantity)
         });
     }
@@ -51,18 +69,29 @@ export function addToCart(storeId, productId, quantity, variantId = null) {
     return loadCart(storeId);
 }
 
-export function setCartQuantity(storeId, productId, quantity, variantId = null) {
+export function setCartQuantity(storeId, productId, quantity, variantIds = null) {
     const qty = roundQty(quantity);
+    const ids = normalizeVariantIds(variantIds);
     const items = loadCart(storeId);
-    const index = items.findIndex((item) => sameLine(item, productId, variantId));
+    const index = items.findIndex((item) => sameLine(item, productId, ids));
     if (qty <= 0) {
         if (index >= 0) {
             items.splice(index, 1);
         }
     } else if (index >= 0) {
-        items[index] = { ...items[index], quantity: qty, variantId: variantId || null };
+        items[index] = {
+            ...items[index],
+            quantity: qty,
+            variantId: ids[0] || null,
+            variantIds: ids
+        };
     } else {
-        items.push({ productId, variantId: variantId || null, quantity: qty });
+        items.push({
+            productId,
+            variantId: ids[0] || null,
+            variantIds: ids,
+            quantity: qty
+        });
     }
     saveCart(storeId, items);
     return items;
@@ -70,10 +99,6 @@ export function setCartQuantity(storeId, productId, quantity, variantId = null) 
 
 export function cartCount(items) {
     return items.reduce((total, item) => total + Number(item.quantity || 0), 0);
-}
-
-export function cartLineKey(item) {
-    return lineKey(item.productId, item.variantId);
 }
 
 function roundQty(value) {

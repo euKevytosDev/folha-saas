@@ -24,6 +24,8 @@ public record ProductResponse(
         BigDecimal stockQuantity,
         BigDecimal minimumQuantity,
         BigDecimal maximumQuantity,
+        int variantMinChoices,
+        int variantMaxChoices,
         String ncm,
         List<ProductVariantResponse> variants,
         Instant createdAt,

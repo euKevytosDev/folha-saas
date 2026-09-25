@@ -185,6 +185,18 @@
     gap: 0.55rem;
 }
 
+.product-variant-choice-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.55rem;
+}
+
+@media (max-width: 560px) {
+    .product-variant-choice-row {
+        grid-template-columns: 1fr;
+    }
+}
+
 .product-variant-row {
     display: grid;
     grid-template-columns: 1fr 6.5rem auto;

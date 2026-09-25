@@ -378,6 +378,13 @@ function wireCatalogForms() {
             formCarousels.get(form)?.go(1);
             return;
         }
+        const choiceMin = Math.max(1, Math.round(Number(form.variantMinChoices?.value || $("#product-variant-min")?.value || 1)));
+        const choiceMax = Math.max(choiceMin, Math.round(Number(form.variantMaxChoices?.value || $("#product-variant-max")?.value || choiceMin)));
+        if (variants.items.length && choiceMax > variants.items.length) {
+            showFormAlert(alertBox, null, "O máximo de sabores a escolher não pode ser maior que a quantidade de sabores cadastrados.");
+            formCarousels.get(form)?.go(1);
+            return;
+        }
         if (submitBtn) {
             submitBtn.disabled = true;
             submitBtn.textContent = "Salvando…";
@@ -386,10 +393,10 @@ function wireCatalogForms() {
             const stockRaw = form.stockQuantity.value.trim();
             const hasStock = stockRaw !== "";
             let price = Number(form.price.value);
-            if (variants.items.length) {
-                const minVariant = Math.min(...variants.items.map((item) => item.price));
-                if (!Number.isFinite(price) || price <= 0) {
-                    price = minVariant;
+            if ((!Number.isFinite(price) || price <= 0) && variants.items.length) {
+                const priced = variants.items.map((item) => item.price).filter((value) => value != null && value > 0);
+                if (priced.length) {
+                    price = Math.min(...priced);
                 }
             }
             const body = {
@@ -404,6 +411,8 @@ function wireCatalogForms() {
                 stockQuantity: hasStock ? Number(stockRaw) : null,
                 minimumQuantity,
                 maximumQuantity: maximumQuantity == null ? 0 : maximumQuantity,
+                variantMinChoices: variants.items.length ? choiceMin : 1,
+                variantMaxChoices: variants.items.length ? choiceMax : 1,
                 ncm: form.ncm?.value?.trim() || null,
                 variants: variants.items
             };
@@ -578,15 +587,14 @@ function appendVariantRow(variant = null) {
     const priceField = document.createElement("div");
     priceField.className = "field";
     const priceLabel = document.createElement("label");
-    priceLabel.textContent = "Preço (R$)";
+    priceLabel.textContent = "Preço extra (opc.)";
     const priceInput = document.createElement("input");
     priceInput.type = "number";
     priceInput.name = "variantPrice";
     priceInput.min = "0.01";
     priceInput.step = "0.01";
-    priceInput.placeholder = "0,00";
+    priceInput.placeholder = "Vazio = do produto";
     priceInput.value = variant?.price != null ? String(variant.price) : "";
-    priceInput.required = true;
     priceField.append(priceLabel, priceInput);
 
     const removeBtn = document.createElement("button");
@@ -605,9 +613,11 @@ function appendVariantRow(variant = null) {
     list.append(row);
 }
 
-function fillProductVariants(variants) {
+function fillProductVariants(variants, product = null) {
     const list = $("#product-variants-list");
     const toggle = $("#product-has-variants");
+    const minInput = $("#product-variant-min");
+    const maxInput = $("#product-variant-max");
     if (!list || !toggle) {
         return;
     }
@@ -616,6 +626,12 @@ function fillProductVariants(variants) {
     toggle.checked = items.length > 0;
     if (items.length) {
         items.forEach((item) => appendVariantRow(item));
+    }
+    if (minInput) {
+        minInput.value = String(Math.max(1, Number(product?.variantMinChoices) || 1));
+    }
+    if (maxInput) {
+        maxInput.value = String(Math.max(1, Number(product?.variantMaxChoices) || Number(minInput?.value) || 1));
     }
     syncProductVariantFields($("#product-form"));
 }
@@ -630,15 +646,19 @@ function readProductVariants(form) {
     for (let i = 0; i < rows.length; i += 1) {
         const row = rows[i];
         const name = row.querySelector('[name="variantName"]')?.value?.trim() || "";
-        const price = Number(row.querySelector('[name="variantPrice"]')?.value);
-        if (!name && !Number.isFinite(price)) {
+        const priceRaw = String(row.querySelector('[name="variantPrice"]')?.value ?? "").trim();
+        if (!name && !priceRaw) {
             continue;
         }
         if (!name) {
             return { ok: false, error: "Informe o nome de cada sabor." };
         }
-        if (!Number.isFinite(price) || price <= 0) {
-            return { ok: false, error: `Informe o preço do sabor "${name}".` };
+        let price = null;
+        if (priceRaw) {
+            price = Number(priceRaw.replace(",", "."));
+            if (!Number.isFinite(price) || price <= 0) {
+                return { ok: false, error: `Preço inválido no sabor "${name}". Deixe vazio para usar o preço do produto.` };
+            }
         }
         items.push({
             id: row.dataset.variantId || null,
@@ -1264,7 +1284,7 @@ function beginEditProduct(item) {
         form.compareAtPrice.value = hasPromo ? String(item.compareAtPrice) : "";
     }
     syncProductPromoFields(form);
-    fillProductVariants(item.variants || []);
+    fillProductVariants(item.variants || [], item);
     fillMinimumQuantityInput(form, item);
     const fileInput = $("#product-image-file");
     if (fileInput) {

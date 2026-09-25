@@ -237,9 +237,14 @@ function body(product) {
     unit.className = "muted";
     const variants = availableVariants(product);
     if (variants.length) {
-        unit.textContent = variants.length === 1
-            ? "1 sabor disponível · escolha ao adicionar"
-            : `${variants.length} sabores · escolha ao adicionar`;
+        const { min, max } = choiceLimits(product);
+        unit.textContent = max > 1
+            ? (min === max
+                ? `Escolha ${min} sabores · ${formatBRL(product.price)}`
+                : `Escolha ${min}–${max} sabores · ${formatBRL(product.price)}`)
+            : (variants.length === 1
+                ? "1 sabor disponível · escolha ao adicionar"
+                : `${variants.length} sabores · escolha ao adicionar`);
     } else if (product.unit === "KG") {
         unit.textContent = "Preço por kg · escolha em gramas ou quilos";
     } else {
@@ -253,19 +258,54 @@ function availableVariants(product) {
     return (product.variants || []).filter((variant) => variant && variant.available !== false);
 }
 
+function choiceLimits(product) {
+    const min = Math.max(1, Math.round(Number(product.variantMinChoices) || 1));
+    const max = Math.max(min, Math.round(Number(product.variantMaxChoices) || min));
+    return { min, max };
+}
+
+function resolveLinePrice(product, selectedVariants) {
+    const { max } = choiceLimits(product);
+    const multi = selectedVariants.length > 1 || max > 1;
+    if (!multi) {
+        const only = selectedVariants[0];
+        if (only?.price != null && Number(only.price) > 0) {
+            return Number(only.price);
+        }
+        return Number(product.price) || 0;
+    }
+    let total = Number(product.price) || 0;
+    selectedVariants.forEach((variant) => {
+        if (variant?.price != null && Number(variant.price) > 0) {
+            total += Number(variant.price);
+        }
+    });
+    return Math.round(total * 100) / 100;
+}
+
 function priceBlock(product) {
     const price = document.createElement("div");
     price.className = "product-price";
     const variants = availableVariants(product);
     if (variants.length) {
-        const minPrice = Math.min(...variants.map((variant) => Number(variant.price)));
-        const prefix = document.createElement("span");
-        prefix.className = "product-price-from muted";
-        prefix.textContent = "a partir de";
-        const current = document.createElement("span");
-        current.className = "product-price-now";
-        current.textContent = formatBRL(minPrice);
-        price.append(prefix, current);
+        const { max } = choiceLimits(product);
+        const priced = variants.filter((variant) => variant.price != null && Number(variant.price) > 0);
+        const showFrom = max === 1 && priced.length === variants.length && priced.length > 0;
+        if (showFrom) {
+            const minPrice = Math.min(...priced.map((variant) => Number(variant.price)));
+            const prefix = document.createElement("span");
+            prefix.className = "product-price-from muted";
+            prefix.textContent = "a partir de";
+            const current = document.createElement("span");
+            current.className = "product-price-now";
+            current.textContent = formatBRL(minPrice);
+            price.append(prefix, current);
+        } else {
+            const current = document.createElement("span");
+            current.className = "product-price-now";
+            current.textContent = formatBRL(product.price);
+            price.append(current);
+        }
         return price;
     }
     const pct = discountPercent(product.price, product.compareAtPrice);
@@ -398,11 +438,12 @@ function refreshLocalCart() {
     items.forEach((item) => {
         const product = state.productMap.get(item.productId);
         const quantity = Number(item.quantity) || 0;
-        const variantId = item.variantId || null;
+        const variantIds = item.variantIds || (item.variantId ? [item.variantId] : []);
         if (!product) {
             lines.push({
                 productId: item.productId,
-                variantId,
+                variantId: variantIds[0] || null,
+                variantIds,
                 name: "Produto indisponível",
                 unit: null,
                 quantity,
@@ -413,24 +454,27 @@ function refreshLocalCart() {
             return;
         }
         const variants = availableVariants(product);
-        let variant = null;
+        let selected = [];
         let issue = null;
         if (variants.length) {
-            variant = variants.find((candidate) => candidate.id === variantId) || null;
-            if (!variant) {
-                issue = "Escolha um sabor novamente";
+            selected = variants.filter((candidate) => variantIds.includes(candidate.id));
+            const { min, max } = choiceLimits(product);
+            if (selected.length < min || selected.length > max || selected.length !== variantIds.length) {
+                issue = "Escolha os sabores novamente";
             }
         }
-        const unitPrice = Number(variant?.price ?? product.price) || 0;
+        const unitPrice = issue ? 0 : resolveLinePrice(product, selected);
         const lineTotal = issue ? 0 : Math.round(unitPrice * quantity * 100) / 100;
         if (!issue) {
             subtotal += lineTotal;
         }
+        const variantName = selected.map((variant) => variant.name).join(" · ") || null;
         lines.push({
             productId: product.id,
-            variantId: variant?.id || null,
-            name: variant ? `${product.name} · ${variant.name}` : product.name,
-            variantName: variant?.name || null,
+            variantId: selected[0]?.id || null,
+            variantIds: selected.map((variant) => variant.id),
+            name: variantName ? `${product.name} · ${variantName}` : product.name,
+            variantName,
             imageUrl: product.imageUrl,
             unit: product.unit,
             quantity,
@@ -539,7 +583,7 @@ function cartLine(line) {
     remove.type = "button";
     remove.textContent = "Excluir";
     remove.addEventListener("click", () => {
-        setCartQuantity(state.store.id, line.productId, 0, line.variantId || null);
+        setCartQuantity(state.store.id, line.productId, 0, line.variantIds || line.variantId || null);
         refreshLocalCart();
     });
     actions.append(qty, price, remove);
@@ -561,13 +605,13 @@ function changeLine(line, delta) {
     if (max != null) {
         clamped = Math.min(max, clamped);
     }
-    setCartQuantity(state.store.id, line.productId, clamped, line.variantId || null);
+    setCartQuantity(state.store.id, line.productId, clamped, line.variantIds || line.variantId || null);
     refreshLocalCart();
 }
 
 const variantSheetState = {
     product: null,
-    variantId: null,
+    selectedIds: [],
     quantity: 1
 };
 
@@ -577,6 +621,7 @@ function openVariantSheet(product) {
     const qtyBox = $("#variant-sheet-qty");
     const title = $("#variant-sheet-title");
     const productLabel = $("#variant-sheet-product");
+    const confirmBtn = $("#variant-sheet-confirm");
     if (!sheet || !list || !qtyBox) {
         return;
     }
@@ -584,32 +629,69 @@ function openVariantSheet(product) {
     if (!variants.length) {
         return;
     }
+    const { min, max } = choiceLimits(product);
+    const multi = max > 1;
     variantSheetState.product = product;
-    variantSheetState.variantId = variants[0].id;
+    variantSheetState.selectedIds = multi ? [] : [variants[0].id];
     variantSheetState.quantity = startQuantity(product);
     if (title) {
-        title.textContent = "Escolha o sabor";
+        title.textContent = multi
+            ? (min === max ? `Escolha ${min} sabores` : `Escolha de ${min} a ${max} sabores`)
+            : "Escolha o sabor";
     }
     if (productLabel) {
-        productLabel.textContent = product.name;
+        productLabel.textContent = `${product.name} · ${formatBRL(product.price)}`;
     }
+
+    const syncSelectionUi = () => {
+        list.querySelectorAll(".variant-option").forEach((el) => {
+            const id = el.dataset.variantId;
+            el.classList.toggle("is-selected", variantSheetState.selectedIds.includes(id));
+        });
+        const count = variantSheetState.selectedIds.length;
+        if (confirmBtn) {
+            const ok = count >= min && count <= max;
+            confirmBtn.disabled = !ok;
+            confirmBtn.textContent = ok
+                ? `Adicionar · ${formatBRL(resolveLinePrice(
+                    product,
+                    variants.filter((variant) => variantSheetState.selectedIds.includes(variant.id))
+                ))}`
+                : (multi ? `Selecione ${min === max ? min : `${min}–${max}`} sabores` : "Adicionar ao carrinho");
+        }
+    };
+
     list.replaceChildren();
     variants.forEach((variant) => {
         const button = document.createElement("button");
         button.type = "button";
         button.className = "variant-option";
-        if (variant.id === variantSheetState.variantId) {
-            button.classList.add("is-selected");
-        }
+        button.dataset.variantId = variant.id;
         const name = document.createElement("strong");
         name.textContent = variant.name;
         const price = document.createElement("span");
-        price.textContent = formatBRL(variant.price);
+        if (variant.price != null && Number(variant.price) > 0) {
+            price.textContent = multi
+                ? `+ ${formatBRL(variant.price)}`
+                : formatBRL(variant.price);
+        } else {
+            price.textContent = multi ? "incluso" : formatBRL(product.price);
+            price.className = "muted";
+        }
         button.append(name, price);
         button.addEventListener("click", () => {
-            variantSheetState.variantId = variant.id;
-            list.querySelectorAll(".variant-option").forEach((el) => el.classList.remove("is-selected"));
-            button.classList.add("is-selected");
+            if (multi) {
+                const set = new Set(variantSheetState.selectedIds);
+                if (set.has(variant.id)) {
+                    set.delete(variant.id);
+                } else if (set.size < max) {
+                    set.add(variant.id);
+                }
+                variantSheetState.selectedIds = [...set];
+            } else {
+                variantSheetState.selectedIds = [variant.id];
+            }
+            syncSelectionUi();
         });
         list.append(button);
     });
@@ -648,6 +730,7 @@ function openVariantSheet(product) {
     qty.append(minus, input, plus);
     qtyBox.append(qty);
 
+    syncSelectionUi();
     sheet.hidden = false;
     document.body.classList.add("sheet-open");
 }
@@ -659,16 +742,20 @@ function closeVariantSheet() {
     }
     document.body.classList.remove("sheet-open");
     variantSheetState.product = null;
-    variantSheetState.variantId = null;
+    variantSheetState.selectedIds = [];
 }
 
 function confirmVariantSheet() {
     const product = variantSheetState.product;
-    const variantId = variantSheetState.variantId;
-    if (!product || !variantId) {
+    const selectedIds = variantSheetState.selectedIds || [];
+    if (!product || !selectedIds.length) {
         return;
     }
-    addToCart(state.store.id, product.id, Number(variantSheetState.quantity), variantId);
+    const { min, max } = choiceLimits(product);
+    if (selectedIds.length < min || selectedIds.length > max) {
+        return;
+    }
+    addToCart(state.store.id, product.id, Number(variantSheetState.quantity), selectedIds);
     closeVariantSheet();
     refreshLocalCart();
 }

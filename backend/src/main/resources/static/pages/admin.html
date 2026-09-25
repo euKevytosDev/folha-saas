@@ -16,7 +16,7 @@
     <link rel="stylesheet" href="/css/pages/placeholder.css">
     <link rel="stylesheet" href="/css/pages/store.css?v=a88db85675">
     <link rel="stylesheet" href="/css/pages/checkout.css?v=a597b38512">
-    <link rel="stylesheet" href="/css/pages/admin.css?v=707658447e">
+    <link rel="stylesheet" href="/css/pages/admin.css?v=a30cb2992c">
     <script src="/js/env.js"></script>
 </head>
 <body class="page-shell admin-shell">
@@ -159,7 +159,20 @@
                                         </label>
                                         <div class="product-variants-box" id="product-variants-box" hidden>
                                             <p class="muted" style="margin:0 0 0.55rem;">
-                                                Cada sabor tem nome e preço próprio. Na loja o cliente escolhe antes de adicionar.
+                                                Cadastre os sabores. O preço de cada um é opcional: deixe vazio para usar só o preço do produto (ex.: suco R$ 15 com 3 sabores).
+                                            </p>
+                                            <div class="product-variant-choice-row">
+                                                <div class="field">
+                                                    <label for="product-variant-min">Mín. de sabores a escolher</label>
+                                                    <input id="product-variant-min" name="variantMinChoices" type="number" min="1" step="1" value="1">
+                                                </div>
+                                                <div class="field">
+                                                    <label for="product-variant-max">Máx. de sabores a escolher</label>
+                                                    <input id="product-variant-max" name="variantMaxChoices" type="number" min="1" step="1" value="1">
+                                                </div>
+                                            </div>
+                                            <p class="muted" style="margin:0 0 0.55rem;">
+                                                Ex.: mín. 3 e máx. 3 = a pessoa escolhe exatamente 3 sabores e paga o valor do produto.
                                             </p>
                                             <div id="product-variants-list" class="product-variants-list"></div>
                                             <button class="btn btn-secondary" type="button" id="product-variant-add">+ Adicionar sabor</button>
@@ -504,6 +517,6 @@
             </div>
         </div>
     </main>
-    <script type="module" src="/js/pages/admin.js?v=c962153f99"></script>
+    <script type="module" src="/js/pages/admin.js?v=5141080335"></script>
 </body>
 </html>

@@ -15,9 +15,9 @@ import com.sacolao.establishment.service.StoreAvailabilityService;
 import com.sacolao.order.entity.FulfillmentType;
 import com.sacolao.product.dto.ProductResponse;
 import com.sacolao.product.entity.Product;
-import com.sacolao.product.entity.ProductVariant;
 import com.sacolao.product.mapper.ProductMapper;
 import com.sacolao.product.repository.ProductRepository;
+import com.sacolao.product.support.VariantSelection;
 import com.sacolao.payment.entity.EstablishmentPaymentSettings;
 import com.sacolao.payment.repository.EstablishmentPaymentSettingsRepository;
 import com.sacolao.store.dto.CartQuoteItemRequest;
@@ -35,7 +35,6 @@ import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -114,45 +113,36 @@ public class StoreCatalogService {
         for (CartQuoteItemRequest item : request.items()) {
             Product product = productRepository.findPublicById(item.productId(), store.getId()).orElse(null);
             BigDecimal quantity = Money.quantity(item.quantity());
+            List<UUID> variantIds = collectVariantIds(item);
             if (product == null) {
-                lines.add(unavailableLine(item.productId(), item.variantId(), quantity, "Produto indisponível"));
+                lines.add(unavailableLine(item.productId(), variantIds, quantity, "Produto indisponível"));
                 continue;
             }
             String issue = validateQuantity(product, quantity);
-            ProductVariant variant = null;
+            VariantSelection.Resolved resolved = null;
             if (issue == null) {
-                if (product.hasAvailableVariants()) {
-                    if (item.variantId() == null) {
-                        issue = "Escolha um sabor/opção";
-                    } else {
-                        variant = product.getVariants().stream()
-                                .filter(candidate -> Objects.equals(candidate.getId(), item.variantId()))
-                                .filter(ProductVariant::isAvailable)
-                                .findFirst()
-                                .orElse(null);
-                        if (variant == null) {
-                            issue = "Sabor/opção indisponível";
-                        }
-                    }
-                } else if (item.variantId() != null) {
-                    issue = "Este produto não possui sabores/opções";
+                String variantIssue = VariantSelection.softValidate(product, variantIds);
+                if (variantIssue != null) {
+                    issue = variantIssue;
+                } else {
+                    resolved = VariantSelection.resolve(product, variantIds);
                 }
             }
-            BigDecimal unitPrice = Money.of(variant != null ? variant.getPrice() : product.getPrice());
+            BigDecimal unitPrice = resolved != null
+                    ? Money.of(resolved.unitPrice())
+                    : Money.of(product.getPrice());
             BigDecimal lineTotal = issue == null
                     ? unitPrice.multiply(quantity).setScale(2, RoundingMode.HALF_UP)
                     : BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
             if (issue == null) {
                 subtotal = subtotal.add(lineTotal);
             }
-            String displayName = variant != null
-                    ? product.getName() + " · " + variant.getName()
-                    : product.getName();
             lines.add(new CartQuoteLineResponse(
                     product.getId(),
-                    variant != null ? variant.getId() : null,
-                    displayName,
-                    variant != null ? variant.getName() : null,
+                    resolved != null ? resolved.primaryVariantId() : null,
+                    resolved != null ? resolved.variantIds() : variantIds,
+                    resolved != null ? resolved.lineName() : product.getName(),
+                    resolved != null ? resolved.variantName() : null,
                     product.getImageUrl(),
                     product.getUnit(),
                     quantity,
@@ -211,10 +201,22 @@ public class StoreCatalogService {
         return null;
     }
 
-    private CartQuoteLineResponse unavailableLine(UUID productId, UUID variantId, BigDecimal quantity, String issue) {
+    private List<UUID> collectVariantIds(CartQuoteItemRequest item) {
+        List<UUID> ids = new ArrayList<>();
+        if (item.variantIds() != null) {
+            ids.addAll(item.variantIds());
+        }
+        if (item.variantId() != null) {
+            ids.add(item.variantId());
+        }
+        return VariantSelection.normalizeIds(ids);
+    }
+
+    private CartQuoteLineResponse unavailableLine(UUID productId, List<UUID> variantIds, BigDecimal quantity, String issue) {
         return new CartQuoteLineResponse(
                 productId,
-                variantId,
+                variantIds.isEmpty() ? null : variantIds.getFirst(),
+                variantIds,
                 null,
                 null,
                 null,

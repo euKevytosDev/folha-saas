@@ -46,7 +46,7 @@ public class OrderItem {
     @Column(name = "variant_id")
     private UUID variantId;
 
-    @Column(name = "variant_name", length = 120)
+    @Column(name = "variant_name", length = 500)
     private String variantName;
 
     @Column(name = "image_url", length = 500)

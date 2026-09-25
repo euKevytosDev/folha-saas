@@ -63,6 +63,8 @@ public class ProductService {
         product.setStockQuantity(controlled ? Money.quantity(request.stockQuantity()) : null);
         product.setMinimumQuantity(normalizeMinimum(request.minimumQuantity(), request.unit()));
         product.setMaximumQuantity(normalizeMaximum(request.maximumQuantity(), product.getMinimumQuantity(), request.unit()));
+        product.setVariantMinChoices(normalizeChoiceMin(request.variantMinChoices()));
+        product.setVariantMaxChoices(normalizeChoiceMax(request.variantMaxChoices(), product.getVariantMinChoices()));
         product.setNcm(normalizeNcm(request.ncm()));
         validateStock(product);
         syncPromotionFeatured(product);
@@ -128,6 +130,16 @@ public class ProductService {
         } else {
             product.setMaximumQuantity(normalizeMaximum(product.getMaximumQuantity(), product.getMinimumQuantity(), product.getUnit()));
         }
+        if (request.variantMinChoices() != null || request.variantMaxChoices() != null) {
+            int min = request.variantMinChoices() != null
+                    ? normalizeChoiceMin(request.variantMinChoices())
+                    : product.getVariantMinChoices();
+            int max = request.variantMaxChoices() != null
+                    ? normalizeChoiceMax(request.variantMaxChoices(), min)
+                    : Math.max(min, product.getVariantMaxChoices());
+            product.setVariantMinChoices(min);
+            product.setVariantMaxChoices(normalizeChoiceMax(max, min));
+        }
         if (request.ncm() != null) {
             product.setNcm(normalizeNcm(request.ncm()));
         }
@@ -172,6 +184,8 @@ public class ProductService {
     private void syncVariants(Product product, List<ProductVariantRequest> requests) {
         product.getVariants().clear();
         if (requests == null || requests.isEmpty()) {
+            product.setVariantMinChoices(1);
+            product.setVariantMaxChoices(1);
             return;
         }
         int index = 0;
@@ -182,12 +196,35 @@ public class ProductService {
             ProductVariant variant = new ProductVariant();
             variant.setProduct(product);
             variant.setName(request.name().trim());
-            variant.setPrice(requirePrice(request.price()));
+            if (request.price() != null) {
+                variant.setPrice(requirePrice(request.price()));
+            } else {
+                variant.setPrice(null);
+            }
             variant.setAvailable(request.available() == null || request.available());
             variant.setSortOrder(request.sortOrder() != null ? request.sortOrder() : index);
             product.getVariants().add(variant);
             index++;
         }
+    }
+
+    private int normalizeChoiceMin(Integer value) {
+        int min = value == null ? 1 : value;
+        if (min < 1) {
+            throw new UnprocessableException("INVALID_VARIANT_CHOICES", "O mínimo de sabores deve ser pelo menos 1");
+        }
+        return min;
+    }
+
+    private int normalizeChoiceMax(Integer value, int min) {
+        int max = value == null ? min : value;
+        if (max < min) {
+            throw new UnprocessableException(
+                    "INVALID_VARIANT_CHOICES",
+                    "O máximo de sabores deve ser maior ou igual ao mínimo"
+            );
+        }
+        return max;
     }
 
     @Transactional

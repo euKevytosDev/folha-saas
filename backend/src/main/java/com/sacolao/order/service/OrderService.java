@@ -36,8 +36,8 @@ import com.sacolao.payment.repository.PaymentRepository;
 import com.sacolao.payment.service.IdempotencyService;
 import com.sacolao.payment.service.PaymentService;
 import com.sacolao.product.entity.Product;
-import com.sacolao.product.entity.ProductVariant;
 import com.sacolao.product.repository.ProductRepository;
+import com.sacolao.product.support.VariantSelection;
 import com.sacolao.stock.service.StockService;
 import com.sacolao.tenant.TenantContext;
 import org.springframework.stereotype.Service;
@@ -48,6 +48,7 @@ import tools.jackson.databind.json.JsonMapper;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.security.SecureRandom;
+import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -168,14 +169,14 @@ public class OrderService {
                     .orElseThrow(() -> new UnprocessableException("PRODUCT_UNAVAILABLE", "Produto indisponível"));
             BigDecimal quantity = Money.quantity(entry.getValue());
             validateQuantity(product, quantity);
-            ResolvedVariant resolved = resolveVariant(product, entry.getKey().variantId());
+            VariantSelection.Resolved resolved = VariantSelection.resolve(product, entry.getKey().variantIds());
             BigDecimal unitPrice = Money.of(resolved.unitPrice());
             BigDecimal lineTotal = unitPrice.multiply(quantity).setScale(2, RoundingMode.HALF_UP);
 
             OrderItem item = new OrderItem();
             item.setProduct(product);
             item.setProductName(resolved.lineName());
-            item.setVariantId(resolved.variantId());
+            item.setVariantId(resolved.primaryVariantId());
             item.setVariantName(resolved.variantName());
             item.setImageUrl(product.getImageUrl());
             item.setProductUnit(product.getUnit());
@@ -336,47 +337,39 @@ public class OrderService {
         Map<LineKey, BigDecimal> quantities = new LinkedHashMap<>();
         for (CheckoutRequest.CheckoutItemRequest item : items) {
             BigDecimal quantity = Money.quantity(item.quantity());
-            quantities.merge(new LineKey(item.productId(), item.variantId()), quantity, BigDecimal::add);
+            List<UUID> variantIds = collectVariantIds(item);
+            quantities.merge(new LineKey(item.productId(), VariantSelection.choiceKey(variantIds), variantIds), quantity, BigDecimal::add);
         }
         return quantities;
     }
 
-    private ResolvedVariant resolveVariant(Product product, UUID variantId) {
-        if (product.hasAvailableVariants()) {
-            if (variantId == null) {
-                throw new UnprocessableException(
-                        "VARIANT_REQUIRED",
-                        "Escolha um sabor/opção para " + product.getName()
-                );
+    private List<UUID> collectVariantIds(CheckoutRequest.CheckoutItemRequest item) {
+        List<UUID> ids = new ArrayList<>();
+        if (item.variantIds() != null) {
+            ids.addAll(item.variantIds());
+        }
+        if (item.variantId() != null) {
+            ids.add(item.variantId());
+        }
+        return VariantSelection.normalizeIds(ids);
+    }
+
+    private record LineKey(UUID productId, String choiceKey, List<UUID> variantIds) {
+        @Override
+        public boolean equals(Object other) {
+            if (this == other) {
+                return true;
             }
-            ProductVariant variant = product.getVariants().stream()
-                    .filter(item -> Objects.equals(item.getId(), variantId))
-                    .filter(ProductVariant::isAvailable)
-                    .findFirst()
-                    .orElseThrow(() -> new UnprocessableException(
-                            "VARIANT_UNAVAILABLE",
-                            "Sabor/opção indisponível para " + product.getName()
-                    ));
-            return new ResolvedVariant(
-                    variant.getId(),
-                    variant.getName(),
-                    product.getName() + " · " + variant.getName(),
-                    variant.getPrice()
-            );
+            if (!(other instanceof LineKey that)) {
+                return false;
+            }
+            return Objects.equals(productId, that.productId) && Objects.equals(choiceKey, that.choiceKey);
         }
-        if (variantId != null) {
-            throw new UnprocessableException(
-                    "VARIANT_NOT_ALLOWED",
-                    "Este produto não possui sabores/opções"
-            );
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(productId, choiceKey);
         }
-        return new ResolvedVariant(null, null, product.getName(), product.getPrice());
-    }
-
-    private record LineKey(UUID productId, UUID variantId) {
-    }
-
-    private record ResolvedVariant(UUID variantId, String variantName, String lineName, BigDecimal unitPrice) {
     }
 
     private void validateQuantity(Product product, BigDecimal quantity) {

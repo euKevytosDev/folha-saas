@@ -38,6 +38,8 @@ public final class ProductMapper {
                 product.getStockQuantity(),
                 product.getMinimumQuantity(),
                 product.getMaximumQuantity(),
+                product.getVariantMinChoices(),
+                product.getVariantMaxChoices(),
                 product.getNcm(),
                 variants,
                 product.getCreatedAt(),
