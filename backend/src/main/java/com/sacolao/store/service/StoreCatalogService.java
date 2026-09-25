@@ -196,6 +196,10 @@ public class StoreCatalogService {
         if (quantity.compareTo(product.getMinimumQuantity()) < 0) {
             return "Quantidade mínima não atingida";
         }
+        if (product.getMaximumQuantity() != null
+                && quantity.compareTo(product.getMaximumQuantity()) > 0) {
+            return "Quantidade máxima excedida";
+        }
         if (!product.getUnit().decimalAllowed() && quantity.stripTrailingZeros().scale() > 0) {
             return "Esta unidade não aceita quantidade decimal";
         }

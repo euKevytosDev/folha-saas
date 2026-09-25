@@ -181,6 +181,11 @@
                                             <input id="product-min-qty" name="minimumQuantityInput" type="number" min="50" step="50" value="100" required>
                                             <p class="muted" id="product-min-qty-hint">Só restringe se você quiser (ex.: mamão mín. 700 g). Use 100 se não houver limite especial. Na loja o seletor ainda começa em 500 g.</p>
                                         </div>
+                                        <div class="field">
+                                            <label for="product-max-qty" id="product-max-qty-label">Quantidade máxima de compra (gramas)</label>
+                                            <input id="product-max-qty" name="maximumQuantityInput" type="number" min="50" step="50" placeholder="Sem limite">
+                                            <p class="muted" id="product-max-qty-hint">Opcional. Deixe em branco para o cliente comprar à vontade (ainda limitado pelo estoque, se houver).</p>
+                                        </div>
                                     </div>
                                     <div class="form-slide">
                                         <p class="form-step-label">3 de 4 · Foto</p>
@@ -499,6 +504,6 @@
             </div>
         </div>
     </main>
-    <script type="module" src="/js/pages/admin.js?v=5270a6875a"></script>
+    <script type="module" src="/js/pages/admin.js?v=c962153f99"></script>
 </body>
 </html>

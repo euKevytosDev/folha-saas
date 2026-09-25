@@ -313,6 +313,12 @@ function addControl(product) {
     input.type = "number";
     const minQty = Number(product.minimumQuantity) || unitStep(product.unit);
     input.min = minQty;
+    const maxRaw = Number(product.maximumQuantity);
+    if (Number.isFinite(maxRaw) && maxRaw > 0) {
+        input.max = maxRaw;
+    } else {
+        input.removeAttribute("max");
+    }
     input.step = unitStep(product.unit);
     input.value = startQuantity(product);
     input.setAttribute("aria-label", "Quantidade");
@@ -359,7 +365,13 @@ function addControl(product) {
 
 function nextQty(current, delta, product) {
     const min = Number(product.minimumQuantity || unitStep(product.unit));
-    return Math.max(min, Math.round((current + delta) * 1000) / 1000);
+    const maxRaw = Number(product.maximumQuantity);
+    const max = Number.isFinite(maxRaw) && maxRaw > 0 ? maxRaw : null;
+    let next = Math.max(min, Math.round((current + delta) * 1000) / 1000);
+    if (max != null) {
+        next = Math.min(max, next);
+    }
+    return next;
 }
 
 /** Valor inicial do seletor (KG começa em 500 g se o mínimo permitir). */
@@ -425,6 +437,7 @@ function refreshLocalCart() {
             unitPrice,
             subtotal: lineTotal,
             minimumQuantity: Number(product.minimumQuantity) || unitStep(product.unit),
+            maximumQuantity: Number(product.maximumQuantity) > 0 ? Number(product.maximumQuantity) : null,
             issue
         });
     });
@@ -507,10 +520,16 @@ function cartLine(line) {
     minus.addEventListener("click", () => changeLine(line, -unitStep(line.unit)));
     plus.addEventListener("click", () => changeLine(line, unitStep(line.unit)));
     const minQty = Number(line.minimumQuantity) || unitStep(line.unit);
+    const maxQty = Number(line.maximumQuantity);
     if (Number(line.quantity) <= minQty + 1e-9) {
         minus.disabled = true;
         minus.setAttribute("aria-disabled", "true");
         minus.title = "Quantidade mínima do produto";
+    }
+    if (Number.isFinite(maxQty) && maxQty > 0 && Number(line.quantity) >= maxQty - 1e-9) {
+        plus.disabled = true;
+        plus.setAttribute("aria-disabled", "true");
+        plus.title = "Quantidade máxima do produto";
     }
     qty.append(minus, plus);
     const price = document.createElement("strong");
@@ -535,8 +554,13 @@ function changeLine(line, delta) {
         ?? line.minimumQuantity
         ?? unitStep(line.unit)
     );
-    const next = Math.round((Number(line.quantity) + Number(delta)) * 1000) / 1000;
-    const clamped = Math.max(min, next);
+    const maxRaw = Number(product?.maximumQuantity ?? line.maximumQuantity);
+    const max = Number.isFinite(maxRaw) && maxRaw > 0 ? maxRaw : null;
+    let next = Math.round((Number(line.quantity) + Number(delta)) * 1000) / 1000;
+    let clamped = Math.max(min, next);
+    if (max != null) {
+        clamped = Math.min(max, clamped);
+    }
     setCartQuantity(state.store.id, line.productId, clamped, line.variantId || null);
     refreshLocalCart();
 }
@@ -600,6 +624,10 @@ function openVariantSheet(product) {
     input.type = "number";
     input.value = variantSheetState.quantity;
     input.min = Number(product.minimumQuantity) || unitStep(product.unit);
+    const maxRaw = Number(product.maximumQuantity);
+    if (Number.isFinite(maxRaw) && maxRaw > 0) {
+        input.max = maxRaw;
+    }
     input.step = unitStep(product.unit);
     const plus = document.createElement("button");
     plus.type = "button";

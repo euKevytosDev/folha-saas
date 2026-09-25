@@ -76,6 +76,9 @@ public class Product {
     @Column(name = "minimum_quantity", nullable = false, precision = 12, scale = 3)
     private BigDecimal minimumQuantity = BigDecimal.ONE;
 
+    @Column(name = "maximum_quantity", precision = 12, scale = 3)
+    private BigDecimal maximumQuantity;
+
     @Column(length = 8)
     private String ncm;
 
@@ -212,6 +215,14 @@ public class Product {
 
     public void setMinimumQuantity(BigDecimal minimumQuantity) {
         this.minimumQuantity = minimumQuantity;
+    }
+
+    public BigDecimal getMaximumQuantity() {
+        return maximumQuantity;
+    }
+
+    public void setMaximumQuantity(BigDecimal maximumQuantity) {
+        this.maximumQuantity = maximumQuantity;
     }
 
     public String getNcm() {

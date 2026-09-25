@@ -355,6 +355,17 @@ function wireCatalogForms() {
             formCarousels.get(form)?.go(1);
             return;
         }
+        const maximumQuantity = readMaximumQuantity(form);
+        if (maximumQuantity === undefined) {
+            showFormAlert(alertBox, null, "Informe a quantidade máxima válida ou deixe em branco.");
+            formCarousels.get(form)?.go(1);
+            return;
+        }
+        if (maximumQuantity != null && maximumQuantity < minimumQuantity) {
+            showFormAlert(alertBox, null, "A quantidade máxima precisa ser maior ou igual à mínima.");
+            formCarousels.get(form)?.go(1);
+            return;
+        }
         const promo = readPromotionFields(form);
         if (!promo.ok) {
             showFormAlert(alertBox, null, promo.error);
@@ -392,6 +403,7 @@ function wireCatalogForms() {
                 stockControlled: hasStock,
                 stockQuantity: hasStock ? Number(stockRaw) : null,
                 minimumQuantity,
+                maximumQuantity: maximumQuantity == null ? 0 : maximumQuantity,
                 ncm: form.ncm?.value?.trim() || null,
                 variants: variants.items
             };
@@ -797,6 +809,9 @@ function syncMinQtyField(form, options = {}) {
     const input = control(form, "minimumQuantityInput") || $("#product-min-qty");
     const label = $("#product-min-qty-label");
     const hint = $("#product-min-qty-hint");
+    const maxInput = control(form, "maximumQuantityInput") || $("#product-max-qty");
+    const maxLabel = $("#product-max-qty-label");
+    const maxHint = $("#product-max-qty-hint");
     if (!input) {
         return;
     }
@@ -813,6 +828,20 @@ function syncMinQtyField(form, options = {}) {
         if (options.resetValue || !input.value) {
             input.value = "100";
         }
+        if (maxLabel) {
+            maxLabel.textContent = "Quantidade máxima de compra (gramas)";
+        }
+        if (maxHint) {
+            maxHint.textContent = "Opcional. Ex.: máx. 2000 g (2 kg). Deixe em branco sem limite.";
+        }
+        if (maxInput) {
+            maxInput.min = "50";
+            maxInput.step = "50";
+            maxInput.placeholder = "Sem limite";
+            if (options.resetValue) {
+                maxInput.value = "";
+            }
+        }
     } else {
         if (label) {
             label.textContent = "Quantidade mínima de compra";
@@ -824,6 +853,20 @@ function syncMinQtyField(form, options = {}) {
         input.step = "1";
         if (options.resetValue || !input.value || Number(input.value) >= 50) {
             input.value = "1";
+        }
+        if (maxLabel) {
+            maxLabel.textContent = "Quantidade máxima de compra";
+        }
+        if (maxHint) {
+            maxHint.textContent = "Opcional. Deixe em branco sem limite por pedido deste item.";
+        }
+        if (maxInput) {
+            maxInput.min = "1";
+            maxInput.step = "1";
+            maxInput.placeholder = "Sem limite";
+            if (options.resetValue) {
+                maxInput.value = "";
+            }
         }
     }
 }
@@ -842,6 +885,24 @@ function readMinimumQuantity(form) {
     return Math.round(raw * 1000) / 1000;
 }
 
+/** null = sem máximo; undefined = valor inválido. */
+function readMaximumQuantity(form) {
+    const input = control(form, "maximumQuantityInput") || $("#product-max-qty");
+    const rawText = String(input?.value ?? "").trim();
+    if (!rawText) {
+        return null;
+    }
+    const raw = Number(rawText);
+    if (!Number.isFinite(raw) || raw <= 0) {
+        return undefined;
+    }
+    const unit = String(form.unit?.value || "UN").toUpperCase();
+    if (unit === "KG") {
+        return Math.round(raw) / 1000;
+    }
+    return Math.round(raw * 1000) / 1000;
+}
+
 function fillMinimumQuantityInput(form, item) {
     const input = control(form, "minimumQuantityInput") || $("#product-min-qty");
     if (!input) {
@@ -852,12 +913,29 @@ function fillMinimumQuantityInput(form, item) {
     const min = Number(item?.minimumQuantity);
     if (!Number.isFinite(min) || min <= 0) {
         input.value = unit === "KG" ? "100" : "1";
-        return;
-    }
-    if (unit === "KG") {
+    } else if (unit === "KG") {
         input.value = String(Math.round(min * 1000));
     } else {
         input.value = String(min);
+    }
+    fillMaximumQuantityInput(form, item);
+}
+
+function fillMaximumQuantityInput(form, item) {
+    const input = control(form, "maximumQuantityInput") || $("#product-max-qty");
+    if (!input) {
+        return;
+    }
+    const unit = String(item?.unit || form.unit?.value || "UN").toUpperCase();
+    const max = Number(item?.maximumQuantity);
+    if (!Number.isFinite(max) || max <= 0) {
+        input.value = "";
+        return;
+    }
+    if (unit === "KG") {
+        input.value = String(Math.round(max * 1000));
+    } else {
+        input.value = String(max);
     }
 }
 
@@ -1301,6 +1379,12 @@ function renderProducts(products) {
             : Number(item.minimumQuantity) > 1
                 ? ` · mín. compra ${item.minimumQuantity}`
                 : "";
+        const maxQty = Number(item.maximumQuantity);
+        const maxLabel = Number.isFinite(maxQty) && maxQty > 0
+            ? (item.unit === "KG"
+                ? ` · máx. compra ${Math.round(maxQty * 1000)} g`
+                : ` · máx. compra ${maxQty}`)
+            : "";
         const pct = discountPercent(item.price, item.compareAtPrice);
         const promoLabel = pct != null
             ? ` · promo −${pct}% (de ${formatBRL(item.compareAtPrice)})`
@@ -1309,7 +1393,7 @@ function renderProducts(products) {
         const variantLabel = variantCount > 0
             ? ` · ${variantCount} sabor${variantCount === 1 ? "" : "es"}`
             : "";
-        meta.textContent = `${item.categoryName} · ${formatBRL(item.price)} / ${item.unit} · ${item.available ? "à venda" : "oculto"}${stockLabel}${minLabel}${promoLabel}${variantLabel}`;
+        meta.textContent = `${item.categoryName} · ${formatBRL(item.price)} / ${item.unit} · ${item.available ? "à venda" : "oculto"}${stockLabel}${minLabel}${maxLabel}${promoLabel}${variantLabel}`;
         const body = document.createElement("div");
         const actions = document.createElement("div");
         actions.style.display = "flex";

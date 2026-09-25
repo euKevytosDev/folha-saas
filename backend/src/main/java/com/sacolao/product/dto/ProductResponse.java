@@ -23,6 +23,7 @@ public record ProductResponse(
         boolean stockControlled,
         BigDecimal stockQuantity,
         BigDecimal minimumQuantity,
+        BigDecimal maximumQuantity,
         String ncm,
         List<ProductVariantResponse> variants,
         Instant createdAt,

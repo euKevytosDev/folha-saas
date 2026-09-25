@@ -383,6 +383,10 @@ public class OrderService {
         if (quantity.compareTo(product.getMinimumQuantity()) < 0) {
             throw new UnprocessableException("MIN_QUANTITY", "Quantidade mínima não atingida para " + product.getName());
         }
+        if (product.getMaximumQuantity() != null
+                && quantity.compareTo(product.getMaximumQuantity()) > 0) {
+            throw new UnprocessableException("MAX_QUANTITY", "Quantidade máxima excedida para " + product.getName());
+        }
         if (!product.getUnit().decimalAllowed() && quantity.stripTrailingZeros().scale() > 0) {
             throw new UnprocessableException("DECIMAL_NOT_ALLOWED", "Unidade de " + product.getName() + " não aceita decimal");
         }

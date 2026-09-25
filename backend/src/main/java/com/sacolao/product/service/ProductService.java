@@ -62,6 +62,7 @@ public class ProductService {
         product.setStockControlled(controlled);
         product.setStockQuantity(controlled ? Money.quantity(request.stockQuantity()) : null);
         product.setMinimumQuantity(normalizeMinimum(request.minimumQuantity(), request.unit()));
+        product.setMaximumQuantity(normalizeMaximum(request.maximumQuantity(), product.getMinimumQuantity(), request.unit()));
         product.setNcm(normalizeNcm(request.ncm()));
         validateStock(product);
         syncPromotionFeatured(product);
@@ -121,6 +122,11 @@ public class ProductService {
             product.setMinimumQuantity(normalizeMinimum(request.minimumQuantity(), product.getUnit()));
         } else {
             product.setMinimumQuantity(normalizeMinimum(product.getMinimumQuantity(), product.getUnit()));
+        }
+        if (request.maximumQuantity() != null) {
+            product.setMaximumQuantity(normalizeMaximum(request.maximumQuantity(), product.getMinimumQuantity(), product.getUnit()));
+        } else {
+            product.setMaximumQuantity(normalizeMaximum(product.getMaximumQuantity(), product.getMinimumQuantity(), product.getUnit()));
         }
         if (request.ncm() != null) {
             product.setNcm(normalizeNcm(request.ncm()));
@@ -224,6 +230,29 @@ public class ProductService {
         }
         if (unit != null && !unit.decimalAllowed() && value.stripTrailingZeros().scale() > 0) {
             throw new UnprocessableException("INVALID_QUANTITY", "Esta unidade não aceita quantidade decimal");
+        }
+        return value;
+    }
+
+    private BigDecimal normalizeMaximum(BigDecimal maximum, BigDecimal minimum, ProductUnit unit) {
+        if (maximum == null) {
+            return null;
+        }
+        BigDecimal value = Money.quantity(maximum);
+        if (value.compareTo(BigDecimal.ZERO) == 0) {
+            return null;
+        }
+        if (value.compareTo(BigDecimal.ZERO) < 0) {
+            throw new UnprocessableException("INVALID_QUANTITY", "A quantidade máxima deve ser maior que zero");
+        }
+        if (unit != null && !unit.decimalAllowed() && value.stripTrailingZeros().scale() > 0) {
+            throw new UnprocessableException("INVALID_QUANTITY", "Esta unidade não aceita quantidade decimal");
+        }
+        if (minimum != null && value.compareTo(minimum) < 0) {
+            throw new UnprocessableException(
+                    "INVALID_MAX_QUANTITY",
+                    "A quantidade máxima deve ser maior ou igual à mínima"
+            );
         }
         return value;
     }
