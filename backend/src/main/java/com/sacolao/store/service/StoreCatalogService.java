@@ -183,12 +183,14 @@ public class StoreCatalogService {
     }
 
     private String validateQuantity(Product product, BigDecimal quantity) {
-        if (quantity.compareTo(product.getMinimumQuantity()) < 0) {
-            return "Quantidade mínima não atingida";
-        }
-        if (product.getMaximumQuantity() != null
-                && quantity.compareTo(product.getMaximumQuantity()) > 0) {
-            return "Quantidade máxima excedida";
+        if (!product.hasAvailableVariants()) {
+            if (quantity.compareTo(product.getMinimumQuantity()) < 0) {
+                return "Quantidade mínima não atingida";
+            }
+            if (product.getMaximumQuantity() != null
+                    && quantity.compareTo(product.getMaximumQuantity()) > 0) {
+                return "Quantidade máxima excedida";
+            }
         }
         if (!product.getUnit().decimalAllowed() && quantity.stripTrailingZeros().scale() > 0) {
             return "Esta unidade não aceita quantidade decimal";
@@ -203,10 +205,9 @@ public class StoreCatalogService {
 
     private List<UUID> collectVariantIds(CartQuoteItemRequest item) {
         List<UUID> ids = new ArrayList<>();
-        if (item.variantIds() != null) {
+        if (item.variantIds() != null && !item.variantIds().isEmpty()) {
             ids.addAll(item.variantIds());
-        }
-        if (item.variantId() != null) {
+        } else if (item.variantId() != null) {
             ids.add(item.variantId());
         }
         return VariantSelection.normalizeIds(ids);

@@ -609,6 +609,33 @@
     color: var(--color-primary-dark);
 }
 
+.variant-option .muted {
+    display: block;
+    color: var(--color-text-muted);
+    font-weight: 500;
+}
+
+.variant-stepper {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.variant-stepper button {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 999px;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    font-size: 1.1rem;
+}
+
+.variant-stepper span {
+    min-width: 1.2rem;
+    text-align: center;
+    font-weight: 700;
+}
+
 .variant-option.is-selected {
     border-color: var(--color-primary);
     background: color-mix(in srgb, var(--color-primary) 10%, white);

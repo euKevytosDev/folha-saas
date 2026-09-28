@@ -14,7 +14,7 @@
     <link rel="stylesheet" href="/css/layout.css">
     <link rel="stylesheet" href="/css/components.css?v=2ceaa7501d">
     <link rel="stylesheet" href="/css/pages/placeholder.css">
-    <link rel="stylesheet" href="/css/pages/store.css?v=a88db85675">
+    <link rel="stylesheet" href="/css/pages/store.css?v=49dfaf4bde">
     <link rel="stylesheet" href="/css/pages/checkout.css?v=a597b38512">
     <link rel="stylesheet" href="/css/pages/admin.css?v=08d6c5d28c">
     <script src="/js/env.js"></script>
@@ -211,18 +211,8 @@
                                             </label>
                                             <div class="product-variants-box" id="product-variants-box" hidden>
                                                 <p class="muted form-section-hint">
-                                                    Preço do sabor é opcional. Vazio = usa só o preço do produto (ex.: suco R$ 15, escolha 3 sabores).
+                                                    O preço do produto é o valor da promoção. Deixe o preço do sabor vazio para ele entrar nesse valor. Se preencher, esse valor soma no total.
                                                 </p>
-                                                <div class="product-variant-choice-row">
-                                                    <div class="field">
-                                                        <label for="product-variant-min">Mín. de sabores</label>
-                                                        <input id="product-variant-min" name="variantMinChoices" type="number" min="1" step="1" value="1">
-                                                    </div>
-                                                    <div class="field">
-                                                        <label for="product-variant-max">Máx. de sabores</label>
-                                                        <input id="product-variant-max" name="variantMaxChoices" type="number" min="1" step="1" value="1">
-                                                    </div>
-                                                </div>
                                                 <div id="product-variants-list" class="product-variants-list"></div>
                                                 <button class="btn btn-secondary" type="button" id="product-variant-add">+ Adicionar sabor</button>
                                             </div>
@@ -555,6 +545,6 @@
         </div>
     </main>
     <div class="order-toast" id="order-toast" hidden role="status"></div>
-    <script type="module" src="/js/pages/admin.js?v=1f69b93406"></script>
+    <script type="module" src="/js/pages/admin.js?v=2c7213761e"></script>
 </body>
 </html>

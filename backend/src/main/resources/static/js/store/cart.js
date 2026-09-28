@@ -8,7 +8,7 @@ function normalizeVariantIds(variantIds) {
     const list = Array.isArray(variantIds)
         ? variantIds
         : (variantIds ? [variantIds] : []);
-    return [...new Set(list.filter(Boolean).map(String))].sort();
+    return list.filter(Boolean).map(String).sort();
 }
 
 function choiceKey(productId, variantIds) {

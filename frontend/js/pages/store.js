@@ -259,21 +259,19 @@ function availableVariants(product) {
 }
 
 function choiceLimits(product) {
-    const min = Math.max(1, Math.round(Number(product.variantMinChoices) || 1));
-    const max = Math.max(min, Math.round(Number(product.variantMaxChoices) || min));
+    let min = Math.max(1, Math.round(Number(product.minimumQuantity) || 1));
+    const maxRaw = Number(product.maximumQuantity);
+    let max = Number.isFinite(maxRaw) && maxRaw > 0 ? Math.max(min, Math.round(maxRaw)) : min;
+    const legacyMin = Math.max(1, Math.round(Number(product.variantMinChoices) || 1));
+    const legacyMax = Math.max(legacyMin, Math.round(Number(product.variantMaxChoices) || legacyMin));
+    if (legacyMax > 1 && min <= 1 && max <= 1) {
+        min = legacyMin;
+        max = legacyMax;
+    }
     return { min, max };
 }
 
 function resolveLinePrice(product, selectedVariants) {
-    const { max } = choiceLimits(product);
-    const multi = selectedVariants.length > 1 || max > 1;
-    if (!multi) {
-        const only = selectedVariants[0];
-        if (only?.price != null && Number(only.price) > 0) {
-            return Number(only.price);
-        }
-        return Number(product.price) || 0;
-    }
     let total = Number(product.price) || 0;
     selectedVariants.forEach((variant) => {
         if (variant?.price != null && Number(variant.price) > 0) {
@@ -283,29 +281,27 @@ function resolveLinePrice(product, selectedVariants) {
     return Math.round(total * 100) / 100;
 }
 
+function flavorSummary(selectedVariants) {
+    const parts = [];
+    const counts = new Map();
+    selectedVariants.forEach((variant) => {
+        counts.set(variant.name, (counts.get(variant.name) || 0) + 1);
+    });
+    counts.forEach((count, name) => {
+        parts.push(count > 1 ? `${name} ×${count}` : name);
+    });
+    return parts.join(" · ");
+}
+
 function priceBlock(product) {
     const price = document.createElement("div");
     price.className = "product-price";
     const variants = availableVariants(product);
     if (variants.length) {
-        const { max } = choiceLimits(product);
-        const priced = variants.filter((variant) => variant.price != null && Number(variant.price) > 0);
-        const showFrom = max === 1 && priced.length === variants.length && priced.length > 0;
-        if (showFrom) {
-            const minPrice = Math.min(...priced.map((variant) => Number(variant.price)));
-            const prefix = document.createElement("span");
-            prefix.className = "product-price-from muted";
-            prefix.textContent = "a partir de";
-            const current = document.createElement("span");
-            current.className = "product-price-now";
-            current.textContent = formatBRL(minPrice);
-            price.append(prefix, current);
-        } else {
-            const current = document.createElement("span");
-            current.className = "product-price-now";
-            current.textContent = formatBRL(product.price);
-            price.append(current);
-        }
+        const current = document.createElement("span");
+        current.className = "product-price-now";
+        current.textContent = formatBRL(product.price);
+        price.append(current);
         return price;
     }
     const pct = discountPercent(product.price, product.compareAtPrice);
@@ -457,9 +453,11 @@ function refreshLocalCart() {
         let selected = [];
         let issue = null;
         if (variants.length) {
-            selected = variants.filter((candidate) => variantIds.includes(candidate.id));
+            selected = variantIds
+                .map((id) => variants.find((candidate) => candidate.id === id))
+                .filter(Boolean);
             const { min, max } = choiceLimits(product);
-            if (selected.length < min || selected.length > max || selected.length !== variantIds.length) {
+            if (selected.length !== variantIds.length || selected.length < min || selected.length > max) {
                 issue = "Escolha os sabores novamente";
             }
         }
@@ -468,7 +466,7 @@ function refreshLocalCart() {
         if (!issue) {
             subtotal += lineTotal;
         }
-        const variantName = selected.map((variant) => variant.name).join(" · ") || null;
+        const variantName = flavorSummary(selected) || null;
         lines.push({
             productId: product.id,
             variantId: selected[0]?.id || null,
@@ -480,8 +478,11 @@ function refreshLocalCart() {
             quantity,
             unitPrice,
             subtotal: lineTotal,
-            minimumQuantity: Number(product.minimumQuantity) || unitStep(product.unit),
-            maximumQuantity: Number(product.maximumQuantity) > 0 ? Number(product.maximumQuantity) : null,
+            minimumQuantity: variants.length ? 1 : (Number(product.minimumQuantity) || unitStep(product.unit)),
+            maximumQuantity: variants.length
+                ? null
+                : (Number(product.maximumQuantity) > 0 ? Number(product.maximumQuantity) : null),
+            combo: variants.length > 0,
             issue
         });
     });
@@ -561,10 +562,11 @@ function cartLine(line) {
     const plus = document.createElement("button");
     plus.type = "button";
     plus.textContent = "+";
-    minus.addEventListener("click", () => changeLine(line, -unitStep(line.unit)));
-    plus.addEventListener("click", () => changeLine(line, unitStep(line.unit)));
-    const minQty = Number(line.minimumQuantity) || unitStep(line.unit);
-    const maxQty = Number(line.maximumQuantity);
+    const step = line.combo ? 1 : unitStep(line.unit);
+    minus.addEventListener("click", () => changeLine(line, -step));
+    plus.addEventListener("click", () => changeLine(line, step));
+    const minQty = line.combo ? 1 : (Number(line.minimumQuantity) || unitStep(line.unit));
+    const maxQty = line.combo ? NaN : Number(line.maximumQuantity);
     if (Number(line.quantity) <= minQty + 1e-9) {
         minus.disabled = true;
         minus.setAttribute("aria-disabled", "true");
@@ -593,12 +595,11 @@ function cartLine(line) {
 
 function changeLine(line, delta) {
     const product = state.productMap.get(line.productId);
-    const min = Number(
-        product?.minimumQuantity
-        ?? line.minimumQuantity
-        ?? unitStep(line.unit)
-    );
-    const maxRaw = Number(product?.maximumQuantity ?? line.maximumQuantity);
+    const combo = !!line.combo;
+    const min = combo
+        ? 1
+        : Number(product?.minimumQuantity ?? line.minimumQuantity ?? unitStep(line.unit));
+    const maxRaw = combo ? NaN : Number(product?.maximumQuantity ?? line.maximumQuantity);
     const max = Number.isFinite(maxRaw) && maxRaw > 0 ? maxRaw : null;
     let next = Math.round((Number(line.quantity) + Number(delta)) * 1000) / 1000;
     let clamped = Math.max(min, next);
@@ -611,9 +612,20 @@ function changeLine(line, delta) {
 
 const variantSheetState = {
     product: null,
-    selectedIds: [],
-    quantity: 1
+    counts: new Map()
 };
+
+function selectedVariantList(product, counts) {
+    const variants = availableVariants(product);
+    const selected = [];
+    variants.forEach((variant) => {
+        const count = counts.get(variant.id) || 0;
+        for (let i = 0; i < count; i += 1) {
+            selected.push(variant);
+        }
+    });
+    return selected;
+}
 
 function openVariantSheet(product) {
     const sheet = $("#variant-sheet");
@@ -630,105 +642,90 @@ function openVariantSheet(product) {
         return;
     }
     const { min, max } = choiceLimits(product);
-    const multi = max > 1;
     variantSheetState.product = product;
-    variantSheetState.selectedIds = multi ? [] : [variants[0].id];
-    variantSheetState.quantity = startQuantity(product);
+    variantSheetState.counts = new Map();
     if (title) {
-        title.textContent = multi
-            ? (min === max ? `Escolha ${min} sabores` : `Escolha de ${min} a ${max} sabores`)
-            : "Escolha o sabor";
+        title.textContent = min === max
+            ? `Escolha ${min} ${min === 1 ? "opção" : "opções"}`
+            : `Escolha de ${min} a ${max} opções`;
     }
     if (productLabel) {
         productLabel.textContent = `${product.name} · ${formatBRL(product.price)}`;
     }
 
     const syncSelectionUi = () => {
+        const selected = selectedVariantList(product, variantSheetState.counts);
+        const count = selected.length;
         list.querySelectorAll(".variant-option").forEach((el) => {
-            const id = el.dataset.variantId;
-            el.classList.toggle("is-selected", variantSheetState.selectedIds.includes(id));
+            const qty = variantSheetState.counts.get(el.dataset.variantId) || 0;
+            el.classList.toggle("is-selected", qty > 0);
+            const badge = el.querySelector("[data-variant-count]");
+            if (badge) {
+                badge.textContent = String(qty);
+            }
         });
-        const count = variantSheetState.selectedIds.length;
+        if (qtyBox) {
+            qtyBox.textContent = min === max
+                ? `${count} de ${max}`
+                : `${count} escolhidas · de ${min} a ${max}`;
+        }
         if (confirmBtn) {
             const ok = count >= min && count <= max;
             confirmBtn.disabled = !ok;
             confirmBtn.textContent = ok
-                ? `Adicionar · ${formatBRL(resolveLinePrice(
-                    product,
-                    variants.filter((variant) => variantSheetState.selectedIds.includes(variant.id))
-                ))}`
-                : (multi ? `Selecione ${min === max ? min : `${min}–${max}`} sabores` : "Adicionar ao carrinho");
+                ? `Adicionar · ${formatBRL(resolveLinePrice(product, selected))}`
+                : (min === max ? `Selecione ${min}` : `Selecione de ${min} a ${max}`);
         }
+    };
+
+    const changeCount = (id, delta) => {
+        const current = variantSheetState.counts.get(id) || 0;
+        const total = selectedVariantList(product, variantSheetState.counts).length;
+        const next = current + delta;
+        if (next < 0 || (delta > 0 && total >= max)) {
+            return;
+        }
+        if (next === 0) {
+            variantSheetState.counts.delete(id);
+        } else {
+            variantSheetState.counts.set(id, next);
+        }
+        syncSelectionUi();
     };
 
     list.replaceChildren();
     variants.forEach((variant) => {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = "variant-option";
-        button.dataset.variantId = variant.id;
+        const row = document.createElement("div");
+        row.className = "variant-option";
+        row.dataset.variantId = variant.id;
+        const info = document.createElement("div");
         const name = document.createElement("strong");
         name.textContent = variant.name;
         const price = document.createElement("span");
         if (variant.price != null && Number(variant.price) > 0) {
-            price.textContent = multi
-                ? `+ ${formatBRL(variant.price)}`
-                : formatBRL(variant.price);
+            price.textContent = `+ ${formatBRL(variant.price)}`;
         } else {
-            price.textContent = multi ? "incluso" : formatBRL(product.price);
+            price.textContent = "incluso";
             price.className = "muted";
         }
-        button.append(name, price);
-        button.addEventListener("click", () => {
-            if (multi) {
-                const set = new Set(variantSheetState.selectedIds);
-                if (set.has(variant.id)) {
-                    set.delete(variant.id);
-                } else if (set.size < max) {
-                    set.add(variant.id);
-                }
-                variantSheetState.selectedIds = [...set];
-            } else {
-                variantSheetState.selectedIds = [variant.id];
-            }
-            syncSelectionUi();
-        });
-        list.append(button);
+        info.append(name, price);
+        const stepper = document.createElement("div");
+        stepper.className = "variant-stepper";
+        const minus = document.createElement("button");
+        minus.type = "button";
+        minus.textContent = "−";
+        const badge = document.createElement("span");
+        badge.dataset.variantCount = "true";
+        badge.textContent = "0";
+        const plus = document.createElement("button");
+        plus.type = "button";
+        plus.textContent = "+";
+        minus.addEventListener("click", () => changeCount(variant.id, -1));
+        plus.addEventListener("click", () => changeCount(variant.id, 1));
+        stepper.append(minus, badge, plus);
+        row.append(info, stepper);
+        list.append(row);
     });
-
-    qtyBox.replaceChildren();
-    const qty = document.createElement("div");
-    qty.className = "qty-control";
-    const minus = document.createElement("button");
-    minus.type = "button";
-    minus.textContent = "−";
-    const input = document.createElement("input");
-    input.type = "number";
-    input.value = variantSheetState.quantity;
-    input.min = Number(product.minimumQuantity) || unitStep(product.unit);
-    const maxRaw = Number(product.maximumQuantity);
-    if (Number.isFinite(maxRaw) && maxRaw > 0) {
-        input.max = maxRaw;
-    }
-    input.step = unitStep(product.unit);
-    const plus = document.createElement("button");
-    plus.type = "button";
-    plus.textContent = "+";
-    const sync = () => {
-        variantSheetState.quantity = nextQty(Number(input.value), 0, product);
-        input.value = variantSheetState.quantity;
-    };
-    minus.addEventListener("click", () => {
-        input.value = nextQty(Number(input.value), -unitStep(product.unit), product);
-        sync();
-    });
-    plus.addEventListener("click", () => {
-        input.value = nextQty(Number(input.value), unitStep(product.unit), product);
-        sync();
-    });
-    input.addEventListener("change", sync);
-    qty.append(minus, input, plus);
-    qtyBox.append(qty);
 
     syncSelectionUi();
     sheet.hidden = false;
@@ -742,20 +739,20 @@ function closeVariantSheet() {
     }
     document.body.classList.remove("sheet-open");
     variantSheetState.product = null;
-    variantSheetState.selectedIds = [];
+    variantSheetState.counts = new Map();
 }
 
 function confirmVariantSheet() {
     const product = variantSheetState.product;
-    const selectedIds = variantSheetState.selectedIds || [];
-    if (!product || !selectedIds.length) {
+    if (!product) {
         return;
     }
+    const selected = selectedVariantList(product, variantSheetState.counts);
     const { min, max } = choiceLimits(product);
-    if (selectedIds.length < min || selectedIds.length > max) {
+    if (selected.length < min || selected.length > max) {
         return;
     }
-    addToCart(state.store.id, product.id, Number(variantSheetState.quantity), selectedIds);
+    addToCart(state.store.id, product.id, 1, selected.map((variant) => variant.id));
     closeVariantSheet();
     refreshLocalCart();
 }

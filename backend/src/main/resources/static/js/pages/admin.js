@@ -467,13 +467,6 @@ function wireCatalogForms() {
             formCarousels.get(form)?.go(1);
             return;
         }
-        const choiceMin = Math.max(1, Math.round(Number(form.variantMinChoices?.value || $("#product-variant-min")?.value || 1)));
-        const choiceMax = Math.max(choiceMin, Math.round(Number(form.variantMaxChoices?.value || $("#product-variant-max")?.value || choiceMin)));
-        if (variants.items.length && choiceMax > variants.items.length) {
-            showFormAlert(alertBox, null, "O máximo de sabores a escolher não pode ser maior que a quantidade de sabores cadastrados.");
-            formCarousels.get(form)?.go(1);
-            return;
-        }
         if (submitBtn) {
             submitBtn.disabled = true;
             submitBtn.textContent = "Salvando…";
@@ -499,9 +492,11 @@ function wireCatalogForms() {
                 stockControlled: hasStock,
                 stockQuantity: hasStock ? Number(stockRaw) : null,
                 minimumQuantity,
-                maximumQuantity: maximumQuantity == null ? 0 : maximumQuantity,
-                variantMinChoices: variants.items.length ? choiceMin : 1,
-                variantMaxChoices: variants.items.length ? choiceMax : 1,
+                maximumQuantity: variants.items.length
+                    ? (maximumQuantity == null ? minimumQuantity : maximumQuantity)
+                    : (maximumQuantity == null ? 0 : maximumQuantity),
+                variantMinChoices: 1,
+                variantMaxChoices: 1,
                 ncm: form.ncm?.value?.trim() || null,
                 variants: variants.items
             };
@@ -629,7 +624,10 @@ function readPromotionFields(form) {
 function wireProductVariantFields(form) {
     const toggle = form.hasVariants || $("#product-has-variants");
     const addBtn = $("#product-variant-add");
-    toggle?.addEventListener("change", () => syncProductVariantFields(form));
+    toggle?.addEventListener("change", () => {
+        syncProductVariantFields(form);
+        syncMinQtyField(form);
+    });
     addBtn?.addEventListener("click", () => {
         appendVariantRow();
         syncProductVariantFields(form);
@@ -683,7 +681,7 @@ function appendVariantRow(variant = null) {
     priceInput.name = "variantPrice";
     priceInput.min = "0.01";
     priceInput.step = "0.01";
-    priceInput.placeholder = "Vazio = do produto";
+    priceInput.placeholder = "Soma no preço";
     priceInput.value = variant?.price != null ? String(variant.price) : "";
     priceField.append(priceLabel, priceInput);
 
@@ -703,11 +701,9 @@ function appendVariantRow(variant = null) {
     list.append(row);
 }
 
-function fillProductVariants(variants, product = null) {
+function fillProductVariants(variants) {
     const list = $("#product-variants-list");
     const toggle = $("#product-has-variants");
-    const minInput = $("#product-variant-min");
-    const maxInput = $("#product-variant-max");
     if (!list || !toggle) {
         return;
     }
@@ -716,12 +712,6 @@ function fillProductVariants(variants, product = null) {
     toggle.checked = items.length > 0;
     if (items.length) {
         items.forEach((item) => appendVariantRow(item));
-    }
-    if (minInput) {
-        minInput.value = String(Math.max(1, Number(product?.variantMinChoices) || 1));
-    }
-    if (maxInput) {
-        maxInput.value = String(Math.max(1, Number(product?.variantMaxChoices) || Number(minInput?.value) || 1));
     }
     syncProductVariantFields($("#product-form"));
 }
@@ -912,6 +902,10 @@ async function applyBulkKgMinimum() {
     }
 }
 
+function productHasVariants(form) {
+    return !!(form?.hasVariants?.checked || $("#product-has-variants")?.checked);
+}
+
 function syncMinQtyField(form, options = {}) {
     if (!form) {
         return;
@@ -926,6 +920,34 @@ function syncMinQtyField(form, options = {}) {
         return;
     }
     const unit = String(form.unit?.value || "UN").toUpperCase();
+    if (productHasVariants(form)) {
+        if (label) {
+            label.textContent = "Mínimo de opções no combo";
+        }
+        if (hint) {
+            hint.textContent = "Ex.: 3 sucos por R$ 12,99. A pessoa escolhe 3 opções e paga o preço do produto. Pode repetir o mesmo sabor.";
+        }
+        input.min = "1";
+        input.step = "1";
+        if (options.resetValue || !input.value || (unit === "KG" && Number(input.value) >= 50)) {
+            input.value = "1";
+        }
+        if (maxLabel) {
+            maxLabel.textContent = "Máximo de opções no combo";
+        }
+        if (maxHint) {
+            maxHint.textContent = "Use o mesmo número do mínimo para obrigar essa quantidade (3 e 3 = exatamente 3). Valor preenchido no sabor soma no preço.";
+        }
+        if (maxInput) {
+            maxInput.min = "1";
+            maxInput.step = "1";
+            maxInput.placeholder = "Igual ao mínimo";
+            if (options.resetValue) {
+                maxInput.value = "";
+            }
+        }
+        return;
+    }
     if (unit === "KG") {
         if (label) {
             label.textContent = "Quantidade mínima de compra (gramas)";
@@ -988,6 +1010,9 @@ function readMinimumQuantity(form) {
     if (!Number.isFinite(raw) || raw <= 0) {
         return null;
     }
+    if (productHasVariants(form)) {
+        return Math.max(1, Math.round(raw));
+    }
     const unit = String(form.unit?.value || "UN").toUpperCase();
     if (unit === "KG") {
         return Math.round(raw) / 1000;
@@ -1006,6 +1031,9 @@ function readMaximumQuantity(form) {
     if (!Number.isFinite(raw) || raw <= 0) {
         return undefined;
     }
+    if (productHasVariants(form)) {
+        return Math.max(1, Math.round(raw));
+    }
     const unit = String(form.unit?.value || "UN").toUpperCase();
     if (unit === "KG") {
         return Math.round(raw) / 1000;
@@ -1019,16 +1047,29 @@ function fillMinimumQuantityInput(form, item) {
         return;
     }
     syncMinQtyField(form);
+    const flavored = Array.isArray(item?.variants) && item.variants.length > 0;
+    const legacyMax = Math.max(1, Number(item?.variantMaxChoices) || 1);
+    const legacyMin = Math.max(1, Number(item?.variantMinChoices) || 1);
     const unit = String(item?.unit || form.unit?.value || "UN").toUpperCase();
-    const min = Number(item?.minimumQuantity);
+    let min = Number(item?.minimumQuantity);
+    const useLegacySlots = flavored && legacyMax > 1 && (!Number.isFinite(min) || min <= 1);
+    if (useLegacySlots) {
+        min = legacyMin;
+    }
     if (!Number.isFinite(min) || min <= 0) {
-        input.value = unit === "KG" ? "100" : "1";
-    } else if (unit === "KG") {
+        input.value = !flavored && unit === "KG" ? "100" : "1";
+    } else if (!flavored && unit === "KG") {
         input.value = String(Math.round(min * 1000));
     } else {
-        input.value = String(min);
+        input.value = String(Math.round(min));
     }
     fillMaximumQuantityInput(form, item);
+    if (useLegacySlots) {
+        const maxInput = control(form, "maximumQuantityInput") || $("#product-max-qty");
+        if (maxInput) {
+            maxInput.value = String(legacyMax);
+        }
+    }
 }
 
 function fillMaximumQuantityInput(form, item) {
@@ -1036,10 +1077,15 @@ function fillMaximumQuantityInput(form, item) {
     if (!input) {
         return;
     }
+    const flavored = Array.isArray(item?.variants) && item.variants.length > 0;
     const unit = String(item?.unit || form.unit?.value || "UN").toUpperCase();
     const max = Number(item?.maximumQuantity);
     if (!Number.isFinite(max) || max <= 0) {
         input.value = "";
+        return;
+    }
+    if (flavored) {
+        input.value = String(Math.round(max));
         return;
     }
     if (unit === "KG") {
@@ -1497,14 +1543,15 @@ function renderProducts(products) {
         if (item.stockControlled) {
             chips.push({ text: `Estoque ${item.stockQuantity ?? 0}` });
         }
+        const variantCount = Array.isArray(item.variants) ? item.variants.length : 0;
         const minKg = Number(item.minimumQuantity || 0);
-        if (item.unit === "KG" && minKg > 0.1 + 1e-9) {
+        if (!variantCount && item.unit === "KG" && minKg > 0.1 + 1e-9) {
             chips.push({ text: `Mín. ${Math.round(minKg * 1000)} g` });
-        } else if (item.unit !== "KG" && Number(item.minimumQuantity) > 1) {
+        } else if (!variantCount && item.unit !== "KG" && Number(item.minimumQuantity) > 1) {
             chips.push({ text: `Mín. ${item.minimumQuantity}` });
         }
         const maxQty = Number(item.maximumQuantity);
-        if (Number.isFinite(maxQty) && maxQty > 0) {
+        if (!variantCount && Number.isFinite(maxQty) && maxQty > 0) {
             chips.push({
                 text: item.unit === "KG"
                     ? `Máx. ${Math.round(maxQty * 1000)} g`
@@ -1515,10 +1562,16 @@ function renderProducts(products) {
         if (pct != null) {
             chips.push({ text: `Promo −${pct}%`, cls: "is-promo" });
         }
-        const variantCount = Array.isArray(item.variants) ? item.variants.length : 0;
         if (variantCount > 0) {
-            const minC = Math.max(1, Number(item.variantMinChoices) || 1);
-            const maxC = Math.max(minC, Number(item.variantMaxChoices) || minC);
+            let minC = Math.max(1, Math.round(Number(item.minimumQuantity) || 1));
+            const maxRaw = Number(item.maximumQuantity);
+            let maxC = Number.isFinite(maxRaw) && maxRaw > 0 ? Math.max(minC, Math.round(maxRaw)) : minC;
+            const legacyMax = Math.max(1, Number(item.variantMaxChoices) || 1);
+            const legacyMin = Math.max(1, Number(item.variantMinChoices) || 1);
+            if (legacyMax > 1 && minC <= 1 && maxC <= 1) {
+                minC = legacyMin;
+                maxC = legacyMax;
+            }
             chips.push({
                 text: minC === maxC
                     ? `${variantCount} sabores · escolha ${minC}`

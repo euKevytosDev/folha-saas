@@ -345,10 +345,9 @@ public class OrderService {
 
     private List<UUID> collectVariantIds(CheckoutRequest.CheckoutItemRequest item) {
         List<UUID> ids = new ArrayList<>();
-        if (item.variantIds() != null) {
+        if (item.variantIds() != null && !item.variantIds().isEmpty()) {
             ids.addAll(item.variantIds());
-        }
-        if (item.variantId() != null) {
+        } else if (item.variantId() != null) {
             ids.add(item.variantId());
         }
         return VariantSelection.normalizeIds(ids);
@@ -373,12 +372,14 @@ public class OrderService {
     }
 
     private void validateQuantity(Product product, BigDecimal quantity) {
-        if (quantity.compareTo(product.getMinimumQuantity()) < 0) {
-            throw new UnprocessableException("MIN_QUANTITY", "Quantidade mínima não atingida para " + product.getName());
-        }
-        if (product.getMaximumQuantity() != null
-                && quantity.compareTo(product.getMaximumQuantity()) > 0) {
-            throw new UnprocessableException("MAX_QUANTITY", "Quantidade máxima excedida para " + product.getName());
+        if (!product.hasAvailableVariants()) {
+            if (quantity.compareTo(product.getMinimumQuantity()) < 0) {
+                throw new UnprocessableException("MIN_QUANTITY", "Quantidade mínima não atingida para " + product.getName());
+            }
+            if (product.getMaximumQuantity() != null
+                    && quantity.compareTo(product.getMaximumQuantity()) > 0) {
+                throw new UnprocessableException("MAX_QUANTITY", "Quantidade máxima excedida para " + product.getName());
+            }
         }
         if (!product.getUnit().decimalAllowed() && quantity.stripTrailingZeros().scale() > 0) {
             throw new UnprocessableException("DECIMAL_NOT_ALLOWED", "Unidade de " + product.getName() + " não aceita decimal");
