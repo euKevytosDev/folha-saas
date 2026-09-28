@@ -16,7 +16,7 @@
     <link rel="stylesheet" href="/css/pages/placeholder.css">
     <link rel="stylesheet" href="/css/pages/store.css?v=49dfaf4bde">
     <link rel="stylesheet" href="/css/pages/checkout.css?v=a597b38512">
-    <link rel="stylesheet" href="/css/pages/admin.css?v=08d6c5d28c">
+    <link rel="stylesheet" href="/css/pages/admin.css?v=82e70d46cc">
     <script src="/js/env.js"></script>
 </head>
 <body class="page-shell admin-shell">
@@ -54,7 +54,6 @@
                 </div>
             </section>
 
-            <p class="admin-kicker">Escolha uma área. No celular, deslize para o lado.</p>
             <nav class="admin-nav" id="admin-nav" aria-label="Áreas do painel">
                 <button class="admin-tab is-active" type="button" data-panel="inicio" style="--tab-color:#0F766E">
                     <span class="admin-tab-dot"></span>Início
@@ -89,10 +88,7 @@
             <div class="admin-stage" id="admin-stage">
                 <section class="admin-panel is-active" id="panel-inicio" data-panel="inicio" style="--panel-color:#0F766E">
                     <header class="admin-panel-head dashboard-head">
-                        <div>
-                            <h2 class="admin-panel-title">Início</h2>
-                            <p class="muted" id="dashboard-updated">A tela busca pedidos novos sozinha a cada 3 minutos.</p>
-                        </div>
+                        <h2 class="admin-panel-title">Início</h2>
                         <button class="btn btn-secondary" id="enable-order-sound" type="button">Ativar som de pedido novo</button>
                     </header>
                     <div class="stat-grid" id="dashboard-stats"></div>
@@ -108,7 +104,6 @@
                 <section class="admin-panel" id="panel-pedidos" data-panel="pedidos" style="--panel-color:#EA580C">
                     <header class="admin-panel-head">
                         <h2 class="admin-panel-title">Pedidos</h2>
-                        <p class="muted" id="orders-sync-note">A lista atualiza sozinha a cada 3 minutos.</p>
                     </header>
                     <div class="stat-grid" id="order-summary"></div>
                     <div class="chip-row" id="order-filters"></div>
@@ -295,7 +290,6 @@
                 <section class="admin-panel" id="panel-loja" data-panel="loja" data-owner-only style="--panel-color:#0D9488">
                     <header class="admin-panel-head">
                         <h2 class="admin-panel-title">Loja</h2>
-                        <p class="muted">Nome, visual, horário e se está aberta agora.</p>
                     </header>
                     <p class="muted" id="store-slug"></p>
                     <p class="admin-meta-line">Plano: <strong id="store-plan"></strong> · Conta: <strong id="store-status"></strong></p>
@@ -365,7 +359,6 @@
                 <section class="admin-panel" id="delivery-settings-card" data-panel="entrega" data-owner-only style="--panel-color:#2563EB">
                     <header class="admin-panel-head">
                         <h2 class="admin-panel-title">Entrega e frete</h2>
-                        <p class="muted">Taxa, pedido mínimo e se faz entrega ou retirada.</p>
                     </header>
                     <div class="alert" id="delivery-settings-alert" hidden></div>
                     <form id="delivery-settings-form" class="auth-form" onsubmit="return false;">
@@ -534,8 +527,8 @@
                         <div class="field">
                             <label for="member-role">Perfil</label>
                             <select id="member-role" name="role">
-                                <option value="STAFF">STAFF</option>
-                                <option value="ADMIN">ADMIN</option>
+                                <option value="STAFF">Atendente</option>
+                                <option value="ADMIN">Gerente</option>
                             </select>
                         </div>
                         <button class="btn btn-primary" type="submit">Adicionar</button>
@@ -545,6 +538,6 @@
         </div>
     </main>
     <div class="order-toast" id="order-toast" hidden role="status"></div>
-    <script type="module" src="/js/pages/admin.js?v=2c7213761e"></script>
+    <script type="module" src="/js/pages/admin.js?v=00249a023e"></script>
 </body>
 </html>

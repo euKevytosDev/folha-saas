@@ -6,12 +6,6 @@
     padding-top: var(--space-4);
 }
 
-.admin-kicker {
-    margin: 0.85rem 0 0.65rem;
-    color: var(--color-text-muted);
-    font-size: 0.92rem;
-}
-
 .admin-nav {
     position: sticky;
     top: var(--header-h);
@@ -272,6 +266,33 @@
 
 .admin-product-search input {
     width: 100%;
+}
+
+.coupon-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.35rem 0.85rem;
+    padding: 0.85rem 0;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.coupon-row:last-child {
+    border-bottom: 0;
+}
+
+.coupon-row strong {
+    flex: 0 0 auto;
+}
+
+.coupon-row .muted {
+    flex: 1 1 12rem;
+    margin: 0;
+    min-width: 0;
+}
+
+.coupon-row .btn {
+    margin-left: auto;
 }
 
 .product-admin-row {

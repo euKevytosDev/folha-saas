@@ -6,6 +6,27 @@ import { compressImageFile } from "../utils/image.js";
 import { createThumb, optimizedImageUrl, setPreviewImage } from "../utils/media.js";
 import { storeUrl } from "../utils/nav.js";
 
+function roleLabel(role) {
+    if (role === "OWNER") {
+        return "Admin";
+    }
+    if (role === "ADMIN") {
+        return "Gerente";
+    }
+    if (role === "STAFF") {
+        return "Atendente";
+    }
+    return role || "";
+}
+
+function formatDiscountNumber(value) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) {
+        return String(value ?? "");
+    }
+    return number.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
+}
+
 /** Controle do form por name — evita colisão com form.name (atributo HTML). */
 function control(form, name) {
     if (!form) {
@@ -31,7 +52,7 @@ if (!me) {
 const { user } = me;
 let establishment = me.establishment;
 $("#user-name").textContent = user.name;
-$("#user-role").textContent = user.role;
+$("#user-role").textContent = roleLabel(user.role);
 $("#store-name").textContent = establishment?.name ?? "Estabelecimento";
 $("#store-slug").textContent = establishment ? storeUrl(establishment.slug) : "";
 $("#store-plan").textContent = establishment?.planCode ?? "";
@@ -193,22 +214,6 @@ function announceNewOrders(fresh) {
         } catch {
             // notificação do sistema indisponível
         }
-    }
-}
-
-function markOrdersSynced() {
-    const stamp = new Date().toLocaleTimeString("pt-BR", {
-        hour: "2-digit",
-        minute: "2-digit"
-    });
-    const note = `Atualizado às ${stamp}. A tela busca de novo sozinha a cada 3 minutos.`;
-    const dashboard = $("#dashboard-updated");
-    const orders = $("#orders-sync-note");
-    if (dashboard) {
-        dashboard.textContent = note;
-    }
-    if (orders) {
-        orders.textContent = note;
     }
 }
 
@@ -1265,7 +1270,7 @@ async function renderUsers() {
         name.textContent = item.name;
         const meta = document.createElement("p");
         meta.className = "muted";
-        meta.textContent = `${item.email} · ${item.role}`;
+        meta.textContent = `${item.email} · ${roleLabel(item.role)}`;
         identity.append(name, meta);
         row.append(identity);
         list.append(row);
@@ -1718,7 +1723,6 @@ async function refreshOrders(options = {}) {
     renderOrderSummary(summary);
     renderOrders(filtered);
     renderDashboard(summary, orders);
-    markOrdersSynced();
     return { hasNew: fresh.length > 0, fresh };
 }
 
@@ -2827,13 +2831,13 @@ async function refreshCoupons() {
         }
         coupons.forEach((coupon) => {
             const row = document.createElement("div");
-            row.className = "product-admin-row";
+            row.className = "coupon-row";
             const title = document.createElement("strong");
             title.textContent = coupon.code;
             const meta = document.createElement("p");
             meta.className = "muted";
             const valueLabel = coupon.discountType === "PERCENT"
-                ? `${coupon.discountValue}%`
+                ? `${formatDiscountNumber(coupon.discountValue)}%`
                 : formatBRL(coupon.discountValue);
             meta.textContent = `${valueLabel} · usos ${coupon.usedCount}${coupon.usageLimit ? `/${coupon.usageLimit}` : ""} · ${coupon.active ? "ativo" : "inativo"}`;
             const del = document.createElement("button");
