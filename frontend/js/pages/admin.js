@@ -1836,21 +1836,58 @@ function escapeHtml(value) {
         .replaceAll('"', "&quot;");
 }
 
-function formatOrderDateTime(value) {
+const RECEIPT_TIME_ZONE = "America/Sao_Paulo";
+
+function parseInstant(value) {
     if (!value) {
+        return null;
+    }
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatInBrazil(value, options) {
+    const date = value instanceof Date ? value : parseInstant(value);
+    if (!date) {
         return "—";
     }
-    try {
-        return new Date(value).toLocaleString("pt-BR", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit"
-        });
-    } catch {
-        return String(value);
+    return date.toLocaleString("pt-BR", {
+        timeZone: RECEIPT_TIME_ZONE,
+        ...options
+    });
+}
+
+function formatOrderDate(value) {
+    return formatInBrazil(value, {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric"
+    });
+}
+
+function formatOrderClock(value) {
+    return formatInBrazil(value, {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+    });
+}
+
+function formatOrderDateTime(value) {
+    const date = formatOrderDate(value);
+    const clock = formatOrderClock(value);
+    if (date === "—" || clock === "—") {
+        return "—";
     }
+    return `${date} ${clock}`;
+}
+
+function formatCpfDisplay(value) {
+    const digits = String(value || "").replace(/\D+/g, "");
+    if (digits.length !== 11) {
+        return value || "";
+    }
+    return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
 }
 
 function paymentMethodLabel(method) {
@@ -1868,17 +1905,52 @@ function paymentMethodLabel(method) {
     }
 }
 
+function receiptItemName(item) {
+    const full = String(item.productName || "").trim();
+    const flavors = String(item.variantName || "").trim();
+    if (flavors && full.endsWith(flavors)) {
+        const base = full.slice(0, full.length - flavors.length).replace(/[·\s]+$/u, "").trim();
+        return { name: base || full, flavors };
+    }
+    return { name: full || "Item", flavors };
+}
+
+function receiptAddressLines(order) {
+    return [
+        [order.addressStreet, order.addressNumber].filter(Boolean).join(", "),
+        order.addressComplement,
+        order.addressNeighborhood,
+        [order.addressCity, order.addressState].filter(Boolean).join(" - "),
+        order.addressZipCode ? `CEP ${order.addressZipCode}` : ""
+    ].map((line) => String(line || "").trim()).filter(Boolean);
+}
+
 /** Cupom / notinha sem valor fiscal — separação e entrega (NFC-e no caixa/balança). */
 function printNonFiscalReceipt(order) {
     const store = establishment || {};
-    const addressLine = orderDeliveryAddress(order);
     const isDelivery = String(order.fulfillmentType || "").toUpperCase() === "DELIVERY";
-    const itemsHtml = (order.items || []).map((item) => {
+    const addressLines = isDelivery ? receiptAddressLines(order) : [];
+    const items = Array.isArray(order.items) ? order.items : [];
+    const printedAt = new Date();
+    const discount = Number(order.discount || 0);
+    const deliveryFee = Number(order.deliveryFee || 0);
+    const cpf = formatCpfDisplay(order.customerCpf);
+    const paymentMethod = paymentMethodLabel(order.paymentMethod || order.payment?.method);
+    const paymentStatus = order.payment?.status ? paymentStatusLabel(order.payment.status) : "";
+
+    const itemsHtml = items.map((item, index) => {
         const qty = formatQuantity(item.quantity, item.productUnit);
+        const named = receiptItemName(item);
+        const flavorLine = named.flavors
+            ? `<div class="flavor">Sabores: ${escapeHtml(named.flavors)}</div>`
+            : "";
         return `<tr>
-            <td class="qty">${escapeHtml(qty)}</td>
-            <td class="name">${escapeHtml(item.productName)}</td>
-            <td class="money">${escapeHtml(formatBRL(item.unitPrice))}</td>
+            <td class="idx">${index + 1}</td>
+            <td class="name">
+              <div>${escapeHtml(named.name)}</div>
+              ${flavorLine}
+              <div class="detail">${escapeHtml(qty)} × ${escapeHtml(formatBRL(item.unitPrice))}</div>
+            </td>
             <td class="money">${escapeHtml(formatBRL(item.subtotal))}</td>
         </tr>`;
     }).join("");
@@ -1889,12 +1961,13 @@ function printNonFiscalReceipt(order) {
 <meta charset="utf-8">
 <title>Notinha ${escapeHtml(order.publicCode)}</title>
 <style>
-  @page { margin: 6mm; size: 80mm auto; }
+  @page { margin: 4mm; size: 80mm auto; }
   * { box-sizing: border-box; }
   body {
     margin: 0;
     font-family: "Courier New", Courier, monospace;
     font-size: 12px;
+    line-height: 1.35;
     color: #111;
     background: #fff;
   }
@@ -1902,42 +1975,64 @@ function printNonFiscalReceipt(order) {
     width: 72mm;
     max-width: 100%;
     margin: 0 auto;
-    padding: 4mm 2mm 8mm;
+    padding: 2mm 1mm 8mm;
   }
   .center { text-align: center; }
-  .muted { color: #444; }
+  .muted { color: #333; }
   h1 {
     margin: 0 0 2px;
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 700;
     text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+  .code {
+    margin: 4px 0 0;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
   }
   .banner {
     margin: 8px 0;
-    padding: 4px 0;
+    padding: 5px 0;
     border-top: 1px dashed #111;
     border-bottom: 1px dashed #111;
     font-weight: 700;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
   }
   .line { margin: 2px 0; }
+  .pair {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 2px 0;
+  }
+  .pair span:last-child { text-align: right; font-weight: 700; }
   .sep { border: 0; border-top: 1px dashed #111; margin: 8px 0; }
   table { width: 100%; border-collapse: collapse; }
-  th, td { padding: 2px 0; vertical-align: top; }
+  th, td { padding: 3px 0; vertical-align: top; }
   th { font-size: 10px; text-align: left; border-bottom: 1px solid #111; }
-  td.qty { width: 22%; }
-  td.name { width: 40%; word-break: break-word; }
-  td.money { width: 19%; text-align: right; white-space: nowrap; }
+  td.idx { width: 1.2rem; }
+  td.name { word-break: break-word; }
+  td.money { width: 4.6rem; text-align: right; white-space: nowrap; font-weight: 700; }
+  .flavor, .detail { font-size: 11px; color: #222; }
   .totals .label { text-align: left; }
-  .totals .value { text-align: right; font-weight: 700; }
-  .totals .grand .value { font-size: 14px; }
+  .totals .value { text-align: right; font-weight: 700; white-space: nowrap; }
+  .totals .grand td { font-size: 15px; padding-top: 4px; }
+  .box {
+    margin-top: 6px;
+    padding: 4px 0;
+    border-top: 1px solid #111;
+    border-bottom: 1px solid #111;
+  }
   .foot {
     margin-top: 10px;
     font-size: 10px;
     text-align: center;
   }
   .blank { margin-top: 10px; font-size: 11px; }
+  .blank div { margin: 6px 0; }
   .no-print { margin: 12px auto; text-align: center; }
   @media print {
     .no-print { display: none !important; }
@@ -1955,46 +2050,58 @@ function printNonFiscalReceipt(order) {
       ${store.address ? `<div class="line muted">${escapeHtml(store.address)}</div>` : ""}
     </div>
     <div class="banner center">Documento não fiscal</div>
-    <div class="line"><strong>Pedido:</strong> ${escapeHtml(order.publicCode)}</div>
-    <div class="line"><strong>Data:</strong> ${escapeHtml(formatOrderDateTime(order.createdAt))}</div>
-    <div class="line"><strong>Status:</strong> ${escapeHtml(statusLabel(order.status))}</div>
-    <div class="line"><strong>Tipo:</strong> ${escapeHtml(fulfillmentLabel(order.fulfillmentType))}</div>
+    <div class="center code">${escapeHtml(order.publicCode || "—")}</div>
+    <div class="pair"><span>Data do pedido</span><span>${escapeHtml(formatOrderDate(order.createdAt))}</span></div>
+    <div class="pair"><span>Hora do pedido</span><span>${escapeHtml(formatOrderClock(order.createdAt))}</span></div>
+    <div class="line muted">Horário de Brasília</div>
+    <div class="pair"><span>Status</span><span>${escapeHtml(statusLabel(order.status))}</span></div>
+    <div class="pair"><span>Tipo</span><span>${escapeHtml(fulfillmentLabel(order.fulfillmentType))}</span></div>
     <hr class="sep">
-    <div class="line"><strong>Cliente:</strong> ${escapeHtml(order.customerName)}</div>
-    <div class="line"><strong>Telefone:</strong> ${escapeHtml(formatPhoneDisplay(order.customerPhone))}</div>
-    ${isDelivery && addressLine
-        ? `<div class="line"><strong>Endereço:</strong> ${escapeHtml(addressLine)}</div>`
-        : `<div class="line"><strong>Retirada</strong> na loja</div>`}
-    ${order.notes ? `<div class="line"><strong>Obs.:</strong> ${escapeHtml(order.notes)}</div>` : ""}
+    <div class="line"><strong>Cliente</strong></div>
+    <div class="line">${escapeHtml(order.customerName || "—")}</div>
+    <div class="line">Tel: ${escapeHtml(formatPhoneDisplay(order.customerPhone) || "—")}</div>
+    ${order.customerEmail ? `<div class="line">E-mail: ${escapeHtml(order.customerEmail)}</div>` : ""}
+    ${cpf ? `<div class="line">CPF: ${escapeHtml(cpf)}</div>` : ""}
+    ${isDelivery
+        ? `<div class="line" style="margin-top:6px"><strong>Entrega</strong></div>${
+            addressLines.length
+                ? addressLines.map((line) => `<div class="line">${escapeHtml(line)}</div>`).join("")
+                : `<div class="line">Endereço não informado</div>`
+        }`
+        : `<div class="banner center">Retirada na loja</div>`}
+    ${order.notes ? `<div class="line" style="margin-top:6px"><strong>Obs. do cliente</strong></div><div class="line">${escapeHtml(order.notes)}</div>` : ""}
     <hr class="sep">
     <table>
       <thead>
         <tr>
-          <th>Qtd</th>
+          <th>#</th>
           <th>Item</th>
-          <th style="text-align:right">Unit.</th>
           <th style="text-align:right">Total</th>
         </tr>
       </thead>
       <tbody>
-        ${itemsHtml || `<tr><td colspan="4">Sem itens</td></tr>`}
+        ${itemsHtml || `<tr><td colspan="3">Sem itens</td></tr>`}
       </tbody>
     </table>
+    <div class="line muted">${items.length} ${items.length === 1 ? "item" : "itens"}</div>
     <hr class="sep">
     <table class="totals">
       <tr><td class="label">Subtotal</td><td class="value">${escapeHtml(formatBRL(order.subtotal))}</td></tr>
-      <tr><td class="label">Desconto</td><td class="value">${escapeHtml(formatBRL(order.discount || 0))}</td></tr>
-      <tr><td class="label">Entrega</td><td class="value">${escapeHtml(formatBRL(order.deliveryFee || 0))}</td></tr>
+      ${discount > 0 ? `<tr><td class="label">Desconto${order.couponCode ? ` (${escapeHtml(order.couponCode)})` : ""}</td><td class="value">− ${escapeHtml(formatBRL(discount))}</td></tr>` : ""}
+      <tr><td class="label">${isDelivery ? "Taxa de entrega" : "Entrega"}</td><td class="value">${escapeHtml(formatBRL(deliveryFee))}</td></tr>
       <tr class="grand"><td class="label">TOTAL</td><td class="value">${escapeHtml(formatBRL(order.total))}</td></tr>
     </table>
-    <hr class="sep">
-    <div class="line"><strong>Pagamento:</strong> ${escapeHtml(paymentMethodLabel(order.paymentMethod || order.payment?.method))}
-      ${order.payment?.status ? ` (${escapeHtml(paymentStatusLabel(order.payment.status))})` : ""}</div>
+    <div class="box">
+      <div class="pair"><span>Pagamento</span><span>${escapeHtml(paymentMethod)}</span></div>
+      ${paymentStatus ? `<div class="pair"><span>Situação</span><span>${escapeHtml(paymentStatus)}</span></div>` : ""}
+    </div>
     <div class="blank">
       <div>Peso real (balança): _______________</div>
       <div>Conferido por: ___________________</div>
     </div>
     <div class="foot">
+      Impresso em ${escapeHtml(formatOrderDate(printedAt))} às ${escapeHtml(formatOrderClock(printedAt))}<br>
+      Horário de Brasília<br><br>
       SEM VALOR FISCAL<br>
       NFC-e / cupom fiscal emitidos no caixa após pesagem.
     </div>
