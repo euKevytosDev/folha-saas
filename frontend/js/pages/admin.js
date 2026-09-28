@@ -2112,14 +2112,15 @@ function printNonFiscalReceipt(order) {
 </body>
 </html>`;
 
-    const popup = window.open("", "_blank", "noopener,noreferrer,width=420,height=720");
+    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const popup = window.open(url, "_blank", "width=420,height=720");
     if (!popup) {
+        URL.revokeObjectURL(url);
         window.alert("Permita pop-ups para imprimir a notinha.");
         return;
     }
-    popup.document.open();
-    popup.document.write(html);
-    popup.document.close();
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 async function loadPaymentSettings() {
