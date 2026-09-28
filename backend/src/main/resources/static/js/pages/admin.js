@@ -2031,8 +2031,6 @@ function printNonFiscalReceipt(order) {
     font-size: 10px;
     text-align: center;
   }
-  .blank { margin-top: 10px; font-size: 11px; }
-  .blank div { margin: 6px 0; }
   .no-print { margin: 12px auto; text-align: center; }
   @media print {
     .no-print { display: none !important; }
@@ -2094,10 +2092,6 @@ function printNonFiscalReceipt(order) {
     <div class="box">
       <div class="pair"><span>Pagamento</span><span>${escapeHtml(paymentMethod)}</span></div>
       ${paymentStatus ? `<div class="pair"><span>Situação</span><span>${escapeHtml(paymentStatus)}</span></div>` : ""}
-    </div>
-    <div class="blank">
-      <div>Peso real (balança): _______________</div>
-      <div>Conferido por: ___________________</div>
     </div>
     <div class="foot">
       Impresso em ${escapeHtml(formatOrderDate(printedAt))} às ${escapeHtml(formatOrderClock(printedAt))}<br>
