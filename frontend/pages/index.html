@@ -3,23 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Folha — Pedidos online para sacolões e hortifrutis</title>
-    <meta name="description" content="Crie a loja online do seu sacolão. Seus clientes pedem pelo celular, você organiza os pedidos em um só painel.">
-    <meta property="og:title" content="Folha — Pedidos online para sacolões">
-    <meta property="og:description" content="Loja no celular, pedidos organizados e operação simples para hortifrutis e mercados.">
+    <title>Folha — Pedidos do comércio, do link ao balcão</title>
+    <meta name="description" content="Loja no celular, fila de pedidos e pagamento. Para padaria, açougue, lanchonete, hortifruti e o comércio de bairro. A partir de R$ 149,90.">
+    <meta property="og:title" content="Folha — Pedidos do comércio, do link ao balcão">
+    <meta property="og:description" content="O cliente pede pelo link. A loja vê a fila, cobra e entrega. A partir de R$ 149,90.">
     <meta property="og:type" content="website">
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,650&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,560;9..144,680&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/variables.css">
     <link rel="stylesheet" href="/css/reset.css">
     <link rel="stylesheet" href="/css/layout.css">
     <link rel="stylesheet" href="/css/components.css">
-    <link rel="stylesheet" href="/css/pages/landing.css">
+    <link rel="stylesheet" href="/css/pages/landing.css?v=e07cba12b2">
     <script src="/js/env.js"></script>
 </head>
-<body class="page-shell">
+<body class="page-shell landing">
     <header class="site-header">
         <div class="container header-inner">
             <a class="brand" href="/">
@@ -27,12 +27,12 @@
                 <span class="brand-name">Folha</span>
             </a>
             <nav class="header-nav" aria-label="Principal">
-                <a href="#recursos">Recursos</a>
-                <a href="#planos">Planos</a>
+                <a href="#rotina">Rotina</a>
+                <a href="#plano">Plano</a>
             </nav>
             <div class="header-actions">
                 <a class="btn btn-ghost" href="/login">Entrar</a>
-                <a class="btn btn-primary" href="/cadastro">Começar</a>
+                <a class="btn btn-primary" href="#conversa">Conversar</a>
             </div>
         </div>
     </header>
@@ -40,152 +40,189 @@
     <main>
         <section class="hero">
             <div class="container hero-grid">
-                <div>
-                    <span class="badge"><span class="status-dot"></span> Feito para o celular do cliente</span>
-                    <h1>A loja do seu sacolão, pronta no WhatsApp da vizinhança.</h1>
-                    <p class="hero-copy">Catálogo, pedidos, entrega e pagamentos em uma plataforma só. O cliente pede pelo celular, sem instalar nada.</p>
+                <div class="hero-copy-block">
+                    <p class="eyebrow">Pedidos para o comércio de bairro</p>
+                    <h1>O cliente pede pelo link. A loja vê a fila.</h1>
+                    <p class="lede">Catálogo, entrega, retirada e pagamento no mesmo lugar. O pedido chega pronto para separar, cobrar e despachar — sem o cliente instalar aplicativo.</p>
                     <div class="hero-actions">
-                        <a class="btn btn-primary" href="/cadastro">Criar minha loja</a>
-                        <a class="btn btn-secondary" href="/loja/sacolao-demo">Ver loja de exemplo</a>
+                        <a class="btn btn-primary" href="#conversa">Quero na minha loja</a>
+                        <a class="btn btn-secondary" href="#plano">Ver o que está incluso</a>
                     </div>
-                    <div class="hero-meta">
-                        <span id="api-status">Verificando API…</span>
-                        <span>Multi-tenant desde o primeiro dia</span>
-                    </div>
+                    <p class="hero-note">Padaria, açougue, lanchonete, hortifruti, doceria, mercadinho. Cada loja com o próprio link e o próprio painel.</p>
                 </div>
-                <div class="phone" aria-hidden="true">
-                    <div class="phone-bar">
-                        <span class="phone-store">Sacolão do Bairro</span>
-                        <span class="badge">Aberto</span>
+
+                <aside class="board" aria-label="Exemplo de fila de pedidos">
+                    <div class="board-top">
+                        <div>
+                            <p class="board-kicker">Painel</p>
+                            <strong>Mercado da Esquina</strong>
+                        </div>
+                        <span class="board-count">3 abertos</span>
                     </div>
-                    <div class="phone-search"></div>
-                    <div class="chips">
-                        <span class="chip">Frutas</span>
-                        <span class="chip">Verduras</span>
-                        <span class="chip">Legumes</span>
-                    </div>
-                    <div class="product-mini">
-                        <article>
-                            <div class="product-thumb"></div>
-                            <h3>Banana prata</h3>
-                            <p>R$ 6,90/kg</p>
-                        </article>
-                        <article>
-                            <div class="product-thumb"></div>
-                            <h3>Alface crespa</h3>
-                            <p>R$ 3,50/un</p>
-                        </article>
-                    </div>
-                </div>
+                    <ol class="tickets">
+                        <li class="ticket is-new">
+                            <div class="ticket-row">
+                                <span class="ticket-code">1842</span>
+                                <span>agora</span>
+                            </div>
+                            <p class="ticket-who">João · entrega</p>
+                            <p class="ticket-what">Arroz, leite, pão</p>
+                            <p class="ticket-pay">PIX</p>
+                        </li>
+                        <li class="ticket">
+                            <div class="ticket-row">
+                                <span class="ticket-code">1841</span>
+                                <span>há 8 min</span>
+                            </div>
+                            <p class="ticket-who">Carla · retirada</p>
+                            <p class="ticket-what">Bolo e 20 salgados</p>
+                            <p class="ticket-pay">Dinheiro</p>
+                        </li>
+                        <li class="ticket">
+                            <div class="ticket-row">
+                                <span class="ticket-code">1840</span>
+                                <span>há 21 min</span>
+                            </div>
+                            <p class="ticket-who">Pedro · entrega</p>
+                            <p class="ticket-what">1,4 kg de carne</p>
+                            <p class="ticket-pay">Na entrega</p>
+                        </li>
+                    </ol>
+                    <p class="board-caption">Exemplo de como a fila aparece para quem atende.</p>
+                </aside>
             </div>
         </section>
 
-        <section class="features" id="recursos">
+        <section class="routine" id="rotina">
             <div class="container">
-                <h2 class="section-title">Operação completa, sem complicar.</h2>
-                <p class="muted" style="margin-top: 0.75rem; max-width: 36rem;">Tudo que um hortifruti precisa para vender online, organizado em um painel simples.</p>
-                <div class="feature-grid">
-                    <article class="card feature-card">
-                        <span class="badge">Loja</span>
-                        <h3>Vitrine no celular</h3>
-                        <p class="muted">Categorias, busca, produtos por kg e carrinho pensados para dedo e pressa.</p>
-                    </article>
-                    <article class="card feature-card">
-                        <span class="badge">Pedidos</span>
-                        <h3>Fila organizada</h3>
-                        <p class="muted">Do pedido novo até a entrega, com histórico e valores preservados.</p>
-                    </article>
-                    <article class="card feature-card">
-                        <span class="badge">SaaS</span>
-                        <h3>Vários estabelecimentos</h3>
-                        <p class="muted">Cada loja com seus dados isolados, planos e usuários próprios.</p>
-                    </article>
+                <div class="section-head">
+                    <p class="eyebrow">Como a loja usa</p>
+                    <h2>Do cadastro ao pedido na mão de quem separa.</h2>
                 </div>
+                <ol class="routine-list">
+                    <li>
+                        <span>01</span>
+                        <div>
+                            <h3>A loja entra no sistema</h3>
+                            <p>Nome, horário, endereço e o que vende. O link fica pronto para mandar no WhatsApp, no Instagram ou colar no balcão.</p>
+                        </div>
+                    </li>
+                    <li>
+                        <span>02</span>
+                        <div>
+                            <h3>O cliente monta o pedido</h3>
+                            <p>Escolhe no celular, com foto, preço e opções. Sem baixar nada. Entrega ou retirada, do jeito que a loja configurou.</p>
+                        </div>
+                    </li>
+                    <li>
+                        <span>03</span>
+                        <div>
+                            <h3>A fila avisa quem está no balcão</h3>
+                            <p>Pedido novo aparece no painel, com som. Dá para confirmar, separar, imprimir a notinha e falar com o cliente no WhatsApp.</p>
+                        </div>
+                    </li>
+                </ol>
             </div>
         </section>
 
-        <section class="steps">
-            <div class="container">
-                <h2 class="section-title">Do cadastro ao primeiro pedido.</h2>
-                <div class="step-grid">
-                    <article class="card step-card">
-                        <strong>1</strong>
-                        <h3>Crie a loja</h3>
-                        <p class="muted">Nome, logo, horário e endereço. Sua URL fica pronta: /loja/seu-sacolao.</p>
-                    </article>
-                    <article class="card step-card">
-                        <strong>2</strong>
-                        <h3>Monte o catálogo</h3>
-                        <p class="muted">Categorias, preços, estoque e disponibilidade em poucos toques.</p>
-                    </article>
-                    <article class="card step-card">
-                        <strong>3</strong>
-                        <h3>Receba pedidos</h3>
-                        <p class="muted">O cliente finaliza no celular. Você confirma, separa e entrega.</p>
-                    </article>
+        <section class="included">
+            <div class="container included-grid">
+                <div>
+                    <p class="eyebrow">No dia a dia</p>
+                    <h2>O que a equipe encontra quando abre o sistema.</h2>
                 </div>
+                <dl class="spec">
+                    <div>
+                        <dt>Loja no link</dt>
+                        <dd>Vitrine no celular do cliente, com categorias, busca e carrinho.</dd>
+                    </div>
+                    <div>
+                        <dt>Catálogo de verdade</dt>
+                        <dd>Foto, preço, estoque, opções e combos. O mesmo produto pode ter escolhas, como sabor ou ponto da carne.</dd>
+                    </div>
+                    <div>
+                        <dt>Entrega e retirada</dt>
+                        <dd>Taxa, pedido mínimo e tempo de cada modalidade. A loja liga e desliga quando quiser.</dd>
+                    </div>
+                    <div>
+                        <dt>Pagamento da própria loja</dt>
+                        <dd>PIX na conta do comércio, dinheiro ou pagamento na entrega. O valor não passa por uma conta da Folha.</dd>
+                    </div>
+                    <div>
+                        <dt>Fila e notinha</dt>
+                        <dd>Pedidos em ordem, aviso de pedido novo e comprovante para quem separa.</dd>
+                    </div>
+                    <div>
+                        <dt>Equipe</dt>
+                        <dd>Dono, gerente e quem atende. Cada um entra no que precisa ver.</dd>
+                    </div>
+                </dl>
             </div>
         </section>
 
-        <section class="plans" id="planos">
-            <div class="container">
-                <h2 class="section-title">Planos que crescem com a banca.</h2>
-                <div class="plan-grid">
-                    <article class="card plan-card">
-                        <h3>Basic</h3>
-                        <p class="plan-price">R$ 79</p>
-                        <ul>
-                            <li>Loja pública</li>
-                            <li>Pedidos e catálogo</li>
-                            <li>Até 2 usuários</li>
-                        </ul>
-                        <a class="btn btn-secondary btn-block" href="/cadastro">Começar</a>
-                    </article>
-                    <article class="card plan-card featured">
-                        <h3>Pro</h3>
-                        <p class="plan-price">R$ 149</p>
-                        <ul>
-                            <li>Cupons e relatórios</li>
-                            <li>PIX e entregas</li>
-                            <li>Até 8 usuários</li>
-                        </ul>
-                        <a class="btn btn-primary btn-block" href="/cadastro">Escolher Pro</a>
-                    </article>
-                    <article class="card plan-card">
-                        <h3>Premium</h3>
-                        <p class="plan-price">R$ 249</p>
-                        <ul>
-                            <li>Domínio próprio</li>
-                            <li>Fiscal e WhatsApp</li>
-                            <li>Usuários ilimitados</li>
-                        </ul>
-                        <a class="btn btn-secondary btn-block" href="/cadastro">Falar com a Folha</a>
-                    </article>
-                </div>
-            </div>
-        </section>
+        <section class="offer" id="plano">
+            <div class="container offer-grid">
+                <article class="price-sheet">
+                    <p class="eyebrow">Um plano</p>
+                    <h2>O sistema inteiro, para uma loja.</h2>
+                    <p class="price-line"><span>A partir de</span> <strong>R$ 149,90</strong> <span>por mês</span></p>
+                    <ul>
+                        <li>Loja pública no celular</li>
+                        <li>Catálogo, opções e combos</li>
+                        <li>Entrega, retirada e pedido mínimo</li>
+                        <li>PIX, dinheiro e pagamento na entrega</li>
+                        <li>Painel, aviso de pedido novo e notinha</li>
+                        <li>Cupom, estoque e usuários da equipe</li>
+                    </ul>
+                    <p class="price-note">O valor fecha conforme o movimento da loja. O sistema entregue é este.</p>
+                </article>
 
-        <section class="cta-band">
-            <div class="container">
-                <div class="card">
-                    <span class="badge">Sem aplicativo para o cliente</span>
-                    <h2 class="section-title">Abra a loja ainda esta semana.</h2>
-                    <a class="btn btn-primary" href="/cadastro">Criar conta</a>
-                </div>
+                <article class="talk" id="conversa">
+                    <header>
+                        <h2>Conta o seu comércio</h2>
+                        <p>Nome, WhatsApp e, em poucas palavras, como é a loja e o que você quer resolver.</p>
+                    </header>
+                    <form id="lead-form" class="talk-form" novalidate>
+                        <div class="talk-trap" aria-hidden="true">
+                            <label for="lead-website">Site</label>
+                            <input id="lead-website" name="website" type="text" tabindex="-1" autocomplete="off">
+                        </div>
+                        <div class="field">
+                            <label for="lead-name">Seu nome</label>
+                            <input id="lead-name" name="name" type="text" autocomplete="name" maxlength="120" required>
+                        </div>
+                        <div class="field">
+                            <label for="lead-phone">WhatsApp</label>
+                            <input id="lead-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(11) 90000-0000" maxlength="32" required>
+                        </div>
+                        <div class="field">
+                            <label for="lead-business">Nome do comércio</label>
+                            <input id="lead-business" name="businessName" type="text" maxlength="160" required>
+                        </div>
+                        <div class="field">
+                            <label for="lead-brief">Estilo do comércio e o que você quer</label>
+                            <textarea id="lead-brief" name="brief" rows="4" maxlength="500" required placeholder="Açougue de bairro. Quero receber pedido pelo link e parar de anotar no caderno."></textarea>
+                        </div>
+                        <p class="form-alert" id="lead-alert" hidden></p>
+                        <button class="btn btn-primary btn-block" type="submit">Enviar</button>
+                        <p class="form-fine">Já tem conta? <a href="/login">Entrar no painel</a> ou <a href="/cadastro">criar a loja agora</a>.</p>
+                    </form>
+                    <p class="form-done" id="lead-done" hidden>Recebemos. Vamos chamar você nesse WhatsApp.</p>
+                </article>
             </div>
         </section>
     </main>
 
     <footer class="site-footer">
         <div class="container footer-inner">
-            <span>Folha — pedidos online para sacolões e hortifrutis</span>
+            <span>Folha — pedidos para o comércio de bairro</span>
             <div class="footer-links">
                 <a href="/login">Painel</a>
-                <a href="/superadmin">Super admin</a>
+                <a href="#conversa">Falar com a Folha</a>
             </div>
         </div>
     </footer>
 
-    <script type="module" src="/js/pages/landing.js"></script>
+    <script type="module" src="/js/pages/landing.js?v=260b7330c7"></script>
 </body>
 </html>

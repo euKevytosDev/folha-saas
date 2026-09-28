@@ -38,3 +38,35 @@ if (!establishments.length) {
         list.append(row);
     });
 }
+
+const leads = await api("/admin/leads");
+const leadList = $("#leads-list");
+leadList.replaceChildren();
+if (!leads.length) {
+    const emptyLead = document.createElement("p");
+    emptyLead.className = "muted";
+    emptyLead.textContent = "Nenhuma conversa ainda.";
+    leadList.append(emptyLead);
+} else {
+    const formatWhen = new Intl.DateTimeFormat("pt-BR", {
+        dateStyle: "short",
+        timeStyle: "short",
+        timeZone: "America/Sao_Paulo"
+    });
+    leads.forEach((lead) => {
+        const row = document.createElement("article");
+        row.className = "user-row";
+        const identity = document.createElement("div");
+        const name = document.createElement("strong");
+        name.textContent = `${lead.businessName} · ${lead.name}`;
+        const meta = document.createElement("p");
+        meta.className = "muted";
+        const when = lead.createdAt ? formatWhen.format(new Date(lead.createdAt)) : "";
+        meta.textContent = `${lead.phone} · ${when}`;
+        const brief = document.createElement("p");
+        brief.textContent = lead.brief;
+        identity.append(name, meta, brief);
+        row.append(identity);
+        leadList.append(row);
+    });
+}
