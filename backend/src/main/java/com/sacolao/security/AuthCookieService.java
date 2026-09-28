@@ -26,10 +26,12 @@ public class AuthCookieService {
     }
 
     private ResponseCookie build(String value, Duration maxAge) {
+        boolean secure = properties.auth().cookieSecure();
         return ResponseCookie.from(REFRESH_COOKIE, value)
                 .httpOnly(true)
-                .secure(properties.auth().cookieSecure())
-                .sameSite("Lax")
+                .secure(secure)
+                // None permite o Pages (outro site) reaproveitar o mesmo login.
+                .sameSite(secure ? "None" : "Lax")
                 .path("/api/v1/auth")
                 .maxAge(maxAge)
                 .build();

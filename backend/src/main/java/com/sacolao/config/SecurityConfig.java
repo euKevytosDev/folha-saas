@@ -34,8 +34,8 @@ public class SecurityConfig {
 
     /**
      * CSRF desabilitado: o access token vai no header Authorization (não em cookie).
-     * O refresh token usa cookie HttpOnly com SameSite=Lax, enviado só em POST same-site
-     * para /api/v1/auth/*.
+     * O refresh token usa cookie HttpOnly. Em produção (cookie seguro) o SameSite é None,
+     * para o GitHub Pages reconhecer a mesma sessão. No ambiente local fica Lax.
      */
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {

@@ -40,6 +40,33 @@ export function redirectAfterLogin(user = getStoredUser()) {
     window.location.href = pageUrl(user?.role === "SUPER_ADMIN" ? "superadmin" : "admin");
 }
 
+/** Se a sessão ainda vale, entra no painel sem pedir e-mail e senha de novo. */
+export async function resumeIntoPanel() {
+    try {
+        if (!getAccessToken()) {
+            const refreshed = await refreshAccessToken();
+            if (!refreshed) {
+                return false;
+            }
+        }
+        const me = await api("/auth/me");
+        redirectAfterLogin(me.user || getStoredUser());
+        return true;
+    } catch {
+        const refreshed = await refreshAccessToken();
+        if (!refreshed) {
+            return false;
+        }
+        try {
+            const me = await api("/auth/me", { retry: false });
+            redirectAfterLogin(me.user || getStoredUser());
+            return true;
+        } catch {
+            return false;
+        }
+    }
+}
+
 /** Tenta renovar a sessão (cookie HttpOnly e/ou refresh no localStorage). */
 export async function ensureSession() {
     if (getAccessToken()) {

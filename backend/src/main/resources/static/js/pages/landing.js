@@ -1,5 +1,8 @@
 import { api, ApiError } from "../api/client.js";
+import { resumeIntoPanel } from "../auth/api.js";
 import { $ } from "../utils/dom.js";
+
+resumeIntoPanel();
 
 const header = $(".site-header");
 
