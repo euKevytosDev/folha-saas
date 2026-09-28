@@ -95,29 +95,120 @@ $("#refresh-orders-btn")?.addEventListener("click", async () => {
     }
 });
 
+const ORDER_POLL_MS = 3 * 60 * 1000;
 const orderState = { status: "OPEN" };
 let knownOrderIds = new Set();
+let freshOrderIds = new Set();
 let ordersPollTimer = 0;
 let audioCtx = null;
+let soundUnlocked = false;
+let orderToastTimer = 0;
 renderOrderFilters();
+$("#dashboard-see-orders")?.addEventListener("click", () => showAdminPanel("pedidos"));
+$("#enable-order-sound")?.addEventListener("click", () => {
+    unlockOrderSound();
+    playNewOrderChime();
+});
+document.addEventListener("pointerdown", unlockOrderSound);
 await refreshOrders().catch((error) => {
     showFormAlert($("#orders-alert"), error, "Não foi possível carregar os pedidos.");
 });
 
+function unlockOrderSound() {
+    if (soundUnlocked) {
+        return;
+    }
+    soundUnlocked = true;
+    const button = $("#enable-order-sound");
+    if (button) {
+        button.hidden = true;
+    }
+    try {
+        audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === "suspended") {
+            audioCtx.resume();
+        }
+    } catch {
+        // navegador sem áudio
+    }
+    if ("Notification" in window && Notification.permission === "default") {
+        Notification.requestPermission().catch(() => {});
+    }
+}
+
 function playNewOrderChime() {
     try {
         audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = "sine";
-        osc.frequency.value = 880;
-        gain.gain.value = 0.04;
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.18);
+        const start = () => {
+            const now = audioCtx.currentTime;
+            [784, 1046].forEach((freq, index) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                const at = now + index * 0.18;
+                osc.type = "sine";
+                osc.frequency.value = freq;
+                gain.gain.setValueAtTime(0.0001, at);
+                gain.gain.exponentialRampToValueAtTime(0.22, at + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.32);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(at);
+                osc.stop(at + 0.34);
+            });
+        };
+        if (audioCtx.state === "suspended") {
+            audioCtx.resume().then(start).catch(() => {});
+            return;
+        }
+        start();
     } catch {
         // ignore autoplay restrictions
+    }
+}
+
+function showOrderToast(message) {
+    const toast = $("#order-toast");
+    if (!toast) {
+        return;
+    }
+    toast.hidden = false;
+    toast.textContent = message;
+    window.clearTimeout(orderToastTimer);
+    orderToastTimer = window.setTimeout(() => {
+        toast.hidden = true;
+    }, 8000);
+}
+
+function announceNewOrders(fresh) {
+    playNewOrderChime();
+    const count = fresh?.length || 1;
+    const first = fresh?.[0];
+    const text = count === 1 && first
+        ? `Novo pedido ${first.publicCode} · ${first.customerName}`
+        : `${count} pedidos novos`;
+    showOrderToast(text);
+    if (document.hidden && "Notification" in window && Notification.permission === "granted") {
+        try {
+            new Notification("Novo pedido", { body: text });
+        } catch {
+            // notificação do sistema indisponível
+        }
+    }
+}
+
+function markOrdersSynced() {
+    const stamp = new Date().toLocaleTimeString("pt-BR", {
+        hour: "2-digit",
+        minute: "2-digit"
+    });
+    const note = `Atualizado às ${stamp}. A tela busca de novo sozinha a cada 3 minutos.`;
+    const dashboard = $("#dashboard-updated");
+    const orders = $("#orders-sync-note");
+    if (dashboard) {
+        dashboard.textContent = note;
+    }
+    if (orders) {
+        orders.textContent = note;
     }
 }
 
@@ -125,7 +216,7 @@ async function pollOrdersQuietly() {
     try {
         const result = await refreshOrders({ silent: true, detectNew: true });
         if (result?.hasNew) {
-            playNewOrderChime();
+            announceNewOrders(result.fresh);
         }
     } catch {
         // keep polling
@@ -135,11 +226,9 @@ async function pollOrdersQuietly() {
 function scheduleOrdersPoll() {
     window.clearTimeout(ordersPollTimer);
     ordersPollTimer = window.setTimeout(async () => {
-        if (document.visibilityState !== "hidden") {
-            await pollOrdersQuietly();
-        }
+        await pollOrdersQuietly();
         scheduleOrdersPoll();
-    }, 12000);
+    }, ORDER_POLL_MS);
 }
 
 scheduleOrdersPoll();
@@ -1568,19 +1657,16 @@ async function refreshOrders(options = {}) {
         filtered = orders.filter((order) => ["DELIVERED", "CANCELLED"].includes(order.status));
     }
     const nextIds = new Set(orders.map((order) => order.id));
-    let hasNew = false;
-    if (options.detectNew && knownOrderIds.size > 0) {
-        for (const id of nextIds) {
-            if (!knownOrderIds.has(id)) {
-                hasNew = true;
-                break;
-            }
-        }
-    }
+    const fresh = options.detectNew && knownOrderIds.size > 0
+        ? orders.filter((order) => !knownOrderIds.has(order.id))
+        : [];
     knownOrderIds = nextIds;
+    freshOrderIds = new Set(fresh.map((order) => order.id));
     renderOrderSummary(summary);
     renderOrders(filtered);
-    return { hasNew };
+    renderDashboard(summary, orders);
+    markOrdersSynced();
+    return { hasNew: fresh.length > 0, fresh };
 }
 
 function renderOrderFilters() {
@@ -1606,6 +1692,71 @@ function renderOrderFilters() {
             await refreshOrders();
         });
         row.append(button);
+    });
+}
+
+function renderDashboard(summary, orders) {
+    const stats = $("#dashboard-stats");
+    const list = $("#dashboard-open-list");
+    const badge = $("#orders-tab-count");
+    const waiting = Number(summary?.pending || 0);
+    const preparing = Number(summary?.confirmed || 0) + Number(summary?.preparing || 0);
+    const onTheWay = Number(summary?.dispatched || 0);
+    if (badge) {
+        const attention = waiting + preparing + onTheWay;
+        badge.hidden = attention <= 0;
+        badge.textContent = String(attention);
+    }
+    if (stats) {
+        stats.replaceChildren();
+        [
+            ["Aguardando", waiting],
+            ["Em preparo", preparing],
+            ["A caminho", onTheWay],
+            ["Entregues", summary?.delivered || 0]
+        ].forEach(([label, value]) => {
+            const card = document.createElement("div");
+            card.className = "stat-card";
+            const strong = document.createElement("strong");
+            strong.textContent = String(value ?? 0);
+            const meta = document.createElement("span");
+            meta.className = "muted";
+            meta.textContent = label;
+            card.append(strong, meta);
+            stats.append(card);
+        });
+    }
+    if (!list) {
+        return;
+    }
+    list.replaceChildren();
+    const open = (orders || []).filter((order) => !["DELIVERED", "CANCELLED"].includes(order.status)).slice(0, 6);
+    if (!open.length) {
+        const empty = document.createElement("p");
+        empty.className = "muted";
+        empty.textContent = "Nenhum pedido em aberto.";
+        list.append(empty);
+        return;
+    }
+    open.forEach((order) => {
+        const row = document.createElement("button");
+        row.type = "button";
+        row.className = "dashboard-order";
+        if (freshOrderIds.has(order.id)) {
+            row.classList.add("is-fresh");
+        }
+        const body = document.createElement("span");
+        const title = document.createElement("strong");
+        title.textContent = `${order.publicCode} · ${order.customerName}`;
+        const meta = document.createElement("span");
+        meta.className = "muted";
+        meta.textContent = `${statusLabel(order.status)} · ${fulfillmentLabel(order.fulfillmentType)}`;
+        body.append(title, meta);
+        const total = document.createElement("strong");
+        total.textContent = formatBRL(order.total);
+        row.append(body, total);
+        row.addEventListener("click", () => showAdminPanel("pedidos"));
+        list.append(row);
     });
 }
 
@@ -1650,6 +1801,9 @@ function renderOrders(orders) {
     orders.forEach((order) => {
         const row = document.createElement("div");
         row.className = "order-admin-row";
+        if (freshOrderIds.has(order.id)) {
+            row.classList.add("is-fresh");
+        }
 
         const head = document.createElement("div");
         head.className = "order-admin-head";

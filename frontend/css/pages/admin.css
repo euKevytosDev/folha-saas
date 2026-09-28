@@ -53,6 +53,18 @@
     background: var(--tab-color, var(--color-primary));
 }
 
+.admin-tab-count {
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding: 0 0.35rem;
+    border-radius: 999px;
+    background: #EA580C;
+    color: #fff;
+    font-size: 0.72rem;
+    line-height: 1.25rem;
+    text-align: center;
+}
+
 .admin-tab.is-active {
     background: color-mix(in srgb, var(--tab-color) 14%, white);
     border-color: color-mix(in srgb, var(--tab-color) 45%, white);
@@ -478,6 +490,76 @@
 .admin-panel .stat-grid,
 .admin-panel .chip-row {
     margin-bottom: 0.85rem;
+}
+
+.dashboard-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.dashboard-open-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.dashboard-open-head .admin-block-title {
+    margin: 0;
+}
+
+.dashboard-order {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.8rem 0.35rem;
+    border: 0;
+    border-bottom: 1px solid var(--color-border);
+    border-radius: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.dashboard-order.is-fresh {
+    background: color-mix(in srgb, #EA580C 10%, white);
+    box-shadow: inset 3px 0 0 #EA580C;
+}
+
+.dashboard-order:last-child {
+    border-bottom: 0;
+}
+
+.dashboard-order strong {
+    display: block;
+}
+
+.order-admin-row.is-fresh {
+    background: color-mix(in srgb, #EA580C 10%, white);
+    box-shadow: inset 3px 0 0 #EA580C;
+    border-radius: var(--radius-md);
+    padding-inline: 0.65rem;
+}
+
+.order-toast {
+    position: fixed;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 80;
+    max-width: min(22rem, calc(100vw - 2rem));
+    padding: 0.85rem 1rem;
+    border-radius: var(--radius-md);
+    background: #1c1917;
+    color: #fff;
+    font-weight: 700;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22);
 }
 
 .admin-panel .placeholder-card {

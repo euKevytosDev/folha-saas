@@ -16,7 +16,7 @@
     <link rel="stylesheet" href="/css/pages/placeholder.css">
     <link rel="stylesheet" href="/css/pages/store.css?v=a88db85675">
     <link rel="stylesheet" href="/css/pages/checkout.css?v=a597b38512">
-    <link rel="stylesheet" href="/css/pages/admin.css?v=90670dc3c9">
+    <link rel="stylesheet" href="/css/pages/admin.css?v=08d6c5d28c">
     <script src="/js/env.js"></script>
 </head>
 <body class="page-shell admin-shell">
@@ -56,8 +56,12 @@
 
             <p class="admin-kicker">Escolha uma área. No celular, deslize para o lado.</p>
             <nav class="admin-nav" id="admin-nav" aria-label="Áreas do painel">
-                <button class="admin-tab is-active" type="button" data-panel="pedidos" style="--tab-color:#EA580C">
+                <button class="admin-tab is-active" type="button" data-panel="inicio" style="--tab-color:#0F766E">
+                    <span class="admin-tab-dot"></span>Início
+                </button>
+                <button class="admin-tab" type="button" data-panel="pedidos" style="--tab-color:#EA580C">
                     <span class="admin-tab-dot"></span>Pedidos
+                    <span class="admin-tab-count" id="orders-tab-count" hidden>0</span>
                 </button>
                 <button class="admin-tab" type="button" data-panel="produtos" style="--tab-color:#16A34A">
                     <span class="admin-tab-dot"></span>Produtos
@@ -83,10 +87,28 @@
             </nav>
 
             <div class="admin-stage" id="admin-stage">
-                <section class="admin-panel is-active" id="panel-pedidos" data-panel="pedidos" style="--panel-color:#EA580C">
+                <section class="admin-panel is-active" id="panel-inicio" data-panel="inicio" style="--panel-color:#0F766E">
+                    <header class="admin-panel-head dashboard-head">
+                        <div>
+                            <h2 class="admin-panel-title">Início</h2>
+                            <p class="muted" id="dashboard-updated">A tela busca pedidos novos sozinha a cada 3 minutos.</p>
+                        </div>
+                        <button class="btn btn-secondary" id="enable-order-sound" type="button">Ativar som de pedido novo</button>
+                    </header>
+                    <div class="stat-grid" id="dashboard-stats"></div>
+                    <div class="dashboard-open">
+                        <div class="dashboard-open-head">
+                            <h3 class="admin-block-title">Em aberto agora</h3>
+                            <button class="btn btn-ghost" id="dashboard-see-orders" type="button">Ver pedidos</button>
+                        </div>
+                        <div id="dashboard-open-list"></div>
+                    </div>
+                </section>
+
+                <section class="admin-panel" id="panel-pedidos" data-panel="pedidos" style="--panel-color:#EA580C">
                     <header class="admin-panel-head">
                         <h2 class="admin-panel-title">Pedidos</h2>
-                        <p class="muted">O que chegou, o que está em preparo e o que já saiu.</p>
+                        <p class="muted" id="orders-sync-note">A lista atualiza sozinha a cada 3 minutos.</p>
                     </header>
                     <div class="stat-grid" id="order-summary"></div>
                     <div class="chip-row" id="order-filters"></div>
@@ -532,6 +554,7 @@
             </div>
         </div>
     </main>
-    <script type="module" src="/js/pages/admin.js?v=fc56f274cd"></script>
+    <div class="order-toast" id="order-toast" hidden role="status"></div>
+    <script type="module" src="/js/pages/admin.js?v=1f69b93406"></script>
 </body>
 </html>
