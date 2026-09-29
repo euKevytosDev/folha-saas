@@ -15,7 +15,7 @@
     <link rel="stylesheet" href="/css/components.css?v=2ceaa7501d">
     <link rel="stylesheet" href="/css/pages/placeholder.css">
     <link rel="stylesheet" href="/css/pages/store.css?v=49dfaf4bde">
-    <link rel="stylesheet" href="/css/pages/checkout.css?v=a597b38512">
+    <link rel="stylesheet" href="/css/pages/checkout.css?v=1bf5ecceb2">
     <link rel="stylesheet" href="/css/pages/admin.css?v=b2e9ce311d">
     <script src="/js/env.js"></script>
 </head>
@@ -409,7 +409,7 @@
                 <section class="admin-panel" id="payment-settings-card" data-panel="pagamentos" data-owner-only style="--panel-color:#7C3AED">
                     <header class="admin-panel-head">
                         <h2 class="admin-panel-title">Pagamentos</h2>
-                        <p class="muted">Conecte a conta do estabelecimento (Mercado Pago). Em mock, o PIX é simulado.</p>
+                        <p class="muted" id="payment-provider-help">O Pix cai na conta que a loja conectar.</p>
                     </header>
                     <div class="alert" id="payment-settings-alert" hidden></div>
                     <form id="payment-settings-form" class="auth-form" onsubmit="return false;">
@@ -417,16 +417,24 @@
                             <label for="payment-provider">Provedor</label>
                             <select id="payment-provider" name="provider">
                                 <option value="MERCADO_PAGO">Mercado Pago</option>
-                                <option value="MOCK">Mock</option>
-                                <option value="MANUAL">Manual</option>
+                                <option value="ASAAS">Asaas</option>
+                                <option value="MANUAL">Só dinheiro e na entrega</option>
+                                <option value="MOCK">Simulação</option>
                             </select>
                         </div>
                         <div class="field">
-                            <label for="payment-token">Access token</label>
-                            <input id="payment-token" name="accessToken" type="password" autocomplete="off" placeholder="Cole o token (opcional em mock)">
+                            <label for="payment-token" id="payment-token-label">Chave da conta</label>
+                            <input id="payment-token" name="accessToken" type="password" autocomplete="off" placeholder="Cole a chave da conta da loja">
                         </div>
+                        <div class="field">
+                            <label for="payment-webhook-secret">Segredo do aviso de pagamento</label>
+                            <input id="payment-webhook-secret" name="webhookSecret" type="password" autocomplete="off" placeholder="O mesmo token configurado no aviso">
+                        </div>
+                        <label class="admin-check" id="payment-sandbox-row">
+                            <input id="payment-sandbox" name="sandbox" type="checkbox"> Conta de teste da Asaas
+                        </label>
                         <label class="admin-check">
-                            <input id="payment-mock" name="mockMode" type="checkbox" checked> Modo mock
+                            <input id="payment-mock" name="mockMode" type="checkbox" checked> Modo de simulação
                         </label>
                         <label class="admin-check">
                             <input id="payment-pix" name="pixEnabled" type="checkbox" checked> PIX habilitado
@@ -549,6 +557,6 @@
         </div>
     </main>
     <div class="order-toast" id="order-toast" hidden role="status"></div>
-    <script type="module" src="/js/pages/admin.js?v=300c4e2304"></script>
+    <script type="module" src="/js/pages/admin.js?v=28941020f9"></script>
 </body>
 </html>

@@ -39,6 +39,9 @@ public class EstablishmentPaymentSettings {
     @Column(name = "mock_mode", nullable = false)
     private boolean mockMode = true;
 
+    @Column(nullable = false)
+    private boolean sandbox;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -111,6 +114,14 @@ public class EstablishmentPaymentSettings {
 
     public void setMockMode(boolean mockMode) {
         this.mockMode = mockMode;
+    }
+
+    public boolean isSandbox() {
+        return sandbox;
+    }
+
+    public void setSandbox(boolean sandbox) {
+        this.sandbox = sandbox;
     }
 
     public Instant getCreatedAt() {

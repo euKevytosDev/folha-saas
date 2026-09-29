@@ -19,6 +19,7 @@ import com.sacolao.payment.entity.Payment;
 import com.sacolao.payment.entity.PaymentProviderType;
 import com.sacolao.payment.entity.PaymentStatus;
 import com.sacolao.payment.entity.PaymentWebhookEvent;
+import com.sacolao.payment.gateway.AsaasPaymentGateway;
 import com.sacolao.payment.gateway.ManualPaymentGateway;
 import com.sacolao.payment.gateway.MercadoPagoPaymentGateway;
 import com.sacolao.payment.gateway.MockPaymentGateway;
@@ -47,6 +48,7 @@ public class PaymentService {
     private final EstablishmentRepository establishmentRepository;
     private final OrderRepository orderRepository;
     private final MercadoPagoPaymentGateway mercadoPagoPaymentGateway;
+    private final AsaasPaymentGateway asaasPaymentGateway;
     private final MockPaymentGateway mockPaymentGateway;
     private final ManualPaymentGateway manualPaymentGateway;
     private final FiscalService fiscalService;
@@ -60,6 +62,7 @@ public class PaymentService {
             EstablishmentRepository establishmentRepository,
             OrderRepository orderRepository,
             MercadoPagoPaymentGateway mercadoPagoPaymentGateway,
+            AsaasPaymentGateway asaasPaymentGateway,
             MockPaymentGateway mockPaymentGateway,
             ManualPaymentGateway manualPaymentGateway,
             FiscalService fiscalService,
@@ -72,6 +75,7 @@ public class PaymentService {
         this.establishmentRepository = establishmentRepository;
         this.orderRepository = orderRepository;
         this.mercadoPagoPaymentGateway = mercadoPagoPaymentGateway;
+        this.asaasPaymentGateway = asaasPaymentGateway;
         this.mockPaymentGateway = mockPaymentGateway;
         this.manualPaymentGateway = manualPaymentGateway;
         this.fiscalService = fiscalService;
@@ -195,12 +199,14 @@ public class PaymentService {
             throw new UnprocessableException("WEBHOOK_INVALID", "Webhook inválido");
         }
 
-        String externalId = firstNonBlank(
-                text(json, "data.id"),
-                text(json, "data.payment.id"),
-                text(json, "id"),
-                text(json, "externalId")
-        );
+        String externalId = provider == PaymentProviderType.ASAAS
+                ? firstNonBlank(text(json, "payment.id"), text(json, "id"))
+                : firstNonBlank(
+                        text(json, "data.id"),
+                        text(json, "data.payment.id"),
+                        text(json, "id"),
+                        text(json, "externalId")
+                );
 
         Payment payment = null;
         if (externalId != null) {
@@ -224,15 +230,17 @@ public class PaymentService {
         event.setPayload(payload);
 
         try {
-            String status = firstNonBlank(
-                    text(json, "action"),
-                    text(json, "data.status"),
-                    text(json, "status")
-            );
+            String status = provider == PaymentProviderType.ASAAS
+                    ? firstNonBlank(text(json, "event"), text(json, "payment.status"))
+                    : firstNonBlank(
+                            text(json, "action"),
+                            text(json, "data.status"),
+                            text(json, "status")
+                    );
             if (payment != null) {
                 event.setPayment(payment);
                 event.setEstablishment(payment.getEstablishment());
-                if (isPaidSignal(status) || "payment.updated".equalsIgnoreCase(status)) {
+                if (paidSignal(provider, status)) {
                     markPaid(payment, externalId, payload);
                 }
             }
@@ -313,6 +321,9 @@ public class PaymentService {
         if (request.mockMode() != null) {
             settings.setMockMode(request.mockMode());
         }
+        if (request.sandbox() != null) {
+            settings.setSandbox(request.sandbox());
+        }
         return PaymentMapper.toSettingsResponse(settingsRepository.save(settings));
     }
 
@@ -354,6 +365,9 @@ public class PaymentService {
         if (settings.getProvider() == PaymentProviderType.MERCADO_PAGO) {
             return mercadoPagoPaymentGateway;
         }
+        if (settings.getProvider() == PaymentProviderType.ASAAS) {
+            return asaasPaymentGateway;
+        }
         return manualPaymentGateway;
     }
 
@@ -384,6 +398,20 @@ public class PaymentService {
                 || !order.getViewToken().equals(viewToken.trim())) {
             throw new ResourceNotFoundException("Recurso não encontrado");
         }
+    }
+
+    private static boolean paidSignal(PaymentProviderType provider, String status) {
+        if (provider == PaymentProviderType.ASAAS) {
+            if (status == null) {
+                return false;
+            }
+            String normalized = status.toLowerCase(Locale.ROOT);
+            return normalized.equals("payment_received")
+                    || normalized.equals("payment_confirmed")
+                    || normalized.equals("received")
+                    || normalized.equals("confirmed");
+        }
+        return isPaidSignal(status) || "payment.updated".equalsIgnoreCase(status);
     }
 
     private static boolean isPaidSignal(String status) {

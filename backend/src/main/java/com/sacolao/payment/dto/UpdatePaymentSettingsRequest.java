@@ -9,6 +9,7 @@ public record UpdatePaymentSettingsRequest(
         String webhookSecret,
         Boolean pixEnabled,
         Boolean onlineEnabled,
-        Boolean mockMode
+        Boolean mockMode,
+        Boolean sandbox
 ) {
 }

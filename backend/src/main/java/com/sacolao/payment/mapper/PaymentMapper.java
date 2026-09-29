@@ -34,7 +34,9 @@ public final class PaymentMapper {
                 settings.getAccessToken() != null && !settings.getAccessToken().isBlank(),
                 settings.isPixEnabled(),
                 settings.isOnlineEnabled(),
-                settings.isMockMode()
+                settings.isMockMode(),
+                settings.getWebhookSecret() != null && !settings.getWebhookSecret().isBlank(),
+                settings.isSandbox()
         );
     }
 }

@@ -69,8 +69,17 @@ function renderPayment(payment) {
     paymentBox.hidden = false;
 
     const status = document.createElement("p");
-    status.innerHTML = `<strong>Pagamento:</strong> ${paymentStatusLabel(payment.status)} · ${payment.provider}`;
+    status.innerHTML = `<strong>Pagamento:</strong> ${paymentStatusLabel(payment.status)} · ${providerLabel(payment.provider)}`;
     paymentBox.append(status);
+
+    if (payment.pixQrCodeBase64 && payment.status !== "PAID") {
+        const image = document.createElement("img");
+        image.className = "pix-qr";
+        image.alt = "QR Code do PIX";
+        const raw = String(payment.pixQrCodeBase64);
+        image.src = raw.startsWith("data:") ? raw : `data:image/png;base64,${raw}`;
+        paymentBox.append(image);
+    }
 
     if (payment.pixCopyPaste && payment.status !== "PAID") {
         const label = document.createElement("p");
@@ -216,6 +225,15 @@ function statusLabel(status) {
         DELIVERED: "Entregue",
         CANCELLED: "Cancelado"
     })[status] || status;
+}
+
+function providerLabel(provider) {
+    return ({
+        MERCADO_PAGO: "Mercado Pago",
+        ASAAS: "Asaas",
+        MANUAL: "no balcão",
+        MOCK: "simulação"
+    })[provider] || provider || "";
 }
 
 function paymentStatusLabel(status) {

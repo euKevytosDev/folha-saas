@@ -5,6 +5,7 @@ import { formatBRL, formatQuantity, discountPercent } from "../utils/format.js";
 import { compressImageFile } from "../utils/image.js";
 import { createThumb, optimizedImageUrl, setPreviewImage } from "../utils/media.js";
 import { storeUrl } from "../utils/nav.js";
+import { config } from "../config.js";
 
 function roleLabel(role) {
     if (role === "OWNER") {
@@ -247,6 +248,7 @@ document.addEventListener("visibilitychange", () => {
 const paymentSettingsCard = $("#payment-settings-card");
 if (user.role !== "STAFF") {
     await loadPaymentSettings();
+    $("#payment-provider")?.addEventListener("change", () => updatePaymentProviderHelp(loadedPaymentSettings));
     $("#payment-settings-form")?.addEventListener("submit", async (event) => {
         event.preventDefault();
         const form = event.currentTarget;
@@ -256,13 +258,18 @@ if (user.role !== "STAFF") {
                 provider: form.provider.value,
                 pixEnabled: form.pixEnabled.checked,
                 mockMode: form.mockMode.checked,
+                sandbox: form.sandbox.checked,
                 onlineEnabled: false
             };
             if (form.accessToken.value.trim()) {
                 body.accessToken = form.accessToken.value.trim();
             }
+            if (form.webhookSecret.value.trim()) {
+                body.webhookSecret = form.webhookSecret.value.trim();
+            }
             await api("/payments/settings", { method: "PUT", body });
             form.accessToken.value = "";
+            form.webhookSecret.value = "";
             hideAlert(alertBox);
             await loadPaymentSettings();
             showFormSuccess(alertBox, "Pagamentos atualizados.");
@@ -2444,9 +2451,12 @@ function printNonFiscalReceipt(order) {
     window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
+let loadedPaymentSettings = {};
+
 async function loadPaymentSettings() {
     try {
         const settings = await api("/payments/settings");
+        loadedPaymentSettings = settings;
         const form = $("#payment-settings-form");
         if (!form) {
             return;
@@ -2454,15 +2464,65 @@ async function loadPaymentSettings() {
         form.provider.value = settings.provider || "MERCADO_PAGO";
         form.mockMode.checked = !!settings.mockMode;
         form.pixEnabled.checked = !!settings.pixEnabled;
-        const hint = $("#payment-token-hint");
-        if (hint) {
-            hint.textContent = settings.accessTokenConfigured
-                ? "Token já configurado. Deixe em branco para manter."
-                : "Nenhum token configurado — mock ativo por padrão.";
-        }
+        form.sandbox.checked = !!settings.sandbox;
+        updatePaymentProviderHelp(settings);
     } catch (error) {
         showFormAlert($("#payment-settings-alert"), error, "Não foi possível carregar pagamentos.");
     }
+}
+
+function updatePaymentProviderHelp(settings = {}) {
+    const provider = $("#payment-provider")?.value || "MERCADO_PAGO";
+    const help = $("#payment-provider-help");
+    const label = $("#payment-token-label");
+    const sandboxRow = $("#payment-sandbox-row");
+    const hint = $("#payment-token-hint");
+    if (sandboxRow) {
+        sandboxRow.hidden = provider !== "ASAAS";
+    }
+    const copy = {
+        MERCADO_PAGO: {
+            title: "O Pix cai na conta Mercado Pago da loja.",
+            field: "Access token do Mercado Pago"
+        },
+        ASAAS: {
+            title: "O Pix cai na conta Asaas da loja.",
+            field: "Chave de API da Asaas"
+        },
+        MANUAL: {
+            title: "Sem cobrança online. Dinheiro e pagamento na entrega são confirmados no balcão.",
+            field: "Chave da conta"
+        },
+        MOCK: {
+            title: "Simulação. Nenhum Pix real é gerado.",
+            field: "Chave da conta"
+        }
+    }[provider] || {
+        title: "O Pix cai na conta que a loja conectar.",
+        field: "Chave da conta"
+    };
+    if (help) {
+        help.textContent = copy.title;
+    }
+    if (label) {
+        label.textContent = copy.field;
+    }
+    if (!hint) {
+        return;
+    }
+    const origin = config.apiBaseUrl || window.location.origin;
+    const lines = [];
+    if (provider === "MERCADO_PAGO" || provider === "ASAAS") {
+        const path = provider === "ASAAS" ? "asaas" : "mercadopago";
+        lines.push(`Aviso de pagamento: ${origin}/api/v1/webhooks/${path}`);
+    }
+    lines.push(settings.accessTokenConfigured
+        ? "Chave já configurada. Deixe em branco para manter."
+        : "Nenhuma chave configurada.");
+    if (settings.webhookSecretConfigured) {
+        lines.push("Segredo do aviso já configurado. Deixe em branco para manter.");
+    }
+    hint.textContent = lines.join(" ");
 }
 
 async function loadFiscalSettings() {

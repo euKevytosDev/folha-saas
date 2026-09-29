@@ -203,6 +203,14 @@
     gap: 0.65rem;
 }
 
+.pix-qr {
+    display: block;
+    width: min(220px, 100%);
+    height: auto;
+    border-radius: 12px;
+    background: #fff;
+}
+
 .pix-code {
     width: 100%;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;

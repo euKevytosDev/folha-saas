@@ -8,6 +8,8 @@ public record PaymentSettingsResponse(
         @JsonProperty("accessTokenConfigured") boolean hasAccessToken,
         boolean pixEnabled,
         boolean onlineEnabled,
-        boolean mockMode
+        boolean mockMode,
+        @JsonProperty("webhookSecretConfigured") boolean hasWebhookSecret,
+        boolean sandbox
 ) {
 }

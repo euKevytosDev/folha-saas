@@ -48,6 +48,25 @@ public class PaymentWebhookController {
         return Map.of("status", "ok");
     }
 
+    @PostMapping("/asaas")
+    @ResponseStatus(HttpStatus.OK)
+    public Map<String, String> asaas(
+            @RequestBody(required = false) JsonNode body,
+            @RequestHeader(value = "asaas-access-token", required = false) String asaasToken,
+            @RequestHeader(value = "X-Webhook-Secret", required = false) String webhookSecret
+    ) {
+        String eventId = body == null ? null : text(body, "id");
+        paymentService.handleWebhook(
+                PaymentProviderType.ASAAS,
+                eventId,
+                toPayload(body),
+                null,
+                null,
+                firstNonBlank(asaasToken, webhookSecret)
+        );
+        return Map.of("status", "ok");
+    }
+
     @PostMapping("/mock")
     @ResponseStatus(HttpStatus.OK)
     public Map<String, String> mock(
@@ -78,6 +97,7 @@ public class PaymentWebhookController {
     ) {
         PaymentProviderType type = switch (provider.toLowerCase()) {
             case "mercado-pago", "mercadopago", "mp" -> PaymentProviderType.MERCADO_PAGO;
+            case "asaas" -> PaymentProviderType.ASAAS;
             case "manual" -> PaymentProviderType.MANUAL;
             default -> PaymentProviderType.MOCK;
         };
@@ -90,6 +110,17 @@ public class PaymentWebhookController {
             return "{}";
         }
         return jsonMapper.writeValueAsString(body);
+    }
+
+    private static String text(JsonNode node, String field) {
+        if (node == null || node.isMissingNode() || node.isNull()) {
+            return null;
+        }
+        JsonNode child = node.get(field);
+        if (child == null || child.isNull() || child.asString().isBlank()) {
+            return null;
+        }
+        return child.asString();
     }
 
     private static String firstNonBlank(String... values) {
