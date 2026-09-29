@@ -53,7 +53,13 @@ public record AppProperties(
                 int loginMaxAttempts,
                 int loginWindowSeconds,
                 int registerMaxAttempts,
-                int registerWindowSeconds
+                int registerWindowSeconds,
+                int publicOrderMax,
+                int publicOrderWindowSeconds,
+                int publicQuoteMax,
+                int publicQuoteWindowSeconds,
+                int publicCatalogMax,
+                int publicCatalogWindowSeconds
         ) {
         }
     }

@@ -5,6 +5,7 @@ import { formatBRL, formatQuantity, quantityHint, unitStep, discountPercent } fr
 import { nextOpenHint } from "../utils/hours.js";
 import { createThumb, optimizedImageUrl } from "../utils/media.js";
 import { addToCart, cartCount, clearCart, loadCart, setCartQuantity } from "../store/cart.js";
+import { whenIdle } from "../utils/idle.js";
 
 const slug = currentStoreSlug();
 const state = {
@@ -48,6 +49,11 @@ if (!slug) {
     showAlert("Loja não encontrada.");
 } else {
     await boot();
+    whenIdle(() => {
+        boot().catch(() => {
+            // mantém o catálogo que já está na tela
+        });
+    });
 }
 
 async function boot() {

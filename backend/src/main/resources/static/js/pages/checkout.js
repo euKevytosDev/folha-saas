@@ -1,4 +1,5 @@
 import { api, ApiError } from "../api/client.js";
+import { whenIdle } from "../utils/idle.js";
 import { clearCart, loadCart } from "../store/cart.js";
 import { $, on } from "../utils/dom.js";
 import { formatBRL, formatQuantity } from "../utils/format.js";
@@ -157,6 +158,16 @@ function syncCpfRequirement() {
     }
 }
 
+whenIdle(() => {
+    refreshQuote().catch(() => {
+        // a próxima tentativa de envio busca o preço de novo
+    });
+});
+
+function moneyCents(value) {
+    return Math.round(Number(value || 0) * 100);
+}
+
 async function refreshQuote() {
     const items = loadCart(state.store.id);
     state.quote = await api(`/store/${encodeURIComponent(slug)}/cart/quote`, {
@@ -295,6 +306,14 @@ on(form, "submit", async (event) => {
     button.disabled = true;
     hideAlert();
     try {
+        const shownTotal = moneyCents(state.quote?.total);
+        await refreshQuote();
+        if (moneyCents(state.quote?.total) !== shownTotal) {
+            showNotice(`O preço atualizou para ${formatBRL(state.quote.total)}. Confira o total e envie de novo.`);
+            button.classList.remove("is-loading");
+            button.disabled = false;
+            return;
+        }
         const items = loadCart(state.store.id)
             .map((item) => ({
                 productId: item.productId,
@@ -336,6 +355,12 @@ on(form, "submit", async (event) => {
         button.disabled = false;
     }
 });
+
+function showNotice(message) {
+    alertBox.hidden = false;
+    alertBox.className = "alert";
+    alertBox.textContent = message;
+}
 
 function showError(message) {
     alertBox.hidden = false;
