@@ -132,4 +132,67 @@ class OrderIT extends CatalogSupport {
                                 """))
                 .andExpect(status().isUnprocessableEntity());
     }
+
+    @Test
+    void cashReportSeparatesReceivedReceivableAndCancelled() throws Exception {
+        var registered = AuthApi.register(mockMvc, "Loja Caixa", "Helena", AuthApi.uniqueEmail("caixa"), "senha12345");
+        String token = AuthApi.accessToken(registered);
+        String slug = AuthApi.establishmentSlug(registered);
+        forceStoreOpen(token, AuthApi.establishmentId(registered));
+        String categoryId = createCategory(token, "Frutas");
+        String productId = createProduct(token, categoryId, "Banana", "8.00", "KG");
+
+        String orderId = AuthApi.read(mockMvc.perform(post("/api/v1/store/" + slug + "/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "items":[{"productId":"%s","quantity":1}],
+                                  "customerName":"Cliente",
+                                  "customerPhone":"11922223333",
+                                  "fulfillmentType":"PICKUP",
+                                  "paymentMethod":"CASH"
+                                }
+                                """.formatted(productId)))
+                .andExpect(status().isCreated())
+                .andReturn(), "$.id");
+
+        mockMvc.perform(get("/api/v1/orders/cash-report")
+                        .header("Authorization", AuthApi.bearer(token)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.receivedAmount").value(0))
+                .andExpect(jsonPath("$.receivableAmount").value(8.00))
+                .andExpect(jsonPath("$.receivableCount").value(1))
+                .andExpect(jsonPath("$.undeliveredAmount").value(8.00))
+                .andExpect(jsonPath("$.cancelledAmount").value(0))
+                .andExpect(jsonPath("$.days", hasSize(1)));
+
+        mockMvc.perform(post("/api/v1/orders/" + orderId + "/payment/confirm")
+                        .header("Authorization", AuthApi.bearer(token)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/orders/cash-report")
+                        .header("Authorization", AuthApi.bearer(token)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.receivedAmount").value(8.00))
+                .andExpect(jsonPath("$.receivedCount").value(1))
+                .andExpect(jsonPath("$.receivableAmount").value(0))
+                .andExpect(jsonPath("$.undeliveredCount").value(1));
+
+        mockMvc.perform(patch("/api/v1/orders/" + orderId + "/status")
+                        .header("Authorization", AuthApi.bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"status":"CANCELLED"}
+                                """))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/orders/cash-report")
+                        .header("Authorization", AuthApi.bearer(token)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.receivedAmount").value(8.00))
+                .andExpect(jsonPath("$.receivableCount").value(0))
+                .andExpect(jsonPath("$.undeliveredCount").value(0))
+                .andExpect(jsonPath("$.cancelledAmount").value(8.00))
+                .andExpect(jsonPath("$.cancelledCount").value(1));
+    }
 }

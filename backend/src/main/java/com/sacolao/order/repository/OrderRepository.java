@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -55,4 +56,29 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     long countByEstablishment_IdAndStatus(UUID establishmentId, OrderStatus status);
 
     long countByEstablishment_Id(UUID establishmentId);
+
+    @Query("""
+            select o from Order o
+            where o.establishment.id = :establishmentId
+              and o.createdAt >= :start
+              and o.createdAt < :end
+            """)
+    List<Order> findCreatedInPeriod(
+            @Param("establishmentId") UUID establishmentId,
+            @Param("start") Instant start,
+            @Param("end") Instant end
+    );
+
+    @Query("""
+            select o from Order o
+            where o.establishment.id = :establishmentId
+              and o.status = com.sacolao.order.entity.OrderStatus.CANCELLED
+              and o.updatedAt >= :start
+              and o.updatedAt < :end
+            """)
+    List<Order> findCancelledInPeriod(
+            @Param("establishmentId") UUID establishmentId,
+            @Param("start") Instant start,
+            @Param("end") Instant end
+    );
 }

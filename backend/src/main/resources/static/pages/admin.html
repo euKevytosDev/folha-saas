@@ -16,7 +16,7 @@
     <link rel="stylesheet" href="/css/pages/placeholder.css">
     <link rel="stylesheet" href="/css/pages/store.css?v=49dfaf4bde">
     <link rel="stylesheet" href="/css/pages/checkout.css?v=a597b38512">
-    <link rel="stylesheet" href="/css/pages/admin.css?v=82e70d46cc">
+    <link rel="stylesheet" href="/css/pages/admin.css?v=b2e9ce311d">
     <script src="/js/env.js"></script>
 </head>
 <body class="page-shell admin-shell">
@@ -91,7 +91,18 @@
                         <h2 class="admin-panel-title">Início</h2>
                         <button class="btn btn-secondary" id="enable-order-sound" type="button">Ativar som de pedido novo</button>
                     </header>
-                    <div class="stat-grid" id="dashboard-stats"></div>
+                    <div class="chip-row" id="cash-range"></div>
+                    <div class="cash-grid" id="dashboard-stats"></div>
+                    <section class="cash-chart-card">
+                        <div class="cash-chart-head">
+                            <h3 class="admin-block-title">Caixa por dia</h3>
+                            <p class="cash-legend">
+                                <span><i class="cash-swatch is-received"></i>Entrou</span>
+                                <span><i class="cash-swatch is-cancelled"></i>Cancelado</span>
+                            </p>
+                        </div>
+                        <div class="cash-chart" id="cash-chart"></div>
+                    </section>
                     <div class="dashboard-open">
                         <div class="dashboard-open-head">
                             <h3 class="admin-block-title">Em aberto agora</h3>
@@ -538,6 +549,6 @@
         </div>
     </main>
     <div class="order-toast" id="order-toast" hidden role="status"></div>
-    <script type="module" src="/js/pages/admin.js?v=00249a023e"></script>
+    <script type="module" src="/js/pages/admin.js?v=300c4e2304"></script>
 </body>
 </html>

@@ -15,6 +15,8 @@ import com.sacolao.delivery.service.DeliveryService;
 import com.sacolao.establishment.entity.Establishment;
 import com.sacolao.establishment.repository.EstablishmentRepository;
 import com.sacolao.establishment.service.StoreAvailabilityService;
+import com.sacolao.order.dto.CashDayPoint;
+import com.sacolao.order.dto.CashReportResponse;
 import com.sacolao.order.dto.CheckoutRequest;
 import com.sacolao.order.dto.OrderResponse;
 import com.sacolao.order.dto.OrderSummaryResponse;
@@ -30,6 +32,7 @@ import com.sacolao.payment.dto.PaymentResponse;
 import com.sacolao.payment.entity.EstablishmentPaymentSettings;
 import com.sacolao.payment.entity.IdempotencyKey;
 import com.sacolao.payment.entity.Payment;
+import com.sacolao.payment.entity.PaymentStatus;
 import com.sacolao.payment.mapper.PaymentMapper;
 import com.sacolao.payment.repository.EstablishmentPaymentSettingsRepository;
 import com.sacolao.payment.repository.PaymentRepository;
@@ -48,13 +51,20 @@ import tools.jackson.databind.json.JsonMapper;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.security.SecureRandom;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.TreeMap;
 import java.util.UUID;
 
 @Service
@@ -62,6 +72,7 @@ public class OrderService {
 
     private static final String CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     private static final SecureRandom RANDOM = new SecureRandom();
+    private static final ZoneId STORE_ZONE = ZoneId.of("America/Sao_Paulo");
 
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
@@ -269,6 +280,86 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
+    public CashReportResponse cashReport(LocalDate from, LocalDate to) {
+        LocalDate today = LocalDate.now(STORE_ZONE);
+        LocalDate startDay = from == null ? today : from;
+        LocalDate endDay = to == null ? startDay : to;
+        if (endDay.isBefore(startDay)) {
+            throw new UnprocessableException("INVALID_RANGE", "A data final precisa ser igual ou posterior à inicial");
+        }
+        if (ChronoUnit.DAYS.between(startDay, endDay) > 366) {
+            throw new UnprocessableException("INVALID_RANGE", "O período pode ter no máximo um ano");
+        }
+        Instant start = startDay.atStartOfDay(STORE_ZONE).toInstant();
+        Instant end = endDay.plusDays(1).atStartOfDay(STORE_ZONE).toInstant();
+        UUID tenantId = TenantContext.require();
+
+        List<Payment> paid = paymentRepository.findPaidInPeriod(tenantId, start, end);
+        BigDecimal receivedAmount = BigDecimal.ZERO;
+        Map<LocalDate, BigDecimal> receivedByDay = new TreeMap<>();
+        for (Payment payment : paid) {
+            BigDecimal amount = payment.getAmount() == null ? BigDecimal.ZERO : payment.getAmount();
+            receivedAmount = receivedAmount.add(amount);
+            Instant when = payment.getPaidAt() != null ? payment.getPaidAt() : payment.getUpdatedAt();
+            LocalDate day = when.atZone(STORE_ZONE).toLocalDate();
+            receivedByDay.merge(day, amount, BigDecimal::add);
+        }
+
+        List<Order> created = orderRepository.findCreatedInPeriod(tenantId, start, end);
+        Set<UUID> paidOrderIds = paidOrderIds(tenantId, created);
+        BigDecimal receivableAmount = BigDecimal.ZERO;
+        long receivableCount = 0;
+        BigDecimal undeliveredAmount = BigDecimal.ZERO;
+        long undeliveredCount = 0;
+        for (Order order : created) {
+            if (order.getStatus() == OrderStatus.CANCELLED) {
+                continue;
+            }
+            if (!paidOrderIds.contains(order.getId())) {
+                receivableAmount = receivableAmount.add(order.getTotal());
+                receivableCount++;
+            }
+            if (order.getStatus() != OrderStatus.DELIVERED) {
+                undeliveredAmount = undeliveredAmount.add(order.getTotal());
+                undeliveredCount++;
+            }
+        }
+
+        List<Order> cancelled = orderRepository.findCancelledInPeriod(tenantId, start, end);
+        BigDecimal cancelledAmount = BigDecimal.ZERO;
+        Map<LocalDate, BigDecimal> cancelledByDay = new TreeMap<>();
+        for (Order order : cancelled) {
+            BigDecimal total = order.getTotal() == null ? BigDecimal.ZERO : order.getTotal();
+            cancelledAmount = cancelledAmount.add(total);
+            LocalDate day = order.getUpdatedAt().atZone(STORE_ZONE).toLocalDate();
+            cancelledByDay.merge(day, total, BigDecimal::add);
+        }
+
+        List<CashDayPoint> days = new ArrayList<>();
+        for (LocalDate day = startDay; !day.isAfter(endDay); day = day.plusDays(1)) {
+            days.add(new CashDayPoint(
+                    day,
+                    money(receivedByDay.get(day)),
+                    money(cancelledByDay.get(day))
+            ));
+        }
+
+        return new CashReportResponse(
+                startDay,
+                endDay,
+                money(receivedAmount),
+                paid.size(),
+                money(receivableAmount),
+                receivableCount,
+                money(undeliveredAmount),
+                undeliveredCount,
+                money(cancelledAmount),
+                cancelled.size(),
+                days
+        );
+    }
+
+    @Transactional(readOnly = true)
     public OrderSummaryResponse summary() {
         UUID tenantId = TenantContext.require();
         return new OrderSummaryResponse(
@@ -280,6 +371,24 @@ public class OrderService {
                 orderRepository.countByEstablishment_IdAndStatus(tenantId, OrderStatus.DELIVERED),
                 orderRepository.countByEstablishment_IdAndStatus(tenantId, OrderStatus.CANCELLED)
         );
+    }
+
+    private Set<UUID> paidOrderIds(UUID tenantId, List<Order> orders) {
+        if (orders.isEmpty()) {
+            return Set.of();
+        }
+        List<UUID> ids = orders.stream().map(Order::getId).toList();
+        Set<UUID> paid = new HashSet<>();
+        for (Payment payment : paymentRepository.findByOrderIds(tenantId, ids)) {
+            if (payment.getStatus() == PaymentStatus.PAID && payment.getOrder() != null) {
+                paid.add(payment.getOrder().getId());
+            }
+        }
+        return paid;
+    }
+
+    private static BigDecimal money(BigDecimal value) {
+        return (value == null ? BigDecimal.ZERO : value).setScale(2, RoundingMode.HALF_UP);
     }
 
     private OrderResponse toResponse(Order order) {

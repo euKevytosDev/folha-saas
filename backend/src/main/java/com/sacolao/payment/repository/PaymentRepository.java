@@ -6,6 +6,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -28,4 +31,27 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
     );
 
     Optional<Payment> findByIdAndEstablishment_Id(UUID id, UUID establishmentId);
+
+    @Query("""
+            select p from Payment p
+            where p.establishment.id = :establishmentId
+              and p.status = com.sacolao.payment.entity.PaymentStatus.PAID
+              and coalesce(p.paidAt, p.updatedAt) >= :start
+              and coalesce(p.paidAt, p.updatedAt) < :end
+            """)
+    List<Payment> findPaidInPeriod(
+            @Param("establishmentId") UUID establishmentId,
+            @Param("start") Instant start,
+            @Param("end") Instant end
+    );
+
+    @Query("""
+            select p from Payment p
+            where p.establishment.id = :establishmentId
+              and p.order.id in :orderIds
+            """)
+    List<Payment> findByOrderIds(
+            @Param("establishmentId") UUID establishmentId,
+            @Param("orderIds") Collection<UUID> orderIds
+    );
 }

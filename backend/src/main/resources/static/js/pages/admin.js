@@ -118,6 +118,7 @@ $("#refresh-orders-btn")?.addEventListener("click", async () => {
 
 const ORDER_POLL_MS = 3 * 60 * 1000;
 const orderState = { status: "OPEN" };
+const cashState = { preset: "today" };
 let knownOrderIds = new Set();
 let freshOrderIds = new Set();
 let ordersPollTimer = 0;
@@ -1723,6 +1724,7 @@ async function refreshOrders(options = {}) {
     renderOrderSummary(summary);
     renderOrders(filtered);
     renderDashboard(summary, orders);
+    await refreshCash();
     return { hasNew: fresh.length > 0, fresh };
 }
 
@@ -1753,7 +1755,6 @@ function renderOrderFilters() {
 }
 
 function renderDashboard(summary, orders) {
-    const stats = $("#dashboard-stats");
     const list = $("#dashboard-open-list");
     const badge = $("#orders-tab-count");
     const waiting = Number(summary?.pending || 0);
@@ -1763,25 +1764,6 @@ function renderDashboard(summary, orders) {
         const attention = waiting + preparing + onTheWay;
         badge.hidden = attention <= 0;
         badge.textContent = String(attention);
-    }
-    if (stats) {
-        stats.replaceChildren();
-        [
-            ["Aguardando", waiting],
-            ["Em preparo", preparing],
-            ["A caminho", onTheWay],
-            ["Entregues", summary?.delivered || 0]
-        ].forEach(([label, value]) => {
-            const card = document.createElement("div");
-            card.className = "stat-card";
-            const strong = document.createElement("strong");
-            strong.textContent = String(value ?? 0);
-            const meta = document.createElement("span");
-            meta.className = "muted";
-            meta.textContent = label;
-            card.append(strong, meta);
-            stats.append(card);
-        });
     }
     if (!list) {
         return;
@@ -1815,6 +1797,140 @@ function renderDashboard(summary, orders) {
         row.addEventListener("click", () => showAdminPanel("pedidos"));
         list.append(row);
     });
+}
+
+function saoPauloToday() {
+    return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
+}
+
+function shiftIsoDate(iso, days) {
+    const [year, month, day] = iso.split("-").map(Number);
+    return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
+}
+
+function cashBounds(preset) {
+    const today = saoPauloToday();
+    if (preset === "week") {
+        return { from: shiftIsoDate(today, -6), to: today };
+    }
+    if (preset === "month") {
+        return { from: `${today.slice(0, 8)}01`, to: today };
+    }
+    if (preset === "last-month") {
+        const [year, month] = today.split("-").map(Number);
+        const start = new Date(Date.UTC(year, month - 2, 1));
+        const end = new Date(Date.UTC(year, month - 1, 0));
+        const iso = (date) => date.toISOString().slice(0, 10);
+        return { from: iso(start), to: iso(end) };
+    }
+    return { from: today, to: today };
+}
+
+function renderCashRange() {
+    const row = $("#cash-range");
+    if (!row || row.childElementCount) {
+        return;
+    }
+    [
+        ["today", "Hoje"],
+        ["week", "7 dias"],
+        ["month", "Este mês"],
+        ["last-month", "Mês passado"]
+    ].forEach(([value, label]) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = `chip${cashState.preset === value ? " is-active" : ""}`;
+        button.dataset.preset = value;
+        button.textContent = label;
+        button.addEventListener("click", async () => {
+            cashState.preset = value;
+            row.querySelectorAll(".chip").forEach((chip) => {
+                chip.classList.toggle("is-active", chip.dataset.preset === value);
+            });
+            try {
+                await refreshCash();
+            } catch (error) {
+                showFormAlert($("#orders-alert"), error, "Não foi possível atualizar o caixa.");
+            }
+        });
+        row.append(button);
+    });
+}
+
+function barHeight(amount, max) {
+    const value = Number(amount) || 0;
+    if (value <= 0 || max <= 0) {
+        return "0";
+    }
+    return `${Math.max(8, (value / max) * 100)}%`;
+}
+
+function renderCash(report) {
+    const stats = $("#dashboard-stats");
+    const chart = $("#cash-chart");
+    if (stats) {
+        stats.replaceChildren();
+        [
+            ["is-received", "Entrou no caixa", report.receivedAmount, countLabel(report.receivedCount, "pagamento", "pagamentos")],
+            ["is-receivable", "A receber", report.receivableAmount, countLabel(report.receivableCount, "pedido", "pedidos")],
+            ["is-undelivered", "Sem entrega", report.undeliveredAmount, countLabel(report.undeliveredCount, "pedido", "pedidos")],
+            ["is-cancelled", "Canceladas", report.cancelledAmount, countLabel(report.cancelledCount, "venda", "vendas")]
+        ].forEach(([kind, label, amount, meta]) => {
+            const card = document.createElement("article");
+            card.className = `cash-card ${kind}`;
+            const name = document.createElement("span");
+            name.className = "cash-label";
+            name.textContent = label;
+            const strong = document.createElement("strong");
+            strong.textContent = formatBRL(amount);
+            const note = document.createElement("span");
+            note.className = "cash-meta";
+            note.textContent = meta;
+            card.append(name, strong, note);
+            stats.append(card);
+        });
+    }
+    if (!chart) {
+        return;
+    }
+    chart.replaceChildren();
+    const days = Array.isArray(report.days) ? report.days : [];
+    const max = Math.max(0, ...days.flatMap((day) => [Number(day.receivedAmount) || 0, Number(day.cancelledAmount) || 0]));
+    const step = days.length > 16 ? 5 : days.length > 10 ? 2 : 1;
+    days.forEach((day, index) => {
+        const col = document.createElement("div");
+        col.className = "cash-col";
+        const bars = document.createElement("div");
+        bars.className = "cash-col-bars";
+        const received = document.createElement("span");
+        received.className = "is-received";
+        received.style.height = barHeight(day.receivedAmount, max);
+        received.title = `Entrou ${formatBRL(day.receivedAmount)}`;
+        const cancelled = document.createElement("span");
+        cancelled.className = "is-cancelled";
+        cancelled.style.height = barHeight(day.cancelledAmount, max);
+        cancelled.title = `Cancelado ${formatBRL(day.cancelledAmount)}`;
+        bars.append(received, cancelled);
+        const label = document.createElement("small");
+        const parts = String(day.date || "").split("-");
+        label.textContent = index % step === 0 || index === days.length - 1
+            ? `${parts[2] || ""}/${parts[1] || ""}`
+            : "";
+        col.append(bars, label);
+        chart.append(col);
+    });
+}
+
+function countLabel(count, one, many) {
+    const total = Number(count) || 0;
+    return `${total} ${total === 1 ? one : many}`;
+}
+
+async function refreshCash() {
+    renderCashRange();
+    const { from, to } = cashBounds(cashState.preset);
+    const report = await api(`/orders/cash-report?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+    renderCash(report);
 }
 
 function renderOrderSummary(summary) {
