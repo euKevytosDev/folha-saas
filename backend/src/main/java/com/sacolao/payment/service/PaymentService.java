@@ -353,7 +353,7 @@ public class PaymentService {
     }
 
     private PaymentGateway resolveGateway(EstablishmentPaymentSettings settings, PaymentMethod method) {
-        if (method == PaymentMethod.CASH || method == PaymentMethod.ON_DELIVERY) {
+        if (method == PaymentMethod.CASH || method == PaymentMethod.ON_DELIVERY || settings.isPayOnDeliveryOnly()) {
             return manualPaymentGateway;
         }
         if (settings.isMockMode()

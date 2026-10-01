@@ -25,8 +25,9 @@ async function boot() {
         $("#order-code").textContent = order.publicCode;
         $("#order-card").hidden = false;
         $("#order-status").textContent = statusLabel(order.status);
-        $("#order-heading").textContent = headingFor(order.status, order.payment);
-        $("#order-meta").textContent = `${fulfillmentLabel(order.fulfillmentType)} · ${paymentLabel(order.paymentMethod)}`;
+        $("#order-heading").textContent = headingFor(order);
+        const scheduled = order.scheduledFor ? ` · Agendado para ${formatWhen(order.scheduledFor)}` : "";
+        $("#order-meta").textContent = `${fulfillmentLabel(order.fulfillmentType)} · ${paymentLabel(order.paymentMethod, order.payment)}${scheduled}`;
         renderItems(order.items);
         $("#order-subtotal").textContent = formatBRL(order.subtotal);
         $("#order-total").textContent = formatBRL(order.total);
@@ -42,6 +43,8 @@ function schedulePoll(order) {
     window.clearTimeout(pollTimer);
     const pendingPix = order?.payment
         && order.payment.method === "PIX"
+        && order.payment.provider !== "MANUAL"
+        && (order.payment.pixCopyPaste || order.payment.pixQrCodeBase64)
         && order.payment.status !== "PAID"
         && order.payment.status !== "FAILED"
         && order.status !== "CANCELLED";
@@ -176,6 +179,9 @@ function renderDetails(order) {
         ].filter(Boolean).join(", ");
         addDetail(box, "Endereço", address);
     }
+    if (order.scheduledFor) {
+        addDetail(box, "Agendado para", formatWhen(order.scheduledFor));
+    }
     if (order.notes) {
         addDetail(box, "Observações", order.notes);
     }
@@ -250,17 +256,41 @@ function fulfillmentLabel(type) {
     return type === "DELIVERY" ? "Entrega" : "Retirada";
 }
 
-function paymentLabel(method) {
+function paymentLabel(method, payment) {
+    const onDelivery = payment?.provider === "MANUAL";
+    if (method === "PIX") {
+        return onDelivery ? "Pix na entrega" : "PIX";
+    }
+    if (method === "CARD") {
+        return onDelivery ? "Cartão na entrega" : "Cartão";
+    }
     return ({
-        PIX: "PIX",
         CASH: "Dinheiro",
-        CARD: "Cartão",
         ON_DELIVERY: "Na entrega"
     })[method] || method;
 }
 
-function headingFor(status, payment) {
-    if (payment?.status === "PENDING" && payment?.method === "PIX") {
+function formatWhen(value) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+        return "";
+    }
+    return date.toLocaleString("pt-BR", {
+        timeZone: "America/Sao_Paulo",
+        day: "2-digit",
+        month: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit"
+    });
+}
+
+function headingFor(order) {
+    const status = order.status;
+    const payment = order.payment;
+    if (order.scheduledFor && status === "PENDING") {
+        return `Pedido agendado para ${formatWhen(order.scheduledFor)}`;
+    }
+    if (payment?.status === "PENDING" && payment?.method === "PIX" && payment?.provider !== "MANUAL") {
         return "Aguardando pagamento PIX";
     }
     if (status === "CONFIRMED") {

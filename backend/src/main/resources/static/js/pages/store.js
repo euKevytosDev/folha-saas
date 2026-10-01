@@ -89,9 +89,15 @@ function renderStorefrontHeader(store) {
         els.closedBanner.hidden = open;
         if (!open) {
             const hint = nextOpenHint(store.openingHours, store.timezone);
-            els.closedBanner.textContent = hint
-                ? `Loja fechada no momento. ${hint}. Você pode olhar o cardápio, mas não finalizar pedido.`
-                : "Loja fechada no momento. Você pode olhar o cardápio, mas não finalizar pedido.";
+            if (store.scheduleWhenClosed) {
+                els.closedBanner.textContent = hint
+                    ? `Loja fechada no momento. ${hint}. Seu carrinho fica salvo: cancele ou agende para a abertura.`
+                    : "Loja fechada no momento. Seu carrinho fica salvo: cancele ou agende para a abertura.";
+            } else {
+                els.closedBanner.textContent = hint
+                    ? `Loja fechada no momento. ${hint}. Você pode olhar o cardápio, mas não finalizar pedido.`
+                    : "Loja fechada no momento. Você pode olhar o cardápio, mas não finalizar pedido.";
+            }
         }
     }
     if (els.cover) {
@@ -125,6 +131,9 @@ function renderStorefrontHeader(store) {
         }
         if (delivery.minOrderAmount != null) {
             chips.push(["Mínimo", formatBRL(delivery.minOrderAmount)]);
+        }
+        if (Number(delivery.fixedFee) > 0 && delivery.deliveryEnabled !== false) {
+            chips.push(["Frete fixo", formatBRL(delivery.fixedFee)]);
         }
         chips.forEach(([label, value]) => {
             const item = document.createElement("div");
@@ -538,7 +547,7 @@ function renderCart() {
     const fee = Number(state.store?.delivery?.fixedFee || 0);
     const deliveryEl = $("#quote-delivery");
     if (deliveryEl) {
-        deliveryEl.textContent = fee > 0 ? `a partir de ${formatBRL(fee)}` : "Grátis / a calcular";
+        deliveryEl.textContent = fee > 0 ? `Frete fixo ${formatBRL(fee)}` : "Grátis / a calcular";
     }
     $("#quote-total").textContent = formatBRL(state.quote?.total || 0);
     const note = $("#cart-note");
@@ -776,16 +785,17 @@ function syncCheckoutLink() {
     }
     const items = loadCart(state.store.id);
     const open = state.store.acceptingOrders !== false;
+    const canSchedule = !open && state.store.scheduleWhenClosed === true;
     const minOrder = Number(state.store.delivery?.minOrderAmount || 0);
     const subtotal = Number(state.quote?.subtotal || 0);
     const belowMin = minOrder > 0 && subtotal + 1e-9 < minOrder;
     let reason = "";
-    if (!open) {
+    if (!open && !canSchedule) {
         reason = "Loja fechada — não é possível finalizar o pedido agora.";
     } else if (belowMin) {
         reason = `Pedido mínimo de ${formatBRL(minOrder)}.`;
     }
-    const enabled = items.length > 0 && open && !belowMin;
+    const enabled = items.length > 0 && (open || canSchedule) && !belowMin;
     if (els.cartBlock) {
         els.cartBlock.hidden = !reason;
         els.cartBlock.textContent = reason;
@@ -794,7 +804,13 @@ function syncCheckoutLink() {
     link.setAttribute("aria-disabled", enabled ? "false" : "true");
     link.style.pointerEvents = enabled ? "" : "none";
     link.style.opacity = enabled ? "" : "0.6";
-    link.textContent = !open ? "Loja fechada" : belowMin ? "Abaixo do mínimo" : "Finalizar pedido";
+    link.textContent = !open && canSchedule
+        ? "Agendar pedido"
+        : !open
+            ? "Loja fechada"
+            : belowMin
+                ? "Abaixo do mínimo"
+                : "Finalizar pedido";
 }
 
 let searchTimer = 0;

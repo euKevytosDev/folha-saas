@@ -4,6 +4,7 @@ public record PublicPaymentOptionsResponse(
         boolean pixEnabled,
         boolean cashEnabled,
         boolean cardEnabled,
-        boolean onDeliveryEnabled
+        boolean onDeliveryEnabled,
+        boolean payOnDeliveryOnly
 ) {
 }

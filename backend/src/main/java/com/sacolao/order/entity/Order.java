@@ -149,6 +149,9 @@ public class Order {
     @OrderBy("createdAt ASC")
     private List<OrderItem> items = new ArrayList<>();
 
+    @Column(name = "scheduled_for")
+    private Instant scheduledFor;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -463,6 +466,14 @@ public class Order {
 
     public List<OrderItem> getItems() {
         return items;
+    }
+
+    public Instant getScheduledFor() {
+        return scheduledFor;
+    }
+
+    public void setScheduledFor(Instant scheduledFor) {
+        this.scheduledFor = scheduledFor;
     }
 
     public Instant getCreatedAt() {

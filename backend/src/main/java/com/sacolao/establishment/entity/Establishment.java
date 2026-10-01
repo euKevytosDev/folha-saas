@@ -66,6 +66,9 @@ public class Establishment {
     @Column(name = "store_open_mode", nullable = false, length = 16)
     private StoreOpenMode storeOpenMode = StoreOpenMode.AUTO;
 
+    @Column(name = "schedule_when_closed", nullable = false)
+    private boolean scheduleWhenClosed;
+
     @Column(nullable = false, length = 64)
     private String timezone = "America/Sao_Paulo";
 
@@ -206,6 +209,14 @@ public class Establishment {
 
     public void setStoreOpenMode(StoreOpenMode storeOpenMode) {
         this.storeOpenMode = storeOpenMode == null ? StoreOpenMode.AUTO : storeOpenMode;
+    }
+
+    public boolean isScheduleWhenClosed() {
+        return scheduleWhenClosed;
+    }
+
+    public void setScheduleWhenClosed(boolean scheduleWhenClosed) {
+        this.scheduleWhenClosed = scheduleWhenClosed;
     }
 
     public String getTimezone() {

@@ -33,6 +33,9 @@ public class EstablishmentPaymentSettings {
     @Column(name = "pix_enabled", nullable = false)
     private boolean pixEnabled = true;
 
+    @Column(name = "pay_on_delivery_only", nullable = false)
+    private boolean payOnDeliveryOnly;
+
     @Column(name = "online_enabled", nullable = false)
     private boolean onlineEnabled;
 
@@ -98,6 +101,14 @@ public class EstablishmentPaymentSettings {
 
     public void setPixEnabled(boolean pixEnabled) {
         this.pixEnabled = pixEnabled;
+    }
+
+    public boolean isPayOnDeliveryOnly() {
+        return payOnDeliveryOnly;
+    }
+
+    public void setPayOnDeliveryOnly(boolean payOnDeliveryOnly) {
+        this.payOnDeliveryOnly = payOnDeliveryOnly;
     }
 
     public boolean isOnlineEnabled() {

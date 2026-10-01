@@ -30,7 +30,8 @@ public record CheckoutRequest(
         @Size(max = 120) String addressCity,
         @Size(max = 2) String addressState,
         @Size(max = 2000) String notes,
-        @Size(max = 40) String couponCode
+        @Size(max = 40) String couponCode,
+        Boolean scheduleForOpening
 ) {
     public record CheckoutItemRequest(
             @NotNull UUID productId,

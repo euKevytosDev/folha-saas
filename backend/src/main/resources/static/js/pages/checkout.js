@@ -4,12 +4,14 @@ import { clearCart, loadCart } from "../store/cart.js";
 import { $, on } from "../utils/dom.js";
 import { formatBRL, formatQuantity } from "../utils/format.js";
 import { createThumb } from "../utils/media.js";
+import { nextOpenHint } from "../utils/hours.js";
 import { currentStoreSlug, orderUrl, storeUrl } from "../utils/nav.js";
 
 const slug = currentStoreSlug();
 const state = {
     store: null,
-    quote: null
+    quote: null,
+    scheduling: false
 };
 
 const form = $("#checkout-form");
@@ -31,7 +33,8 @@ async function boot() {
         $("#store-name").textContent = state.store.name;
         $("#back-store").href = storeUrl(slug);
 
-        if (state.store.acceptingOrders === false) {
+        state.scheduling = state.store.acceptingOrders === false && state.store.scheduleWhenClosed === true;
+        if (state.store.acceptingOrders === false && !state.scheduling) {
             showError("Loja fechada. Não é possível finalizar o pedido agora.");
             form.hidden = true;
             return;
@@ -48,7 +51,7 @@ async function boot() {
         applyPaymentOptions(state.store.payments);
         syncCpfRequirement();
         await refreshQuote();
-        if (state.quote?.acceptingOrders === false) {
+        if (state.quote?.acceptingOrders === false && !state.scheduling) {
             showError("Loja fechada. Não é possível finalizar o pedido agora.");
             form.hidden = true;
             return;
@@ -69,6 +72,7 @@ async function boot() {
         }
         renderSummary(valid, (state.quote?.items || []).filter((line) => line.issue));
         syncAddressVisibility();
+        applyScheduleMode();
         syncMinOrderGate();
     } catch (error) {
         showError(error instanceof ApiError ? error.message : "Não foi possível abrir o checkout.");
@@ -121,15 +125,32 @@ function applyFulfillmentOptions(delivery) {
 
 function applyPaymentOptions(payments) {
     const options = payments || { pixEnabled: true, cashEnabled: true, cardEnabled: true, onDeliveryEnabled: true };
+    const onDeliveryOnly = options.payOnDeliveryOnly === true;
+    const labels = {
+        PIX: onDeliveryOnly ? "Pix na entrega" : "PIX",
+        CASH: "Dinheiro",
+        CARD: onDeliveryOnly ? "Cartão na entrega" : "Cartão",
+        ON_DELIVERY: "Na entrega"
+    };
     const map = {
         PIX: options.pixEnabled !== false,
         CASH: options.cashEnabled !== false,
         CARD: options.cardEnabled !== false,
         ON_DELIVERY: options.onDeliveryEnabled !== false
     };
+    const note = $("#payment-note");
+    if (note) {
+        note.textContent = onDeliveryOnly
+            ? "Pagamento na entrega. O entregador leva a maquininha. Não é cobrança online."
+            : "PIX pode ser gerado na hora (mock ou Mercado Pago). Dinheiro e na entrega são confirmados pela loja.";
+    }
     let firstEnabled = null;
     form.querySelectorAll('input[name="paymentMethod"]').forEach((input) => {
         const enabled = map[input.value] !== false;
+        const span = input.closest("label")?.querySelector("span");
+        if (span && labels[input.value]) {
+            span.textContent = labels[input.value];
+        }
         input.disabled = !enabled;
         input.closest("label")?.classList.toggle("is-disabled", !enabled);
         if (enabled && !firstEnabled) {
@@ -151,7 +172,7 @@ function syncCpfRequirement() {
     if (!cpfInput) {
         return;
     }
-    const required = method === "PIX";
+    const required = method === "PIX" && state.store?.payments?.payOnDeliveryOnly !== true;
     cpfInput.required = required;
     if (hint) {
         hint.textContent = required ? "(obrigatório no PIX)" : "(opcional)";
@@ -218,7 +239,12 @@ function renderSummary(lines, blocked = []) {
     });
     $("#summary-subtotal").textContent = formatBRL(state.quote.subtotal);
     $("#summary-discount").textContent = formatBRL(state.quote.discount);
-    $("#summary-delivery").textContent = formatBRL(state.quote.deliveryFee);
+    const deliveryFee = Number(state.quote.deliveryFee || 0);
+    const deliveryLabel = $("#summary-delivery-label");
+    if (deliveryLabel) {
+        deliveryLabel.textContent = deliveryFee > 0 ? "Frete fixo" : "Entrega";
+    }
+    $("#summary-delivery").textContent = formatBRL(deliveryFee);
     $("#summary-total").textContent = formatBRL(state.quote.total);
 }
 
@@ -330,7 +356,8 @@ on(form, "submit", async (event) => {
             fulfillmentType: form.fulfillmentType.value,
             paymentMethod: form.paymentMethod.value,
             notes: form.notes.value.trim() || null,
-            couponCode: form.couponCode?.value?.trim() || null
+            couponCode: form.couponCode?.value?.trim() || null,
+            scheduleForOpening: state.scheduling === true
         };
         if (payload.fulfillmentType === "DELIVERY") {
             payload.addressZipCode = form.addressZipCode.value.replace(/\D/g, "") || null;
@@ -354,6 +381,43 @@ on(form, "submit", async (event) => {
         button.classList.remove("is-loading");
         button.disabled = false;
     }
+});
+
+function applyScheduleMode() {
+    const box = $("#closed-checkout");
+    const cancel = $("#cancel-cart");
+    const button = $("#submit-order");
+    if (!state.scheduling) {
+        if (box) {
+            box.hidden = true;
+        }
+        if (cancel) {
+            cancel.hidden = true;
+        }
+        return;
+    }
+    const hint = nextOpenHint(state.store.openingHours, state.store.timezone);
+    if (box) {
+        box.hidden = false;
+        box.className = "alert";
+        box.textContent = hint
+            ? `A loja está fechada. Cancele o carrinho ou agende este pedido para quando abrir (${hint}).`
+            : "A loja está fechada. Cancele o carrinho ou agende este pedido para quando abrir.";
+    }
+    if (cancel) {
+        cancel.hidden = false;
+    }
+    if (button) {
+        button.textContent = "Agendar para quando a loja abrir";
+    }
+}
+
+on($("#cancel-cart"), "click", () => {
+    if (!state.store) {
+        return;
+    }
+    clearCart(state.store.id);
+    window.location.href = storeUrl(slug);
 });
 
 function showNotice(message) {

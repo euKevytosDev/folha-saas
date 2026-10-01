@@ -124,14 +124,16 @@ public class OrderService {
     @Transactional
     public OrderResponse checkout(String slug, CheckoutRequest request, String idempotencyKey) {
         Establishment store = requireActiveStore(slug);
-        if (!availabilityService.isAcceptingOrders(store)) {
+        boolean closed = !availabilityService.isAcceptingOrders(store);
+        boolean schedule = Boolean.TRUE.equals(request.scheduleForOpening());
+        if (closed && !(store.isScheduleWhenClosed() && schedule)) {
             throw new UnprocessableException("STORE_CLOSED", "Loja fechada no momento");
         }
         EstablishmentDeliverySettings deliverySettings = deliveryService.requireSettings(store.getId());
         deliveryService.assertFulfillmentAllowed(deliverySettings, request.fulfillmentType());
         validateFulfillment(request);
         validatePaymentMethod(store.getId(), request.paymentMethod());
-        validateCustomerCpf(request);
+        validateCustomerCpf(store.getId(), request);
         Map<LineKey, BigDecimal> quantities = mergeQuantities(request.items());
         if (quantities.isEmpty()) {
             throw new UnprocessableException("EMPTY_CART", "Carrinho vazio");
@@ -171,6 +173,13 @@ public class OrderService {
         order.setCustomerCpf(normalizeCpf(request.customerCpf()));
         order.setViewToken(nextViewToken());
         order.setNotes(blankToNull(request.notes()));
+        if (closed) {
+            var opening = availabilityService.nextOpening(store);
+            if (opening == null) {
+                throw new UnprocessableException("STORE_CLOSED", "Loja fechada e sem próximo horário de abertura");
+            }
+            order.setScheduledFor(opening.toInstant());
+        }
         applyAddress(order, request);
 
         BigDecimal subtotal = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
@@ -502,6 +511,10 @@ public class OrderService {
 
     private void validatePaymentMethod(UUID establishmentId, PaymentMethod method) {
         EstablishmentPaymentSettings settings = paymentSettingsRepository.findById(establishmentId).orElse(null);
+        if (settings != null && settings.isPayOnDeliveryOnly()
+                && method != PaymentMethod.PIX && method != PaymentMethod.CARD) {
+            throw new UnprocessableException("PAYMENT_METHOD", "Esta loja recebe apenas Pix ou cartão na entrega");
+        }
         if (method == PaymentMethod.PIX) {
             if (settings != null && !settings.isPixEnabled()) {
                 throw new UnprocessableException("PIX_DISABLED", "PIX não está habilitado nesta loja");
@@ -509,9 +522,12 @@ public class OrderService {
         }
     }
 
-    private void validateCustomerCpf(CheckoutRequest request) {
+    private void validateCustomerCpf(UUID establishmentId, CheckoutRequest request) {
         String digits = CpfValidator.onlyDigits(request.customerCpf());
-        if (request.paymentMethod() == PaymentMethod.PIX) {
+        boolean payOnDelivery = paymentSettingsRepository.findById(establishmentId)
+                .map(settings -> settings.isPayOnDeliveryOnly())
+                .orElse(false);
+        if (request.paymentMethod() == PaymentMethod.PIX && !payOnDelivery) {
             if (digits.isBlank()) {
                 throw new UnprocessableException("CPF_REQUIRED", "Informe um CPF válido para pagar com PIX");
             }

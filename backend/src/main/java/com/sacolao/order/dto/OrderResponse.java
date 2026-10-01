@@ -42,7 +42,8 @@ public record OrderResponse(
         NfceInfoResponse nfce,
         String couponCode,
         Instant createdAt,
-        Instant updatedAt
+        Instant updatedAt,
+        Instant scheduledFor
 ) {
     public record OrderItemResponse(
             UUID id,

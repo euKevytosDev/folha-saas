@@ -51,7 +51,8 @@ public final class OrderMapper {
                 FiscalMapper.toNfceInfo(order),
                 order.getCouponCode(),
                 order.getCreatedAt(),
-                order.getUpdatedAt()
+                order.getUpdatedAt(),
+                order.getScheduledFor()
         );
     }
 

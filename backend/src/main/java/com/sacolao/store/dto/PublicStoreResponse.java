@@ -22,6 +22,7 @@ public record PublicStoreResponse(
         String state,
         boolean active,
         boolean acceptingOrders,
+        boolean scheduleWhenClosed,
         StoreOpenMode storeOpenMode,
         String timezone,
         Map<String, List<OpeningInterval>> openingHours,

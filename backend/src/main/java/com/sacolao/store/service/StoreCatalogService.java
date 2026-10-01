@@ -239,6 +239,7 @@ public class StoreCatalogService {
         EstablishmentDeliverySettings settings = deliveryService.findOrDefaults(establishment.getId());
         EstablishmentPaymentSettings payment = paymentSettingsRepository.findById(establishment.getId()).orElse(null);
         boolean pixEnabled = payment == null || payment.isPixEnabled();
+        boolean payOnDeliveryOnly = payment != null && payment.isPayOnDeliveryOnly();
         return new PublicStoreResponse(
                 establishment.getId(),
                 establishment.getName(),
@@ -252,6 +253,7 @@ public class StoreCatalogService {
                 establishment.getState(),
                 establishment.isActive(),
                 availabilityService.isAcceptingOrders(establishment),
+                establishment.isScheduleWhenClosed(),
                 establishment.getStoreOpenMode() == null
                         ? com.sacolao.establishment.entity.StoreOpenMode.AUTO
                         : establishment.getStoreOpenMode(),
@@ -260,7 +262,7 @@ public class StoreCatalogService {
                 establishment.getRatingAvg(),
                 establishment.getRatingCount(),
                 DeliveryService.toResponse(settings),
-                new PublicPaymentOptionsResponse(pixEnabled, true, true, true)
+                new PublicPaymentOptionsResponse(pixEnabled, !payOnDeliveryOnly, true, !payOnDeliveryOnly, payOnDeliveryOnly)
         );
     }
 }

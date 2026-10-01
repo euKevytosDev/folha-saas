@@ -2003,7 +2003,10 @@ function renderOrders(orders) {
         const nfceLabel = order.nfce && order.nfce.status && order.nfce.status !== "NONE"
             ? ` · NFC-e ${nfceStatusLabel(order.nfce.status)}`
             : "";
-        meta.textContent = `${formatBRL(order.total)} · ${fulfillmentLabel(order.fulfillmentType)} · ${formatPhoneDisplay(order.customerPhone)}${payLabel}${nfceLabel}`;
+        const scheduledLabel = order.scheduledFor
+            ? ` · Agendado para ${formatOrderDateTime(order.scheduledFor)}`
+            : "";
+        meta.textContent = `${formatBRL(order.total)} · ${fulfillmentLabel(order.fulfillmentType)} · ${formatPhoneDisplay(order.customerPhone)}${payLabel}${scheduledLabel}${nfceLabel}`;
 
         const items = document.createElement("ul");
         items.className = "order-item-list";
@@ -2070,7 +2073,9 @@ function renderOrders(orders) {
             actions.append(waMissing);
         }
 
-        if (payment && payment.status !== "PAID" && ["CASH", "ON_DELIVERY"].includes(payment.method)) {
+        if (payment && payment.status !== "PAID" && (
+            ["CASH", "ON_DELIVERY"].includes(payment.method) || payment.provider === "MANUAL"
+        )) {
             const confirmPay = document.createElement("button");
             confirmPay.type = "button";
             confirmPay.className = "btn btn-secondary";
@@ -2224,16 +2229,17 @@ function formatCpfDisplay(value) {
     return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
 }
 
-function paymentMethodLabel(method) {
+function paymentMethodLabel(method, payment) {
+    const onDelivery = payment?.provider === "MANUAL";
     switch (String(method || "").toUpperCase()) {
         case "PIX":
-            return "PIX";
+            return onDelivery ? "Pix na entrega" : "PIX";
         case "CASH":
             return "Dinheiro";
         case "ON_DELIVERY":
             return "Na entrega";
         case "CARD":
-            return "Cartão";
+            return onDelivery ? "Cartão na entrega" : "Cartão";
         default:
             return method || "—";
     }
@@ -2269,7 +2275,7 @@ function printNonFiscalReceipt(order) {
     const discount = Number(order.discount || 0);
     const deliveryFee = Number(order.deliveryFee || 0);
     const cpf = formatCpfDisplay(order.customerCpf);
-    const paymentMethod = paymentMethodLabel(order.paymentMethod || order.payment?.method);
+    const paymentMethod = paymentMethodLabel(order.paymentMethod || order.payment?.method, order.payment);
     const paymentStatus = order.payment?.status ? paymentStatusLabel(order.payment.status) : "";
 
     const itemsHtml = items.map((item, index) => {
@@ -2631,6 +2637,12 @@ async function loadDeliverySettings() {
         form.minOrderAmount.value = settings.minOrderAmount ?? "";
         form.pickupEtaMinutes.value = settings.pickupEtaMinutes ?? "";
         form.deliveryEtaMinutes.value = settings.deliveryEtaMinutes ?? settings.estimatedMinutes ?? "";
+        const feeNote = $("#delivery-fee-note");
+        const fee = Number(settings.fixedFee || 0);
+        if (feeNote) {
+            feeNote.hidden = !(fee > 0);
+            feeNote.textContent = fee > 0 ? `Frete: valor fixo ${formatBRL(fee)}.` : "";
+        }
         window.__deliverySettings = settings;
         renderStoreOpsCard();
     } catch (error) {
@@ -2694,6 +2706,9 @@ function renderStoreOpsCard() {
         }
         if (delivery.minOrderAmount != null) {
             chips.push(["Pedido mín.", formatBRL(delivery.minOrderAmount)]);
+        }
+        if (Number(delivery.fixedFee) > 0) {
+            chips.push(["Frete fixo", formatBRL(delivery.fixedFee)]);
         }
         chips.forEach(([label, value]) => {
             const item = document.createElement("div");

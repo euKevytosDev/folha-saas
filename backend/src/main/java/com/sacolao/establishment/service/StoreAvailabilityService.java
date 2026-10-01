@@ -11,6 +11,7 @@ import java.time.DayOfWeek;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -39,6 +40,24 @@ public class StoreAvailabilityService {
             case CLOSED -> false;
             case AUTO -> isWithinOpeningHours(establishment, ZonedDateTime.now(zoneOf(establishment)));
         };
+    }
+
+    public ZonedDateTime nextOpening(Establishment establishment) {
+        ZoneId zone = zoneOf(establishment);
+        ZonedDateTime now = ZonedDateTime.now(zone).truncatedTo(ChronoUnit.MINUTES);
+        Map<String, List<OpeningInterval>> hours = parseHours(establishment.getOpeningHours());
+        for (int offset = 0; offset < 8; offset++) {
+            ZonedDateTime day = now.plusDays(offset);
+            List<OpeningInterval> intervals = hours.getOrDefault(dayKey(day.getDayOfWeek()), List.of());
+            for (OpeningInterval interval : intervals) {
+                LocalTime open = LocalTime.parse(interval.open());
+                ZonedDateTime start = day.toLocalDate().atTime(open).atZone(zone);
+                if (start.isAfter(now)) {
+                    return start;
+                }
+            }
+        }
+        return null;
     }
 
     public boolean isWithinOpeningHours(Establishment establishment, ZonedDateTime now) {

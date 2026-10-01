@@ -107,13 +107,14 @@
                 </section>
                 <section class="checkout-section">
                     <h2>Pagamento</h2>
+                    <div class="alert" id="closed-checkout" hidden></div>
                     <div class="choice-row choice-wrap">
                         <label class="choice"><input type="radio" name="paymentMethod" value="PIX" checked><span>PIX</span></label>
                         <label class="choice"><input type="radio" name="paymentMethod" value="CASH"><span>Dinheiro</span></label>
                         <label class="choice"><input type="radio" name="paymentMethod" value="CARD"><span>Cartão</span></label>
                         <label class="choice"><input type="radio" name="paymentMethod" value="ON_DELIVERY"><span>Na entrega</span></label>
                     </div>
-                    <p class="muted">PIX pode ser gerado na hora (mock ou Mercado Pago). Dinheiro e na entrega são confirmados pela loja.</p>
+                    <p class="muted" id="payment-note">PIX pode ser gerado na hora (mock ou Mercado Pago). Dinheiro e na entrega são confirmados pela loja.</p>
                 </section>
                 <section class="checkout-section">
                     <h2>Observações</h2>
@@ -128,14 +129,15 @@
                     <div class="cart-totals">
                         <div><span>Subtotal</span><strong id="summary-subtotal">R$ 0,00</strong></div>
                         <div><span>Desconto</span><span id="summary-discount">R$ 0,00</span></div>
-                        <div><span>Entrega</span><span id="summary-delivery">R$ 0,00</span></div>
+                        <div><span id="summary-delivery-label">Entrega</span><span id="summary-delivery">R$ 0,00</span></div>
                         <div class="is-total"><span>Total</span><span id="summary-total">R$ 0,00</span></div>
                     </div>
                     <button class="btn btn-primary btn-block" id="submit-order" type="submit">Finalizar pedido</button>
+                    <button class="btn btn-secondary btn-block" id="cancel-cart" type="button" hidden>Cancelar carrinho</button>
                 </section>
             </form>
         </div>
     </main>
-    <script type="module" src="/js/pages/checkout.js?v=64f3f0cec9"></script>
+    <script type="module" src="/js/pages/checkout.js?v=33154fa053"></script>
 </body>
 </html>
