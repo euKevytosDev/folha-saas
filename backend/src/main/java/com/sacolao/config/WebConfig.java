@@ -43,7 +43,7 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addResourceHandler("/public/**")
                 .addResourceLocations(location + "public/")
                 .setCacheControl(CacheControl.maxAge(1, TimeUnit.DAYS).cachePublic());
-        registry.addResourceHandler("/favicon.svg", "/robots.txt")
+        registry.addResourceHandler("/favicon.svg", "/favicon.png", "/robots.txt")
                 .addResourceLocations(location + "public/")
                 .setCacheControl(CacheControl.maxAge(7, TimeUnit.DAYS).cachePublic());
         registry.setOrder(Ordered.LOWEST_PRECEDENCE);
