@@ -40,7 +40,8 @@
 }
 
 .brand-name {
-    font-size: 1.15rem;
+    font-size: 1.05rem;
+    letter-spacing: -0.04em;
 }
 
 .header-nav {

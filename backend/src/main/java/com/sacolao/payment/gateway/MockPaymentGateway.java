@@ -47,6 +47,6 @@ public class MockPaymentGateway implements PaymentGateway {
         String normalized = publicCode == null ? "FOLHA" : publicCode.toUpperCase(Locale.ROOT);
         return "00020126580014br.gov.bcb.pix0136folha-mock-" + normalized
                 + "520400005303986540" + String.format("%02d", Math.min(amount.length(), 99)) + amount
-                + "5802BR5913Folha Mock PIX6009SAO PAULO62070503***6304ABCD";
+                + "5802BR5911MaxPedidos6009SAO PAULO62070503***6304ABCD";
     }
 }

@@ -38,7 +38,7 @@ spring:
     locations: classpath:db/migration
 
 app:
-  name: Folha
+  name: MaxPedidos
   frontend-dir: ${FRONTEND_DIR:}
   public-frontend-url: ${PUBLIC_FRONTEND_URL:http://localhost:8080}
   cors:
@@ -79,7 +79,7 @@ app:
     max-bytes: ${CLOUDINARY_MAX_BYTES:5242880}
   resend:
     api-key: ${RESEND_API_KEY:}
-    from: ${RESEND_FROM:Folha <onboarding@resend.dev>}
+    from: ${RESEND_FROM:MaxPedidos <onboarding@resend.dev>}
 
 logging:
   pattern:

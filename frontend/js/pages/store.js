@@ -63,7 +63,7 @@ async function boot() {
         state.allProducts = state.catalog.products || [];
         rememberProducts(state.allProducts);
         rememberProducts(state.catalog.featured);
-        document.title = `${state.store.name} — Folha`;
+        document.title = `${state.store.name} — MaxPedidos`;
         renderStorefrontHeader(state.store);
         renderCategories();
         renderCatalog();

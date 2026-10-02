@@ -80,7 +80,7 @@ public class AsaasPaymentGateway implements PaymentGateway {
             String qrRaw = client.get()
                     .uri(base + "/payments/" + paymentId + "/pixQrCode")
                     .header("access_token", token.trim())
-                    .header("User-Agent", "Folha")
+                    .header("User-Agent", "MaxPedidos")
                     .retrieve()
                     .body(String.class);
             JsonNode qr = jsonMapper.readTree(qrRaw == null ? "{}" : qrRaw);
@@ -107,7 +107,7 @@ public class AsaasPaymentGateway implements PaymentGateway {
         String listed = client.get()
                 .uri(base + "/customers?cpfCnpj=" + cpf)
                 .header("access_token", token)
-                .header("User-Agent", "Folha")
+                .header("User-Agent", "MaxPedidos")
                 .retrieve()
                 .body(String.class);
         JsonNode list = jsonMapper.readTree(listed == null ? "{}" : listed);
@@ -146,7 +146,7 @@ public class AsaasPaymentGateway implements PaymentGateway {
                 .uri(url)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("access_token", token)
-                .header("User-Agent", "Folha")
+                .header("User-Agent", "MaxPedidos")
                 .body(body)
                 .retrieve()
                 .body(String.class);

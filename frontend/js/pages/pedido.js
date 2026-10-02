@@ -21,7 +21,7 @@ async function boot() {
         const order = await api(
             `/store/${encodeURIComponent(slug)}/orders/${encodeURIComponent(publicCode)}?token=${encodeURIComponent(token)}`
         );
-        document.title = `Pedido ${order.publicCode} — Folha`;
+        document.title = `Pedido ${order.publicCode} — MaxPedidos`;
         $("#order-code").textContent = order.publicCode;
         $("#order-card").hidden = false;
         $("#order-status").textContent = statusLabel(order.status);

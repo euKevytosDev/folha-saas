@@ -92,12 +92,12 @@ public class ResendEmailClient {
     }
 
     public void sendPasswordReset(String to, String resetUrl) {
-        String subject = "Recuperação de senha — Folha";
+        String subject = "Recuperação de senha — MaxPedidos";
         String text = "Use o link abaixo para redefinir sua senha (válido por tempo limitado):\n\n" + resetUrl
                 + "\n\nSe você não pediu isso, ignore este e-mail.";
         String html = """
                 <p>Olá,</p>
-                <p>Recebemos um pedido para redefinir a senha da sua conta no <strong>Folha</strong>.</p>
+                <p>Recebemos um pedido para redefinir a senha da sua conta no <strong>MaxPedidos</strong>.</p>
                 <p><a href="%s">Clique aqui para criar uma nova senha</a></p>
                 <p>Se o botão não funcionar, copie e cole este link no navegador:</p>
                 <p>%s</p>

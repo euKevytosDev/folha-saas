@@ -43,4 +43,4 @@ app:
   public-frontend-url: http://localhost:8080
   resend:
     api-key:
-    from: Folha <onboarding@resend.dev>
+    from: MaxPedidos <onboarding@resend.dev>
