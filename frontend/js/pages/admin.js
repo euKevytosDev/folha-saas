@@ -2060,17 +2060,6 @@ function renderOrders(orders) {
             waBtn.rel = "noopener noreferrer";
             waBtn.textContent = "WhatsApp";
             actions.append(waBtn);
-
-            const waMissing = document.createElement("a");
-            waMissing.className = "btn btn-secondary";
-            waMissing.href = whatsappLink(
-                order.customerPhone,
-                `Olá ${order.customerName}! Sobre o pedido ${order.publicCode} da ${storeName}: um item ficou indisponível. Podemos trocar ou ajustar o pedido?`
-            );
-            waMissing.target = "_blank";
-            waMissing.rel = "noopener noreferrer";
-            waMissing.textContent = "Avisar falta";
-            actions.append(waMissing);
         }
 
         if (payment && payment.status !== "PAID" && (
