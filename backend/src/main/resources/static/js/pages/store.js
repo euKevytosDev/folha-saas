@@ -279,11 +279,11 @@ function body(product) {
         const { min, max } = choiceLimits(product);
         unit.textContent = max > 1
             ? (min === max
-                ? `Escolha ${min} sabores · ${formatBRL(product.price)}`
-                : `Escolha ${min}–${max} sabores · ${formatBRL(product.price)}`)
+                ? `Escolha ${min} ${min === 1 ? "opção" : "opções"} · ${formatBRL(product.price)}`
+                : `Escolha ${min}–${max} opções · ${formatBRL(product.price)}`)
             : (variants.length === 1
-                ? "1 sabor disponível · escolha ao adicionar"
-                : `${variants.length} sabores · escolha ao adicionar`);
+                ? "1 opção disponível · escolha ao adicionar"
+                : `${variants.length} opções · escolha ao adicionar`);
     } else if (product.unit === "KG") {
         unit.textContent = "Preço por kg · escolha em gramas ou quilos";
     } else {
@@ -502,7 +502,7 @@ function refreshLocalCart() {
                 .filter(Boolean);
             const { min, max } = choiceLimits(product);
             if (selected.length !== variantIds.length || selected.length < min || selected.length > max) {
-                issue = "Escolha os sabores novamente";
+                issue = "Escolha as opções novamente";
             }
         }
         const unitPrice = issue ? 0 : resolveLinePrice(product, selected);
