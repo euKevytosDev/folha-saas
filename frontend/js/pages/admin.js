@@ -2657,10 +2657,22 @@ function renderStoreOpsCard() {
         badge.className = `store-status-badge ${open ? "is-open" : "is-closed"}`;
     }
     if (meta) {
-        meta.textContent = [
+        const addressLine = [
             establishment.address,
             [establishment.city, establishment.state].filter(Boolean).join("/")
-        ].filter(Boolean).join(" · ") || storeUrl(establishment.slug);
+        ].filter(Boolean).join(" · ");
+        if (addressLine) {
+            meta.replaceChildren();
+            const link = document.createElement("a");
+            link.className = "store-address-link";
+            link.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressLine)}`;
+            link.target = "_blank";
+            link.rel = "noopener noreferrer";
+            link.textContent = addressLine;
+            meta.append(link);
+        } else {
+            meta.textContent = storeUrl(establishment.slug);
+        }
     }
     if (cover) {
         if (establishment.coverUrl) {

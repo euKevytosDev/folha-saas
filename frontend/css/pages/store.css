@@ -103,6 +103,16 @@
     color: var(--color-text);
 }
 
+.store-address-link {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 0.18em;
+}
+
+.store-address-link:hover {
+    color: var(--color-primary, #14532d);
+}
+
 .storefront-stats,
 .store-ops-stats {
     display: grid;

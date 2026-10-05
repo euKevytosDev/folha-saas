@@ -73,12 +73,36 @@ async function boot() {
     }
 }
 
-function renderStorefrontHeader(store) {
-    els.name.textContent = store.name;
-    els.meta.textContent = [
+function storeAddressLine(store) {
+    return [
         store.address,
         [store.city, store.state].filter(Boolean).join("/")
-    ].filter(Boolean).join(" · ") || "Pedido pelo celular";
+    ].filter(Boolean).join(" · ");
+}
+
+function mapsSearchUrl(query) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
+
+function renderAddressLink(container, label) {
+    container.replaceChildren();
+    const link = document.createElement("a");
+    link.className = "store-address-link";
+    link.href = mapsSearchUrl(label);
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = label;
+    container.append(link);
+}
+
+function renderStorefrontHeader(store) {
+    els.name.textContent = store.name;
+    const addressLine = storeAddressLine(store);
+    if (addressLine) {
+        renderAddressLink(els.meta, addressLine);
+    } else {
+        els.meta.textContent = "Pedido pelo celular";
+    }
 
     const open = !!store.acceptingOrders;
     if (els.openBadge) {
