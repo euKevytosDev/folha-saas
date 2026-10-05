@@ -1484,6 +1484,24 @@ function beginEditProduct(item) {
     scrollToProductEditor();
 }
 
+function scrollToFormStep(slide) {
+    const target = slide?.querySelector(".form-step-label") || slide;
+    if (!target) {
+        return;
+    }
+    const place = () => {
+        const header = document.querySelector(".site-header");
+        const nav = document.querySelector(".admin-nav");
+        const stickyOffset = (header?.getBoundingClientRect().height || 0)
+            + (nav?.getBoundingClientRect().height || 0)
+            + 8;
+        const top = window.scrollY + target.getBoundingClientRect().top - stickyOffset;
+        window.scrollTo({ top: Math.max(0, top), behavior: "auto" });
+    };
+    requestAnimationFrame(place);
+    window.setTimeout(place, 90);
+}
+
 function scrollToProductEditor() {
     const target = $("#product-form-block") || $("#product-form-title") || $("#product-form");
     if (!target) {
@@ -3259,7 +3277,6 @@ function wireFormCarousel(form) {
             const dot = document.createElement("button");
             dot.type = "button";
             dot.setAttribute("aria-label", `Passo ${index + 1}`);
-            dot.addEventListener("click", () => go(index));
             dotsBox.append(dot);
         });
     }
@@ -3313,11 +3330,22 @@ function wireFormCarousel(form) {
         return true;
     }
 
-    prev?.addEventListener("click", () => go(step - 1));
+    function showStep(index) {
+        if (document.activeElement instanceof HTMLElement) {
+            document.activeElement.blur();
+        }
+        go(index);
+        scrollToFormStep(slides[step]);
+    }
+
+    prev?.addEventListener("click", () => showStep(step - 1));
     next?.addEventListener("click", () => {
         if (validateCurrent()) {
-            go(step + 1);
+            showStep(step + 1);
         }
+    });
+    dotsBox?.querySelectorAll("button").forEach((dot, index) => {
+        dot.addEventListener("click", () => showStep(index));
     });
     go(0);
     formCarousels.set(form, { go, validateAll });

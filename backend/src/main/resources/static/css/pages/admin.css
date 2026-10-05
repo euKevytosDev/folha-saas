@@ -458,8 +458,13 @@
     color: #B91C1C !important;
 }
 
+.form-carousel {
+    overflow-anchor: none;
+}
+
 .form-carousel .form-slides {
     position: relative;
+    overflow-anchor: none;
 }
 
 .form-slide {
@@ -479,6 +484,7 @@
     letter-spacing: 0.04em;
     text-transform: uppercase;
     color: var(--panel-color, var(--color-primary));
+    scroll-margin-top: calc(var(--header-h) + 4.5rem);
 }
 
 .form-carousel-bar {
