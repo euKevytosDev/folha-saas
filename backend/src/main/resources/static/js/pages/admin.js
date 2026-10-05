@@ -1737,9 +1737,78 @@ function renderProducts(products) {
         });
         actions.append(deleteBtn);
         body.append(title, meta, actions);
-        row.append(createThumb(item.imageUrl, item.name, "product-admin-thumb"), body);
+        row.append(productPhotoSlot(item), body);
         list.append(row);
     });
+}
+
+function productPhotoSlot(item) {
+    const slot = document.createElement("div");
+    slot.className = "product-admin-photo";
+    slot.append(createThumb(item.imageUrl, item.name, "product-admin-thumb"));
+    const label = document.createElement("label");
+    label.className = "product-photo-btn";
+    const caption = document.createElement("span");
+    caption.textContent = "Foto";
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/jpeg,image/png,image/webp,image/gif";
+    input.setAttribute("aria-label", `Foto de ${item.name}`);
+    label.append(caption, input);
+    input.addEventListener("change", () => {
+        const file = input.files?.[0];
+        input.value = "";
+        if (file) {
+            uploadProductPhoto(item, file, slot, caption, input);
+        }
+    });
+    slot.append(label);
+    return slot;
+}
+
+async function uploadProductPhoto(item, file, slot, caption, input) {
+    if (!mediaState.enabled) {
+        showFormAlert($("#product-alert"), null, "Upload não configurado. Envie a foto pelo editar.");
+        return;
+    }
+    caption.textContent = "…";
+    input.disabled = true;
+    try {
+        const compact = await compressImageFile(file, { maxEdge: 1600 });
+        if (compact.size > 5 * 1024 * 1024) {
+            caption.textContent = "Foto";
+            showFormAlert($("#product-alert"), null, "Imagem ainda grande demais após compactar. Use outra foto (até 5 MB).");
+            return;
+        }
+        const formData = new FormData();
+        formData.append("file", compact, compact.name || "produto.jpg");
+        const uploaded = await apiUpload("/media/upload", formData);
+        await api(`/products/${item.id}`, {
+            method: "PUT",
+            body: { imageUrl: uploaded.url }
+        });
+        item.imageUrl = uploaded.url;
+        const thumb = createThumb(uploaded.url, item.name, "product-admin-thumb");
+        slot.querySelector(".product-admin-thumb")?.replaceWith(thumb);
+        if (editingProductId === item.id) {
+            const form = $("#product-form");
+            if (form?.imageUrl) {
+                form.imageUrl.value = uploaded.url;
+            }
+            setProductImagePreview(uploaded.url);
+        }
+        hideAlert($("#product-alert"));
+        showFormSuccess($("#product-alert"), `Foto de "${item.name}" atualizada.`);
+        caption.textContent = "Ok";
+        window.setTimeout(() => {
+            caption.textContent = "Foto";
+        }, 1200);
+    } catch (error) {
+        caption.textContent = "Foto";
+        showFormAlert($("#product-alert"), error, "Não foi possível enviar a foto.");
+    } finally {
+        input.disabled = false;
+    }
 }
 
 function flagButton(label, path, value) {
