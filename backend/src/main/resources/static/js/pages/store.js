@@ -743,16 +743,18 @@ function openVariantSheet(product) {
         row.className = "variant-option";
         row.dataset.variantId = variant.id;
         const info = document.createElement("div");
+        info.className = "variant-option-info";
         const name = document.createElement("strong");
         name.textContent = variant.name;
         const price = document.createElement("span");
+        price.className = "variant-option-price";
         if (isSpecificPrice(variant) && variant.price != null && Number(variant.price) > 0) {
             price.textContent = formatBRL(variant.price);
         } else if (variant.price != null && Number(variant.price) > 0) {
             price.textContent = `+ ${formatBRL(variant.price)}`;
         } else {
             price.textContent = "incluso";
-            price.className = "muted";
+            price.classList.add("muted");
         }
         info.append(name, price);
         const stepper = document.createElement("div");
