@@ -111,7 +111,7 @@
     border-radius: 10px;
     object-fit: contain;
     object-position: center;
-    background: var(--color-surface-muted, #f4f6f2);
+    background: #fff;
     flex: 0 0 48px;
 }
 

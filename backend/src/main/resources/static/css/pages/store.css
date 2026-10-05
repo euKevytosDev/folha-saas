@@ -438,7 +438,7 @@
     border-radius: 16px;
     object-fit: contain;
     object-position: center;
-    background: var(--color-primary-light);
+    background: #fff;
 }
 
 .product-thumb.is-empty {
@@ -446,6 +446,7 @@
     place-items: center;
     color: var(--color-primary-dark);
     font-size: 1.6rem;
+    background: var(--color-primary-light);
 }
 
 .product-body h3 {
@@ -735,6 +736,10 @@ body.sheet-open {
     border-radius: 14px;
     object-fit: contain;
     object-position: center;
+    background: #fff;
+}
+
+.cart-line .product-thumb.is-empty {
     background: var(--color-primary-light);
 }
 
@@ -794,7 +799,7 @@ body.sheet-open {
     border-radius: 12px;
     object-fit: contain;
     object-position: center;
-    background: var(--color-surface-muted, #f4f6f2);
+    background: #fff;
     border: 1px solid var(--color-border);
 }
 
@@ -802,6 +807,7 @@ body.sheet-open {
     display: grid;
     place-items: center;
     font-size: 1.15rem;
+    background: var(--color-surface-muted, #f4f6f2);
 }
 
 .store-media-preview {
