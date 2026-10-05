@@ -423,7 +423,7 @@
 
 .product-variant-row {
     display: grid;
-    grid-template-columns: 1fr 6.5rem auto;
+    grid-template-columns: minmax(0, 1.3fr) 9.5rem 7rem auto;
     gap: 0.45rem;
     align-items: end;
 }

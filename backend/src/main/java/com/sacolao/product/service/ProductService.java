@@ -14,6 +14,7 @@ import com.sacolao.product.dto.UpdateProductRequest;
 import com.sacolao.product.entity.Product;
 import com.sacolao.product.entity.ProductUnit;
 import com.sacolao.product.entity.ProductVariant;
+import com.sacolao.product.entity.VariantPriceMode;
 import com.sacolao.product.mapper.ProductMapper;
 import com.sacolao.product.repository.ProductRepository;
 import com.sacolao.tenant.TenantContext;
@@ -196,6 +197,16 @@ public class ProductService {
             ProductVariant variant = new ProductVariant();
             variant.setProduct(product);
             variant.setName(request.name().trim());
+            VariantPriceMode priceMode = request.priceMode() == null
+                    ? VariantPriceMode.EXTRA
+                    : request.priceMode();
+            if (priceMode == VariantPriceMode.FIXED && request.price() == null) {
+                throw new UnprocessableException(
+                        "VARIANT_FIXED_PRICE",
+                        "Informe o preço específico de \"" + variant.getName() + "\"."
+                );
+            }
+            variant.setPriceMode(priceMode);
             if (request.price() != null) {
                 variant.setPrice(requirePrice(request.price()));
             } else {

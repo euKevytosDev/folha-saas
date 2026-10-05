@@ -17,6 +17,7 @@ public final class ProductMapper {
                         variant.getId(),
                         variant.getName(),
                         variant.getPrice(),
+                        variant.getPriceMode(),
                         variant.isAvailable(),
                         variant.getSortOrder()
                 ))

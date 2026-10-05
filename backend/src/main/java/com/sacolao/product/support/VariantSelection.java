@@ -4,6 +4,7 @@ import com.sacolao.common.exception.UnprocessableException;
 import com.sacolao.common.util.Money;
 import com.sacolao.product.entity.Product;
 import com.sacolao.product.entity.ProductVariant;
+import com.sacolao.product.entity.VariantPriceMode;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -17,8 +18,8 @@ import java.util.stream.Collectors;
 /**
  * Resolve as opções escolhidas e o preço da linha.
  * A quantidade mínima/máxima do produto é quantas opções entram no combo
- * (pode repetir o mesmo sabor). O preço do produto é o valor da promoção;
- * o preço do sabor, se houver, soma como acréscimo.
+ * (pode repetir o mesmo sabor). Preço extra soma no valor do produto.
+ * Preço específico substitui o valor do produto.
  */
 public final class VariantSelection {
 
@@ -89,7 +90,9 @@ public final class VariantSelection {
     }
 
     private static BigDecimal priceFor(Product product, List<ProductVariant> selected) {
-        BigDecimal total = Money.of(product.getPrice());
+        boolean specific = selected.stream()
+                .anyMatch(variant -> variant.getPriceMode() == VariantPriceMode.FIXED);
+        BigDecimal total = specific ? BigDecimal.ZERO : Money.of(product.getPrice());
         for (ProductVariant variant : selected) {
             if (variant.getPrice() != null) {
                 total = total.add(Money.of(variant.getPrice()));

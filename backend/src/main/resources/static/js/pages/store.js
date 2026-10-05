@@ -310,8 +310,13 @@ function choiceLimits(product) {
     return { min, max };
 }
 
+function isSpecificPrice(variant) {
+    return variant?.priceMode === "FIXED";
+}
+
 function resolveLinePrice(product, selectedVariants) {
-    let total = Number(product.price) || 0;
+    const specific = selectedVariants.some(isSpecificPrice);
+    let total = specific ? 0 : (Number(product.price) || 0);
     selectedVariants.forEach((variant) => {
         if (variant?.price != null && Number(variant.price) > 0) {
             total += Number(variant.price);
@@ -741,7 +746,9 @@ function openVariantSheet(product) {
         const name = document.createElement("strong");
         name.textContent = variant.name;
         const price = document.createElement("span");
-        if (variant.price != null && Number(variant.price) > 0) {
+        if (isSpecificPrice(variant) && variant.price != null && Number(variant.price) > 0) {
+            price.textContent = formatBRL(variant.price);
+        } else if (variant.price != null && Number(variant.price) > 0) {
             price.textContent = `+ ${formatBRL(variant.price)}`;
         } else {
             price.textContent = "incluso";

@@ -685,17 +685,39 @@ function appendVariantRow(variant = null) {
     nameInput.required = true;
     nameField.append(nameLabel, nameInput);
 
+    const modeField = document.createElement("div");
+    modeField.className = "field";
+    const modeLabel = document.createElement("label");
+    modeLabel.textContent = "Tipo de preço";
+    const modeSelect = document.createElement("select");
+    modeSelect.name = "variantPriceMode";
+    const extraOption = document.createElement("option");
+    extraOption.value = "EXTRA";
+    extraOption.textContent = "Preço extra";
+    const fixedOption = document.createElement("option");
+    fixedOption.value = "FIXED";
+    fixedOption.textContent = "Preço específico";
+    modeSelect.append(extraOption, fixedOption);
+    modeSelect.value = variant?.priceMode === "FIXED" ? "FIXED" : "EXTRA";
+    modeField.append(modeLabel, modeSelect);
+
     const priceField = document.createElement("div");
     priceField.className = "field";
     const priceLabel = document.createElement("label");
-    priceLabel.textContent = "Preço extra (opc.)";
     const priceInput = document.createElement("input");
     priceInput.type = "number";
     priceInput.name = "variantPrice";
     priceInput.min = "0.01";
     priceInput.step = "0.01";
-    priceInput.placeholder = "Soma no preço";
     priceInput.value = variant?.price != null ? String(variant.price) : "";
+    const syncPriceField = () => {
+        const specific = modeSelect.value === "FIXED";
+        priceLabel.textContent = specific ? "Preço específico" : "Preço extra (opc.)";
+        priceInput.placeholder = specific ? "Não soma no produto" : "Soma no preço";
+        priceInput.required = specific;
+    };
+    modeSelect.addEventListener("change", syncPriceField);
+    syncPriceField();
     priceField.append(priceLabel, priceInput);
 
     const removeBtn = document.createElement("button");
@@ -710,7 +732,7 @@ function appendVariantRow(variant = null) {
         }
     });
 
-    row.append(nameField, priceField, removeBtn);
+    row.append(nameField, modeField, priceField, removeBtn);
     list.append(row);
 }
 
@@ -740,6 +762,7 @@ function readProductVariants(form) {
         const row = rows[i];
         const name = row.querySelector('[name="variantName"]')?.value?.trim() || "";
         const priceRaw = String(row.querySelector('[name="variantPrice"]')?.value ?? "").trim();
+        const priceMode = row.querySelector('[name="variantPriceMode"]')?.value === "FIXED" ? "FIXED" : "EXTRA";
         if (!name && !priceRaw) {
             continue;
         }
@@ -750,13 +773,17 @@ function readProductVariants(form) {
         if (priceRaw) {
             price = Number(priceRaw.replace(",", "."));
             if (!Number.isFinite(price) || price <= 0) {
-                return { ok: false, error: `Preço inválido no sabor "${name}". Deixe vazio para usar o preço do produto.` };
+                return { ok: false, error: `Preço inválido no sabor "${name}".` };
             }
+        }
+        if (priceMode === "FIXED" && price == null) {
+            return { ok: false, error: `Informe o preço específico de "${name}".` };
         }
         items.push({
             id: row.dataset.variantId || null,
             name,
             price,
+            priceMode,
             available: true,
             sortOrder: i
         });
@@ -949,7 +976,7 @@ function syncMinQtyField(form, options = {}) {
             maxLabel.textContent = "Máximo de opções no combo";
         }
         if (maxHint) {
-            maxHint.textContent = "Use o mesmo número do mínimo para obrigar essa quantidade (3 e 3 = exatamente 3). Valor preenchido no sabor soma no preço.";
+            maxHint.textContent = "Use o mesmo número do mínimo para obrigar essa quantidade (3 e 3 = exatamente 3). Preço extra soma; preço específico substitui o valor do produto.";
         }
         if (maxInput) {
             maxInput.min = "1";
