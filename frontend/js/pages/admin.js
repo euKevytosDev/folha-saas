@@ -1496,11 +1496,13 @@ function renderCategories(categories) {
         row.className = "user-row";
         const name = document.createElement("strong");
         name.textContent = item.name;
-        const actions = document.createElement("button");
-        actions.className = "btn btn-ghost";
-        actions.type = "button";
-        actions.textContent = item.active ? "Ocultar" : "Ativar";
-        actions.addEventListener("click", async () => {
+        const actions = document.createElement("div");
+        actions.className = "category-row-actions";
+        const toggle = document.createElement("button");
+        toggle.className = "btn btn-ghost";
+        toggle.type = "button";
+        toggle.textContent = item.active ? "Ocultar" : "Ativar";
+        toggle.addEventListener("click", async () => {
             try {
                 await api(`/categories/${item.id}`, {
                     method: "PUT",
@@ -1511,6 +1513,27 @@ function renderCategories(categories) {
                 showFormAlert($("#category-alert"), error, "Não foi possível atualizar a categoria.");
             }
         });
+        const remove = document.createElement("button");
+        remove.className = "btn btn-danger";
+        remove.type = "button";
+        remove.textContent = "Apagar";
+        remove.addEventListener("click", async () => {
+            const ok = window.confirm(
+                `Apagar a categoria "${item.name}"?\n\nEssa ação não pode ser desfeita. Se ainda houver produtos nela, apague ou mude esses produtos antes.`
+            );
+            if (!ok) {
+                return;
+            }
+            try {
+                await api(`/categories/${item.id}`, { method: "DELETE" });
+                hideAlert($("#category-alert"));
+                showFormSuccess($("#category-alert"), `Categoria "${item.name}" apagada.`);
+                await refreshCatalog();
+            } catch (error) {
+                showFormAlert($("#category-alert"), error, "Não foi possível apagar a categoria.");
+            }
+        });
+        actions.append(toggle, remove);
         row.append(name, actions);
         list.append(row);
     });

@@ -349,10 +349,12 @@
     background: color-mix(in srgb, #D97706 10%, white);
 }
 
-.product-admin-actions {
+.product-admin-actions,
+.category-row-actions {
     display: flex;
     flex-wrap: wrap;
     gap: 0.4rem;
+    justify-content: flex-end;
 }
 
 .admin-inline-form {
