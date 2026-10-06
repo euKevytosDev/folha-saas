@@ -39,6 +39,42 @@
     top: 0.85rem;
     left: 0;
     right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.storefront-orders {
+    color: #1a3d28;
+    background: #fff;
+    border-radius: 999px;
+    padding: 0.42rem 0.75rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.my-order {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.85rem;
+    padding: 0.9rem 0;
+    border-top: 1px solid var(--color-border);
+}
+
+.my-order:first-child {
+    border-top: 0;
+    padding-top: 0;
+}
+
+.my-order span {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
 }
 
 .storefront-body {

@@ -3,6 +3,7 @@ import { $ } from "../utils/dom.js";
 import { formatBRL, formatQuantity } from "../utils/format.js";
 import { createThumb } from "../utils/media.js";
 import { storeUrl } from "../utils/nav.js";
+import { rememberOrder } from "../store/my-orders.js";
 
 const { slug, publicCode, token } = currentOrderRef();
 const alertBox = $("#order-alert");
@@ -21,6 +22,11 @@ async function boot() {
         const order = await api(
             `/store/${encodeURIComponent(slug)}/orders/${encodeURIComponent(publicCode)}?token=${encodeURIComponent(token)}`
         );
+        rememberOrder(order.establishmentId, {
+            code: order.publicCode,
+            token: order.viewToken || token,
+            at: order.createdAt
+        });
         document.title = `Pedido ${order.publicCode} — MaxPedidos`;
         $("#order-code").textContent = order.publicCode;
         $("#order-card").hidden = false;

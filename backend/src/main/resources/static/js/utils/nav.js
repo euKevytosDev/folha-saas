@@ -18,6 +18,13 @@ export function storeUrl(slug) {
     return `/loja/${slug}`;
 }
 
+export function myOrdersUrl(slug) {
+    if (config.staticHost) {
+        return `${withBase("meus-pedidos.html")}?slug=${encodeURIComponent(slug)}`;
+    }
+    return `/loja/${encodeURIComponent(slug)}/pedidos`;
+}
+
 export function checkoutUrl(slug) {
     if (config.staticHost) {
         return `${withBase("checkout.html")}?slug=${encodeURIComponent(slug)}`;

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Meus pedidos — MaxPedidos</title>
+    <meta name="robots" content="noindex">
+    <link rel="icon" href="/favicon.png?v=mp4" type="image/png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,650&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/reset.css">
+    <link rel="stylesheet" href="/css/layout.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/pages/store.css">
+    <link rel="stylesheet" href="/css/pages/checkout.css">
+    <script src="/js/env.js"></script>
+</head>
+<body class="page-shell">
+    <header class="store-header">
+        <div class="container store-header-inner">
+            <a class="btn btn-ghost" id="back-store" href="/">Voltar à loja</a>
+            <div class="store-title">
+                <strong>Meus pedidos</strong>
+                <p class="muted">Salvos neste celular</p>
+            </div>
+        </div>
+    </header>
+    <main class="panel-main" style="padding-top: 1rem;">
+        <div class="container checkout-layout">
+            <div id="orders-alert" class="alert" hidden></div>
+            <section class="checkout-section" id="orders-card">
+                <p class="muted" id="orders-empty">Carregando…</p>
+                <div id="orders-list"></div>
+            </section>
+        </div>
+    </main>
+    <script type="module" src="/js/pages/meus-pedidos.js"></script>
+</body>
+</html>

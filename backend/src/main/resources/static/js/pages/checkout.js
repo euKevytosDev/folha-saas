@@ -5,6 +5,7 @@ import { $, on } from "../utils/dom.js";
 import { formatBRL, formatQuantity } from "../utils/format.js";
 import { createThumb } from "../utils/media.js";
 import { nextOpenHint } from "../utils/hours.js";
+import { rememberOrder } from "../store/my-orders.js";
 import { currentStoreSlug, orderUrl, storeUrl } from "../utils/nav.js";
 
 const slug = currentStoreSlug();
@@ -464,6 +465,7 @@ on(form, "submit", async (event) => {
             headers: { "Idempotency-Key": idempotencyKey }
         });
         clearCart(state.store.id);
+        rememberOrder(state.store.id, { code: order.publicCode, token: order.viewToken });
         window.location.href = orderUrl(slug, order.publicCode, order.viewToken);
     } catch (error) {
         showError(error instanceof ApiError ? error.message : "Não foi possível finalizar o pedido.");

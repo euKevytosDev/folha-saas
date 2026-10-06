@@ -1,5 +1,5 @@
 import { api, ApiError } from "../api/client.js";
-import { currentStoreSlug, checkoutUrl } from "../utils/nav.js";
+import { currentStoreSlug, checkoutUrl, myOrdersUrl } from "../utils/nav.js";
 import { $, on } from "../utils/dom.js";
 import { formatBRL, formatQuantity, quantityHint, unitStep, discountPercent } from "../utils/format.js";
 import { nextOpenHint } from "../utils/hours.js";
@@ -8,6 +8,10 @@ import { addToCart, cartCount, clearCart, loadCart, setCartQuantity } from "../s
 import { whenIdle } from "../utils/idle.js";
 
 const slug = currentStoreSlug();
+const myOrdersLink = $("#my-orders");
+if (myOrdersLink && slug) {
+    myOrdersLink.href = myOrdersUrl(slug);
+}
 const state = {
     store: null,
     catalog: null,
