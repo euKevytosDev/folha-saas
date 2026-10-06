@@ -579,10 +579,6 @@ function renderCart() {
         deliveryEl.textContent = fee > 0 ? `Frete fixo ${formatBRL(fee)}` : "Grátis / a calcular";
     }
     $("#quote-total").textContent = formatBRL(state.quote?.total || 0);
-    const note = $("#cart-note");
-    if (note) {
-        note.textContent = "Totais estimados no aparelho. O preço final é confirmado pelo servidor no checkout.";
-    }
     syncCheckoutLink();
 }
 
