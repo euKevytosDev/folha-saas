@@ -154,7 +154,7 @@ function renderStorefrontHeader(store) {
             chips.push(["Entrega", `${delivery.deliveryEtaMinutes} min`]);
         }
         if (delivery.minOrderAmount != null) {
-            chips.push(["Mínimo", formatBRL(delivery.minOrderAmount)]);
+            chips.push(["Mínimo na entrega", formatBRL(delivery.minOrderAmount)]);
         }
         if (Number(delivery.fixedFee) > 0 && delivery.deliveryEnabled !== false) {
             chips.push(["Frete fixo", formatBRL(delivery.fixedFee)]);
@@ -815,16 +815,11 @@ function syncCheckoutLink() {
     const items = loadCart(state.store.id);
     const open = state.store.acceptingOrders !== false;
     const canSchedule = !open && state.store.scheduleWhenClosed === true;
-    const minOrder = Number(state.store.delivery?.minOrderAmount || 0);
-    const subtotal = Number(state.quote?.subtotal || 0);
-    const belowMin = minOrder > 0 && subtotal + 1e-9 < minOrder;
     let reason = "";
     if (!open && !canSchedule) {
         reason = "Loja fechada — não é possível finalizar o pedido agora.";
-    } else if (belowMin) {
-        reason = `Pedido mínimo de ${formatBRL(minOrder)}.`;
     }
-    const enabled = items.length > 0 && (open || canSchedule) && !belowMin;
+    const enabled = items.length > 0 && (open || canSchedule);
     if (els.cartBlock) {
         els.cartBlock.hidden = !reason;
         els.cartBlock.textContent = reason;
@@ -837,9 +832,7 @@ function syncCheckoutLink() {
         ? "Agendar pedido"
         : !open
             ? "Loja fechada"
-            : belowMin
-                ? "Abaixo do mínimo"
-                : "Finalizar pedido";
+            : "Finalizar pedido";
 }
 
 let searchTimer = 0;

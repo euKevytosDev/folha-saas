@@ -2853,7 +2853,7 @@ function renderStoreOpsCard() {
             chips.push(["Entrega", `${delivery.deliveryEtaMinutes} min`]);
         }
         if (delivery.minOrderAmount != null) {
-            chips.push(["Pedido mín.", formatBRL(delivery.minOrderAmount)]);
+            chips.push(["Mínimo na entrega", formatBRL(delivery.minOrderAmount)]);
         }
         if (Number(delivery.fixedFee) > 0) {
             chips.push(["Frete fixo", formatBRL(delivery.fixedFee)]);

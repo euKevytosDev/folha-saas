@@ -178,7 +178,7 @@ public class StoreCatalogService {
                 couponCode,
                 couponMessage,
                 availabilityService.isAcceptingOrders(store),
-                deliverySettings.getMinOrderAmount()
+                fulfillment == FulfillmentType.DELIVERY ? deliverySettings.getMinOrderAmount() : null
         );
     }
 

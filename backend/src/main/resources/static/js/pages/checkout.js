@@ -85,7 +85,10 @@ async function boot() {
 
 function syncMinOrderGate() {
     const button = $("#submit-order");
-    const minOrder = Number(state.quote?.minOrderAmount ?? state.store?.delivery?.minOrderAmount ?? 0);
+    const delivery = form.fulfillmentType.value === "DELIVERY";
+    const minOrder = delivery
+        ? Number(state.quote?.minOrderAmount ?? state.store?.delivery?.minOrderAmount ?? 0)
+        : 0;
     const subtotal = Number(state.quote?.subtotal || 0);
     const belowMin = minOrder > 0 && subtotal + 1e-9 < minOrder;
     const issueLines = (state.quote?.items || []).filter((line) => line.issue);
@@ -94,7 +97,7 @@ function syncMinOrderGate() {
             ? ` (${issueLines.length} item(ns) indisponível(is) não entram no total)`
             : "";
         showError(
-            `Pedido mínimo de ${formatBRL(minOrder)}. Subtotal atual: ${formatBRL(subtotal)}.${extra} Adicione mais itens para continuar.`
+            `Entrega a partir de ${formatBRL(minOrder)}. Subtotal atual: ${formatBRL(subtotal)}.${extra} Adicione mais itens ou escolha retirada.`
         );
         if (button) {
             button.disabled = true;

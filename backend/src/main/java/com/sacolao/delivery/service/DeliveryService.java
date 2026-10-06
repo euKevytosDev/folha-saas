@@ -117,8 +117,8 @@ public class DeliveryService {
         return fee;
     }
 
-    public void assertMinOrder(EstablishmentDeliverySettings settings, BigDecimal subtotal) {
-        if (settings.getMinOrderAmount() == null) {
+    public void assertMinOrder(EstablishmentDeliverySettings settings, FulfillmentType type, BigDecimal subtotal) {
+        if (type != FulfillmentType.DELIVERY || settings.getMinOrderAmount() == null) {
             return;
         }
         BigDecimal min = Money.of(settings.getMinOrderAmount());

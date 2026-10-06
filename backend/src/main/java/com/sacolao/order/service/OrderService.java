@@ -208,7 +208,7 @@ public class OrderService {
             stockConsumptions.merge(product, quantity, BigDecimal::add);
         }
 
-        deliveryService.assertMinOrder(deliverySettings, subtotal);
+        deliveryService.assertMinOrder(deliverySettings, request.fulfillmentType(), subtotal);
 
         CouponService.AppliedCoupon applied = couponService.apply(store.getId(), request.couponCode(), subtotal);
         BigDecimal discount = applied.discount();
