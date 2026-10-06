@@ -162,6 +162,16 @@ public class PaymentService {
     }
 
     @Transactional
+    public void markPaidForDeliveredOrder(UUID orderId) {
+        paymentRepository.findByOrder_IdAndEstablishment_Id(orderId, TenantContext.require())
+                .ifPresent(payment -> markPaid(
+                        payment,
+                        "delivered-" + Instant.now().toEpochMilli(),
+                        "{\"source\":\"delivered\"}"
+                ));
+    }
+
+    @Transactional
     public PaymentResponse confirmManual(UUID orderId) {
         Payment payment = paymentRepository.findByOrder_IdAndEstablishment_Id(orderId, TenantContext.require())
                 .orElseThrow(() -> new ResourceNotFoundException("Recurso não encontrado"));

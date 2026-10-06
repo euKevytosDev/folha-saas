@@ -285,6 +285,9 @@ public class OrderService {
                 couponRepository.findById(order.getCouponId()).ifPresent(couponService::releaseUsed);
             }
         }
+        if (next == OrderStatus.DELIVERED && previous != OrderStatus.DELIVERED) {
+            paymentService.markPaidForDeliveredOrder(order.getId());
+        }
         return toResponse(order);
     }
 
