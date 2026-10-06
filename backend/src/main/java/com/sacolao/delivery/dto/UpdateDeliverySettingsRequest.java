@@ -4,6 +4,7 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
 
@@ -15,6 +16,8 @@ public record UpdateDeliverySettingsRequest(
         @Min(0) Integer estimatedMinutes,
         @DecimalMin("0.00") @Digits(integer = 10, fraction = 2) BigDecimal minOrderAmount,
         @Min(0) Integer pickupEtaMinutes,
-        @Min(0) Integer deliveryEtaMinutes
+        @Min(0) Integer deliveryEtaMinutes,
+        Boolean collectEmail,
+        @Size(max = 4000) String deliveryNeighborhoods
 ) {
 }

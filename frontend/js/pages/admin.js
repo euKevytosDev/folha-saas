@@ -353,7 +353,9 @@ if (user.role !== "STAFF") {
                     pickupEtaMinutes: pickupEta === "" ? null : Number(pickupEta),
                     deliveryEtaMinutes: deliveryEta === "" ? null : Number(deliveryEta),
                     estimatedMinutes: deliveryEta === "" ? null : Number(deliveryEta),
-                    minOrderAmount: minOrder === "" ? null : Number(minOrder)
+                    minOrderAmount: minOrder === "" ? null : Number(minOrder),
+                    collectEmail: form.collectEmail.checked,
+                    deliveryNeighborhoods: form.deliveryNeighborhoods.value
                 }
             });
             hideAlert(alertBox);
@@ -2355,7 +2357,7 @@ function formatCpfDisplay(value) {
     return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
 }
 
-function paymentMethodLabel(method, payment) {
+function paymentMethodLabel(method, payment, fulfillmentType) {
     const onDelivery = payment?.provider === "MANUAL";
     switch (String(method || "").toUpperCase()) {
         case "PIX":
@@ -2363,7 +2365,7 @@ function paymentMethodLabel(method, payment) {
         case "CASH":
             return "Dinheiro";
         case "ON_DELIVERY":
-            return "Na entrega";
+            return String(fulfillmentType || "").toUpperCase() === "PICKUP" ? "Pagar na loja" : "Na entrega";
         case "CARD":
             return onDelivery ? "Cartão na entrega" : "Cartão";
         default:
@@ -2401,7 +2403,7 @@ function printNonFiscalReceipt(order) {
     const discount = Number(order.discount || 0);
     const deliveryFee = Number(order.deliveryFee || 0);
     const cpf = formatCpfDisplay(order.customerCpf);
-    const paymentMethod = paymentMethodLabel(order.paymentMethod || order.payment?.method, order.payment);
+    const paymentMethod = paymentMethodLabel(order.paymentMethod || order.payment?.method, order.payment, order.fulfillmentType);
     const paymentStatus = order.payment?.status ? paymentStatusLabel(order.payment.status) : "";
 
     const itemsHtml = items.map((item, index) => {
@@ -2763,6 +2765,14 @@ async function loadDeliverySettings() {
         form.minOrderAmount.value = settings.minOrderAmount ?? "";
         form.pickupEtaMinutes.value = settings.pickupEtaMinutes ?? "";
         form.deliveryEtaMinutes.value = settings.deliveryEtaMinutes ?? settings.estimatedMinutes ?? "";
+        if (form.collectEmail) {
+            form.collectEmail.checked = settings.collectEmail !== false;
+        }
+        if (form.deliveryNeighborhoods) {
+            form.deliveryNeighborhoods.value = Array.isArray(settings.neighborhoods)
+                ? settings.neighborhoods.join("\n")
+                : "";
+        }
         const feeNote = $("#delivery-fee-note");
         const fee = Number(settings.fixedFee || 0);
         if (feeNote) {

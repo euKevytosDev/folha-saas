@@ -12,9 +12,9 @@
     <link rel="stylesheet" href="/css/variables.css">
     <link rel="stylesheet" href="/css/reset.css">
     <link rel="stylesheet" href="/css/layout.css?v=c70535c856">
-    <link rel="stylesheet" href="/css/components.css?v=2ceaa7501d">
+    <link rel="stylesheet" href="/css/components.css?v=1fc60cfc96">
     <link rel="stylesheet" href="/css/pages/placeholder.css">
-    <link rel="stylesheet" href="/css/pages/store.css?v=0d6f08fdd1">
+    <link rel="stylesheet" href="/css/pages/store.css?v=074adc75a5">
     <link rel="stylesheet" href="/css/pages/checkout.css?v=c9f3709fcc">
     <link rel="stylesheet" href="/css/pages/admin.css?v=354ba270f6">
     <script src="/js/env.js"></script>
@@ -403,6 +403,15 @@
                             <label for="delivery-eta">Tempo de entrega (minutos)</label>
                             <input id="delivery-eta" name="deliveryEtaMinutes" type="number" min="0" step="1" placeholder="Ex.: 60">
                         </div>
+                        <div class="field">
+                            <label for="delivery-neighborhoods">Bairros com entrega</label>
+                            <textarea id="delivery-neighborhoods" name="deliveryNeighborhoods" rows="6" maxlength="4000" placeholder="Um bairro por linha"></textarea>
+                            <p class="muted">Se preencher, o cliente escolhe o bairro nessa lista. O CEP continua preenchendo a rua, a cidade e a UF, e não o bairro. Bairro fora da lista não recebe entrega.</p>
+                        </div>
+                        <label class="admin-check">
+                            <input id="delivery-collect-email" name="collectEmail" type="checkbox" checked>
+                            Pedir e-mail no checkout
+                        </label>
                         <button class="btn btn-primary" type="submit">Salvar frete</button>
                     </form>
                 </section>
@@ -558,6 +567,6 @@
         </div>
     </main>
     <div class="order-toast" id="order-toast" hidden role="status"></div>
-    <script type="module" src="/js/pages/admin.js?v=8e1c4d06de"></script>
+    <script type="module" src="/js/pages/admin.js?v=0f391f8b53"></script>
 </body>
 </html>

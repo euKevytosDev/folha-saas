@@ -43,6 +43,12 @@ public class EstablishmentDeliverySettings {
     @Column(name = "delivery_eta_minutes")
     private Integer deliveryEtaMinutes;
 
+    @Column(name = "collect_email", nullable = false)
+    private boolean collectEmail = true;
+
+    @Column(name = "delivery_neighborhoods")
+    private String deliveryNeighborhoods;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -131,6 +137,22 @@ public class EstablishmentDeliverySettings {
 
     public void setDeliveryEtaMinutes(Integer deliveryEtaMinutes) {
         this.deliveryEtaMinutes = deliveryEtaMinutes;
+    }
+
+    public boolean isCollectEmail() {
+        return collectEmail;
+    }
+
+    public void setCollectEmail(boolean collectEmail) {
+        this.collectEmail = collectEmail;
+    }
+
+    public String getDeliveryNeighborhoods() {
+        return deliveryNeighborhoods;
+    }
+
+    public void setDeliveryNeighborhoods(String deliveryNeighborhoods) {
+        this.deliveryNeighborhoods = deliveryNeighborhoods;
     }
 
     public Instant getCreatedAt() {

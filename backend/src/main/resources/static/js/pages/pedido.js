@@ -27,7 +27,7 @@ async function boot() {
         $("#order-status").textContent = statusLabel(order.status);
         $("#order-heading").textContent = headingFor(order);
         const scheduled = order.scheduledFor ? ` · Agendado para ${formatWhen(order.scheduledFor)}` : "";
-        $("#order-meta").textContent = `${fulfillmentLabel(order.fulfillmentType)} · ${paymentLabel(order.paymentMethod, order.payment)}${scheduled}`;
+        $("#order-meta").textContent = `${fulfillmentLabel(order.fulfillmentType)} · ${paymentLabel(order.paymentMethod, order.payment, order.fulfillmentType)}${scheduled}`;
         renderItems(order.items);
         $("#order-subtotal").textContent = formatBRL(order.subtotal);
         $("#order-total").textContent = formatBRL(order.total);
@@ -256,13 +256,16 @@ function fulfillmentLabel(type) {
     return type === "DELIVERY" ? "Entrega" : "Retirada";
 }
 
-function paymentLabel(method, payment) {
+function paymentLabel(method, payment, fulfillmentType) {
     const onDelivery = payment?.provider === "MANUAL";
     if (method === "PIX") {
         return onDelivery ? "Pix na entrega" : "PIX";
     }
     if (method === "CARD") {
         return onDelivery ? "Cartão na entrega" : "Cartão";
+    }
+    if (method === "ON_DELIVERY" && String(fulfillmentType || "").toUpperCase() === "PICKUP") {
+        return "Pagar na loja";
     }
     return ({
         CASH: "Dinheiro",

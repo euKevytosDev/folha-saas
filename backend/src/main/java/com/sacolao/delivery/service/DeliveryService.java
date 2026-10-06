@@ -16,6 +16,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.text.Normalizer;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -56,6 +61,13 @@ public class DeliveryService {
         settings.setDeliveryEtaMinutes(deliveryEta);
         settings.setEstimatedMinutes(deliveryEta != null ? deliveryEta : pickupEta);
         settings.setMinOrderAmount(request.minOrderAmount() == null ? null : Money.of(request.minOrderAmount()));
+        if (request.collectEmail() != null) {
+            settings.setCollectEmail(Boolean.TRUE.equals(request.collectEmail()));
+        }
+        if (request.deliveryNeighborhoods() != null) {
+            List<String> neighborhoods = parseNeighborhoods(request.deliveryNeighborhoods());
+            settings.setDeliveryNeighborhoods(neighborhoods.isEmpty() ? null : String.join("\n", neighborhoods));
+        }
         if (!settings.isDeliveryEnabled() && !settings.isPickupEnabled()) {
             throw new UnprocessableException("FULFILLMENT_REQUIRED", "Habilite entrega ou retirada");
         }
@@ -133,8 +145,63 @@ public class DeliveryService {
                 settings.getEstimatedMinutes(),
                 settings.getMinOrderAmount(),
                 pickup,
-                delivery
+                delivery,
+                settings.isCollectEmail(),
+                parseNeighborhoods(settings.getDeliveryNeighborhoods())
         );
+    }
+
+    public boolean hasNeighborhoodList(EstablishmentDeliverySettings settings) {
+        return !parseNeighborhoods(settings.getDeliveryNeighborhoods()).isEmpty();
+    }
+
+    public String canonicalNeighborhood(EstablishmentDeliverySettings settings, String chosen) {
+        String trimmed = chosen == null ? "" : chosen.trim().replaceAll("\\s+", " ");
+        List<String> allowed = parseNeighborhoods(settings.getDeliveryNeighborhoods());
+        if (allowed.isEmpty()) {
+            return trimmed.isEmpty() ? null : trimmed;
+        }
+        String key = fold(trimmed);
+        for (String item : allowed) {
+            if (fold(item).equals(key)) {
+                return item;
+            }
+        }
+        return null;
+    }
+
+    public static List<String> parseNeighborhoods(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return List.of();
+        }
+        LinkedHashSet<String> seen = new LinkedHashSet<>();
+        for (String line : raw.split("\\R")) {
+            String trimmed = line.trim().replaceAll("\\s+", " ");
+            if (trimmed.isEmpty() || trimmed.length() > 120) {
+                continue;
+            }
+            boolean duplicate = false;
+            String key = fold(trimmed);
+            for (String existing : seen) {
+                if (fold(existing).equals(key)) {
+                    duplicate = true;
+                    break;
+                }
+            }
+            if (!duplicate) {
+                seen.add(trimmed);
+            }
+            if (seen.size() >= 150) {
+                break;
+            }
+        }
+        return List.copyOf(new ArrayList<>(seen));
+    }
+
+    private static String fold(String value) {
+        String normalized = Normalizer.normalize(value, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "");
+        return normalized.toLowerCase(Locale.ROOT).trim();
     }
 
     private Establishment requireTenantEstablishment() {

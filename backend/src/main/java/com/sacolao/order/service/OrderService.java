@@ -131,8 +131,8 @@ public class OrderService {
         }
         EstablishmentDeliverySettings deliverySettings = deliveryService.requireSettings(store.getId());
         deliveryService.assertFulfillmentAllowed(deliverySettings, request.fulfillmentType());
-        validateFulfillment(request);
-        validatePaymentMethod(store.getId(), request.paymentMethod());
+        validateFulfillment(request, deliverySettings);
+        validatePaymentMethod(store.getId(), request.paymentMethod(), request.fulfillmentType());
         validateCustomerCpf(store.getId(), request);
         Map<LineKey, BigDecimal> quantities = mergeQuantities(request.items());
         if (quantities.isEmpty()) {
@@ -157,7 +157,7 @@ public class OrderService {
                 store,
                 request.customerName(),
                 request.customerPhone(),
-                request.customerEmail()
+                deliverySettings.isCollectEmail() ? request.customerEmail() : null
         );
 
         Order order = new Order();
@@ -169,7 +169,7 @@ public class OrderService {
         order.setPaymentMethod(request.paymentMethod());
         order.setCustomerName(request.customerName().trim());
         order.setCustomerPhone(CustomerService.normalizePhone(request.customerPhone()));
-        order.setCustomerEmail(blankToNull(request.customerEmail()));
+        order.setCustomerEmail(deliverySettings.isCollectEmail() ? blankToNull(request.customerEmail()) : null);
         order.setCustomerCpf(normalizeCpf(request.customerCpf()));
         order.setViewToken(nextViewToken());
         order.setNotes(blankToNull(request.notes()));
@@ -180,7 +180,7 @@ public class OrderService {
             }
             order.setScheduledFor(opening.toInstant());
         }
-        applyAddress(order, request);
+        applyAddress(order, request, deliverySettings);
 
         BigDecimal subtotal = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
         Map<Product, BigDecimal> stockConsumptions = new LinkedHashMap<>();
@@ -423,7 +423,7 @@ public class OrderService {
                 .orElseThrow(() -> new ResourceNotFoundException("Loja não encontrada"));
     }
 
-    private void validateFulfillment(CheckoutRequest request) {
+    private void validateFulfillment(CheckoutRequest request, EstablishmentDeliverySettings settings) {
         if (request.fulfillmentType() == FulfillmentType.DELIVERY) {
             if (isBlank(request.addressStreet())
                     || isBlank(request.addressNumber())
@@ -435,18 +435,23 @@ public class OrderService {
             if (request.addressState().trim().length() != 2) {
                 throw new UnprocessableException("INVALID_STATE", "UF inválida");
             }
+            if (deliveryService.hasNeighborhoodList(settings)
+                    && deliveryService.canonicalNeighborhood(settings, request.addressNeighborhood()) == null) {
+                throw new UnprocessableException("NEIGHBORHOOD_UNAVAILABLE", "Não entregamos nesse bairro");
+            }
         }
     }
 
-    private void applyAddress(Order order, CheckoutRequest request) {
+    private void applyAddress(Order order, CheckoutRequest request, EstablishmentDeliverySettings settings) {
         if (request.fulfillmentType() == FulfillmentType.PICKUP) {
             return;
         }
+        String neighborhood = deliveryService.canonicalNeighborhood(settings, request.addressNeighborhood());
         order.setAddressZipCode(blankToNull(request.addressZipCode()));
         order.setAddressStreet(request.addressStreet().trim());
         order.setAddressNumber(request.addressNumber().trim());
         order.setAddressComplement(blankToNull(request.addressComplement()));
-        order.setAddressNeighborhood(request.addressNeighborhood().trim());
+        order.setAddressNeighborhood(neighborhood == null ? request.addressNeighborhood().trim() : neighborhood);
         order.setAddressCity(request.addressCity().trim());
         order.setAddressState(request.addressState().trim().toUpperCase(Locale.ROOT));
     }
@@ -509,11 +514,18 @@ public class OrderService {
         }
     }
 
-    private void validatePaymentMethod(UUID establishmentId, PaymentMethod method) {
+    private void validatePaymentMethod(UUID establishmentId, PaymentMethod method, FulfillmentType fulfillment) {
         EstablishmentPaymentSettings settings = paymentSettingsRepository.findById(establishmentId).orElse(null);
-        if (settings != null && settings.isPayOnDeliveryOnly()
-                && method != PaymentMethod.PIX && method != PaymentMethod.CARD) {
-            throw new UnprocessableException("PAYMENT_METHOD", "Esta loja recebe apenas Pix ou cartão na entrega");
+        if (settings != null && settings.isPayOnDeliveryOnly()) {
+            if (fulfillment == FulfillmentType.PICKUP) {
+                if (method != PaymentMethod.ON_DELIVERY) {
+                    throw new UnprocessableException("PAYMENT_METHOD", "Na retirada, o pagamento é na loja");
+                }
+                return;
+            }
+            if (method != PaymentMethod.PIX && method != PaymentMethod.CARD) {
+                throw new UnprocessableException("PAYMENT_METHOD", "Na entrega, escolha Pix ou cartão");
+            }
         }
         if (method == PaymentMethod.PIX) {
             if (settings != null && !settings.isPixEnabled()) {

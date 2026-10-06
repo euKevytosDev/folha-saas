@@ -48,7 +48,10 @@ async function boot() {
         }
 
         applyFulfillmentOptions(state.store.delivery);
+        applyCustomerFields(state.store.delivery);
+        applyNeighborhoodOptions(state.store.delivery);
         applyPaymentOptions(state.store.payments);
+        syncAddressVisibility();
         syncCpfRequirement();
         await refreshQuote();
         if (state.quote?.acceptingOrders === false && !state.scheduling) {
@@ -123,26 +126,89 @@ function applyFulfillmentOptions(delivery) {
     }
 }
 
+function neighborhoodList() {
+    const list = state.store?.delivery?.neighborhoods;
+    return Array.isArray(list) ? list.filter((item) => String(item || "").trim()) : [];
+}
+
+function usesNeighborhoodList() {
+    return neighborhoodList().length > 0;
+}
+
+function applyCustomerFields(delivery) {
+    const collectEmail = delivery?.collectEmail !== false;
+    const emailField = $("#email-field");
+    if (emailField) {
+        emailField.hidden = !collectEmail;
+    }
+    if (form.customerEmail) {
+        form.customerEmail.disabled = !collectEmail;
+        if (!collectEmail) {
+            form.customerEmail.value = "";
+        }
+    }
+}
+
+function applyNeighborhoodOptions(delivery) {
+    const select = $("#neighborhood-select");
+    const input = $("#neighborhood");
+    const hint = $("#neighborhood-hint");
+    const names = Array.isArray(delivery?.neighborhoods) ? delivery.neighborhoods : [];
+    if (!select || !input) {
+        return;
+    }
+    select.replaceChildren(new Option("Selecione o bairro", ""));
+    names.forEach((name) => {
+        const label = String(name || "").trim();
+        if (label) {
+            select.append(new Option(label, label));
+        }
+    });
+    const restricted = names.some((name) => String(name || "").trim());
+    select.hidden = !restricted;
+    input.hidden = restricted;
+    input.disabled = restricted;
+    if (hint) {
+        hint.hidden = !restricted;
+    }
+}
+
+function selectedNeighborhood() {
+    if (usesNeighborhoodList()) {
+        return $("#neighborhood-select")?.value.trim() || "";
+    }
+    return form.addressNeighborhood.value.trim();
+}
+
 function applyPaymentOptions(payments) {
     const options = payments || { pixEnabled: true, cashEnabled: true, cardEnabled: true, onDeliveryEnabled: true };
     const onDeliveryOnly = options.payOnDeliveryOnly === true;
+    const pickup = form.fulfillmentType.value === "PICKUP";
     const labels = {
         PIX: onDeliveryOnly ? "Pix na entrega" : "PIX",
         CASH: "Dinheiro",
         CARD: onDeliveryOnly ? "Cartão na entrega" : "Cartão",
-        ON_DELIVERY: "Na entrega"
+        ON_DELIVERY: onDeliveryOnly && pickup ? "Pagar na loja" : "Na entrega"
     };
-    const map = {
-        PIX: options.pixEnabled !== false,
-        CASH: options.cashEnabled !== false,
-        CARD: options.cardEnabled !== false,
-        ON_DELIVERY: options.onDeliveryEnabled !== false
-    };
+    const map = onDeliveryOnly
+        ? (pickup
+            ? { PIX: false, CASH: false, CARD: false, ON_DELIVERY: true }
+            : { PIX: options.pixEnabled !== false, CASH: false, CARD: options.cardEnabled !== false, ON_DELIVERY: false })
+        : {
+            PIX: options.pixEnabled !== false,
+            CASH: options.cashEnabled !== false,
+            CARD: options.cardEnabled !== false,
+            ON_DELIVERY: options.onDeliveryEnabled !== false
+        };
     const note = $("#payment-note");
     if (note) {
-        note.textContent = onDeliveryOnly
-            ? "Pagamento na entrega. O entregador leva a maquininha. Não é cobrança online."
-            : "PIX pode ser gerado na hora (mock ou Mercado Pago). Dinheiro e na entrega são confirmados pela loja.";
+        if (onDeliveryOnly && pickup) {
+            note.textContent = "Você paga na loja, na hora da retirada.";
+        } else if (onDeliveryOnly) {
+            note.textContent = "Você paga na entrega, no Pix ou no cartão.";
+        } else {
+            note.textContent = "PIX pode ser gerado na hora. Dinheiro e na entrega são confirmados pela loja.";
+        }
     }
     let firstEnabled = null;
     form.querySelectorAll('input[name="paymentMethod"]').forEach((input) => {
@@ -152,7 +218,11 @@ function applyPaymentOptions(payments) {
             span.textContent = labels[input.value];
         }
         input.disabled = !enabled;
-        input.closest("label")?.classList.toggle("is-disabled", !enabled);
+        const label = input.closest("label");
+        if (label) {
+            label.hidden = !enabled;
+            label.classList.toggle("is-disabled", !enabled);
+        }
         if (enabled && !firstEnabled) {
             firstEnabled = input;
         }
@@ -251,9 +321,18 @@ function renderSummary(lines, blocked = []) {
 function syncAddressVisibility() {
     const delivery = form.fulfillmentType.value === "DELIVERY";
     $("#address-fields").hidden = !delivery;
-    ["street", "number", "neighborhood", "city", "state"].forEach((id) => {
+    ["street", "number", "city", "state"].forEach((id) => {
         $(`#${id}`).required = delivery;
     });
+    const restricted = usesNeighborhoodList();
+    const neighborhood = $("#neighborhood");
+    const select = $("#neighborhood-select");
+    if (neighborhood) {
+        neighborhood.required = delivery && !restricted;
+    }
+    if (select) {
+        select.required = delivery && restricted;
+    }
 }
 
 async function lookupCep(raw) {
@@ -277,12 +356,16 @@ async function lookupCep(raw) {
             return;
         }
         form.addressStreet.value = data.logradouro || form.addressStreet.value;
-        form.addressNeighborhood.value = data.bairro || form.addressNeighborhood.value;
+        if (!usesNeighborhoodList()) {
+            form.addressNeighborhood.value = data.bairro || form.addressNeighborhood.value;
+        }
         form.addressCity.value = data.localidade || form.addressCity.value;
         form.addressState.value = (data.uf || form.addressState.value || "").toUpperCase();
         form.addressZipCode.value = cep.replace(/(\d{5})(\d{3})/, "$1-$2");
         if (cepHint) {
-            cepHint.textContent = "Endereço preenchido. Confira o número.";
+            cepHint.textContent = usesNeighborhoodList()
+                ? "Rua preenchida. Escolha o bairro."
+                : "Endereço preenchido. Confira o número.";
         }
         form.addressNumber.focus();
     } catch {
@@ -299,6 +382,7 @@ on(form, "change", async (event) => {
     }
     if (event.target.name === "fulfillmentType") {
         syncAddressVisibility();
+        applyPaymentOptions(state.store?.payments);
         try {
             await refreshQuote();
             syncMinOrderGate();
@@ -351,7 +435,9 @@ on(form, "submit", async (event) => {
             items,
             customerName: form.customerName.value.trim(),
             customerPhone: form.customerPhone.value.trim(),
-            customerEmail: form.customerEmail.value.trim() || null,
+            customerEmail: form.customerEmail && !form.customerEmail.disabled
+                ? (form.customerEmail.value.trim() || null)
+                : null,
             customerCpf: form.customerCpf?.value?.trim() || null,
             fulfillmentType: form.fulfillmentType.value,
             paymentMethod: form.paymentMethod.value,
@@ -364,7 +450,7 @@ on(form, "submit", async (event) => {
             payload.addressStreet = form.addressStreet.value.trim();
             payload.addressNumber = form.addressNumber.value.trim();
             payload.addressComplement = form.addressComplement.value.trim() || null;
-            payload.addressNeighborhood = form.addressNeighborhood.value.trim();
+            payload.addressNeighborhood = selectedNeighborhood();
             payload.addressCity = form.addressCity.value.trim();
             payload.addressState = form.addressState.value.trim().toUpperCase();
         }
