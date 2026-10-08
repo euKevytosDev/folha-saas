@@ -9,15 +9,9 @@ import { config } from "../config.js";
 
 function roleLabel(role) {
     if (role === "OWNER") {
-        return "Admin";
+        return "Dono";
     }
-    if (role === "ADMIN") {
-        return "Gerente";
-    }
-    if (role === "STAFF") {
-        return "Atendente";
-    }
-    return role || "";
+    return "";
 }
 
 function formatDiscountNumber(value) {
@@ -53,7 +47,7 @@ if (!me) {
 const { user } = me;
 let establishment = me.establishment;
 $("#user-name").textContent = user.name;
-$("#user-role").textContent = roleLabel(user.role);
+$("#user-role").textContent = roleLabel(user.role) || "Painel";
 $("#store-name").textContent = establishment?.name ?? "Estabelecimento";
 $("#store-slug").textContent = establishment ? storeUrl(establishment.slug) : "";
 $("#store-plan").textContent = establishment?.planCode ?? "";
@@ -65,6 +59,11 @@ $("#logout-button")?.addEventListener("click", () => logout());
 
 if (user.role === "STAFF") {
     document.querySelectorAll("[data-owner-only]").forEach((el) => {
+        el.hidden = true;
+    });
+}
+if (user.role !== "OWNER") {
+    document.querySelectorAll('[data-panel="equipe"]').forEach((el) => {
         el.hidden = true;
     });
 }
@@ -390,11 +389,7 @@ if (user.role !== "STAFF") {
     });
 }
 
-const usersCard = $("#users-card");
-if (user.role !== "STAFF") {
-    if (user.role === "ADMIN") {
-        document.querySelector("#member-role option[value='ADMIN']")?.remove();
-    }
+if (user.role === "OWNER") {
     await renderUsers().catch((error) => {
         showFormAlert($("#users-alert"), error, "Não foi possível carregar a equipe.");
     });
@@ -409,7 +404,7 @@ if (user.role !== "STAFF") {
                     name: control(form, "name")?.value,
                     email: form.email.value,
                     password: form.password.value,
-                    role: form.role.value
+                    role: "ADMIN"
                 }
             });
             form.reset();
@@ -1299,7 +1294,7 @@ async function renderUsers() {
     }
     const users = await api("/users");
     list.replaceChildren();
-    users.forEach((item) => {
+    users.filter((item) => item.active !== false).forEach((item) => {
         const row = document.createElement("div");
         row.className = "user-row";
         const identity = document.createElement("div");
@@ -1307,11 +1302,37 @@ async function renderUsers() {
         name.textContent = item.name;
         const meta = document.createElement("p");
         meta.className = "muted";
-        meta.textContent = `${item.email} · ${roleLabel(item.role)}`;
+        const label = roleLabel(item.role);
+        meta.textContent = label ? `${item.email} · ${label}` : item.email;
         identity.append(name, meta);
         row.append(identity);
+        if (item.role !== "OWNER") {
+            const remove = document.createElement("button");
+            remove.type = "button";
+            remove.className = "btn btn-ghost";
+            remove.textContent = "Remover";
+            remove.addEventListener("click", () => removeMember(item));
+            row.append(remove);
+        }
         list.append(row);
     });
+}
+
+async function removeMember(item) {
+    if (!window.confirm(`Remover ${item.name} da equipe?`)) {
+        return;
+    }
+    const alertBox = $("#users-alert");
+    try {
+        await api(`/users/${item.id}`, {
+            method: "PUT",
+            body: { active: false }
+        });
+        hideAlert(alertBox);
+        await renderUsers();
+    } catch (error) {
+        showFormAlert(alertBox, error, "Não foi possível remover essa pessoa.");
+    }
 }
 
 async function refreshCatalog() {

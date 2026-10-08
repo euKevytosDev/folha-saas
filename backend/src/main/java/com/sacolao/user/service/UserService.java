@@ -69,15 +69,12 @@ public class UserService {
     public UserResponse createMember(CreateUserRequest request) {
         AuthenticatedUser current = SecurityUtils.requireUser();
         UUID tenantId = TenantContext.require();
+        if (current.role() != UserRole.OWNER) {
+            throw new ForbiddenException("Acesso negado");
+        }
         UserRole requested = request.role();
         if (requested == UserRole.SUPER_ADMIN || requested == UserRole.OWNER) {
             throw new UnprocessableException("INVALID_ROLE", "Não é permitido criar este tipo de usuário");
-        }
-        if (current.role() == UserRole.ADMIN && requested != UserRole.STAFF) {
-            throw new ForbiddenException("Acesso negado");
-        }
-        if (current.role() != UserRole.OWNER && current.role() != UserRole.ADMIN) {
-            throw new ForbiddenException("Acesso negado");
         }
         String email = EmailNormalizer.normalize(request.email());
         if (userRepository.existsByEmail(email)) {
@@ -89,7 +86,7 @@ public class UserService {
         user.setName(request.name().trim());
         user.setEmail(email);
         user.setPasswordHash(passwordEncoder.encode(request.password()));
-        user.setRole(requested);
+        user.setRole(UserRole.ADMIN);
         user.setActive(true);
         return UserMapper.toResponse(userRepository.save(user));
     }
@@ -116,20 +113,11 @@ public class UserService {
         UUID tenantId = TenantContext.require();
         User user = userRepository.findByIdAndEstablishment_Id(id, tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Recurso não encontrado"));
-        if (user.getRole() == UserRole.OWNER && current.role() != UserRole.OWNER) {
+        if (current.role() != UserRole.OWNER) {
             throw new ForbiddenException("Acesso negado");
         }
-        if (request.role() != null) {
-            if (request.role() == UserRole.SUPER_ADMIN || request.role() == UserRole.OWNER) {
-                throw new UnprocessableException("INVALID_ROLE", "Não é permitido atribuir este tipo de usuário");
-            }
-            if (user.getRole() == UserRole.OWNER) {
-                throw new UnprocessableException("INVALID_ROLE", "Não é permitido alterar o perfil do proprietário");
-            }
-            if (current.role() == UserRole.ADMIN && request.role() != UserRole.STAFF) {
-                throw new ForbiddenException("Acesso negado");
-            }
-            user.setRole(request.role());
+        if (user.getRole() == UserRole.OWNER && Boolean.FALSE.equals(request.active())) {
+            throw new UnprocessableException("INVALID_STATUS", "Não é possível remover o dono");
         }
         if (request.name() != null) {
             user.setName(request.name().trim());
