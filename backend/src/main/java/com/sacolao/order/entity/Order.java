@@ -49,6 +49,9 @@ public class Order {
     @Column(nullable = false, length = 32)
     private OrderStatus status = OrderStatus.PENDING;
 
+    @Column(name = "history_hidden", nullable = false)
+    private boolean historyHidden;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "fulfillment_type", nullable = false, length = 16)
     private FulfillmentType fulfillmentType;
@@ -214,6 +217,14 @@ public class Order {
 
     public void setStatus(OrderStatus status) {
         this.status = status;
+    }
+
+    public boolean isHistoryHidden() {
+        return historyHidden;
+    }
+
+    public void setHistoryHidden(boolean historyHidden) {
+        this.historyHidden = historyHidden;
     }
 
     public FulfillmentType getFulfillmentType() {

@@ -45,6 +45,7 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
             left join fetch o.items i
             left join fetch i.product
             where o.establishment.id = :establishmentId
+              and o.historyHidden = false
               and (:status is null or o.status = :status)
             order by o.createdAt desc
             """)
@@ -53,9 +54,9 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
             @Param("status") OrderStatus status
     );
 
-    long countByEstablishment_IdAndStatus(UUID establishmentId, OrderStatus status);
+    long countByEstablishment_IdAndStatusAndHistoryHiddenFalse(UUID establishmentId, OrderStatus status);
 
-    long countByEstablishment_Id(UUID establishmentId);
+    long countByEstablishment_IdAndHistoryHiddenFalse(UUID establishmentId);
 
     @Query("""
             select o from Order o

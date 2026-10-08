@@ -2147,12 +2147,24 @@ function renderOrders(orders) {
 
         const head = document.createElement("div");
         head.className = "order-admin-head";
+        const titleGroup = document.createElement("div");
+        titleGroup.className = "order-admin-title";
         const title = document.createElement("strong");
         title.textContent = `${order.publicCode} · ${order.customerName}`;
         const badge = document.createElement("span");
         badge.className = "badge";
         badge.textContent = statusLabel(order.status);
-        head.append(title, badge);
+        titleGroup.append(title, badge);
+        head.append(titleGroup);
+        if (order.status === "DELIVERED" || order.status === "CANCELLED") {
+            const remove = document.createElement("button");
+            remove.type = "button";
+            remove.className = "order-history-remove";
+            remove.setAttribute("aria-label", `Tirar pedido ${order.publicCode} do histórico`);
+            remove.textContent = "×";
+            remove.addEventListener("click", () => hideOrderFromHistory(order));
+            head.append(remove);
+        }
 
         const meta = document.createElement("p");
         meta.className = "muted";
@@ -2256,6 +2268,18 @@ function renderOrders(orders) {
         }
         list.append(row);
     });
+}
+
+async function hideOrderFromHistory(order) {
+    if (!window.confirm(`Tirar o pedido ${order.publicCode} do histórico?`)) {
+        return;
+    }
+    try {
+        await api(`/orders/${order.id}/history`, { method: "DELETE" });
+        await refreshOrders();
+    } catch (error) {
+        showFormAlert($("#orders-alert"), error, "Não foi possível tirar do histórico.");
+    }
 }
 
 function toWhatsAppNumber(phone) {

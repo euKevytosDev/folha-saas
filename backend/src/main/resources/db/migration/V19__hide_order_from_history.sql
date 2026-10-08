@@ -1,0 +1,2 @@
+ALTER TABLE orders
+    ADD COLUMN history_hidden BOOLEAN NOT NULL DEFAULT FALSE;

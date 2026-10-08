@@ -291,6 +291,15 @@ public class OrderService {
         return toResponse(order);
     }
 
+    @Transactional
+    public void hideFromHistory(UUID id) {
+        Order order = requireInTenant(id);
+        if (order.getStatus() != OrderStatus.DELIVERED && order.getStatus() != OrderStatus.CANCELLED) {
+            throw new UnprocessableException("ORDER_OPEN", "Só dá para tirar do histórico um pedido já finalizado");
+        }
+        order.setHistoryHidden(true);
+    }
+
     @Transactional(readOnly = true)
     public CashReportResponse cashReport(LocalDate from, LocalDate to) {
         LocalDate today = LocalDate.now(STORE_ZONE);
@@ -375,13 +384,13 @@ public class OrderService {
     public OrderSummaryResponse summary() {
         UUID tenantId = TenantContext.require();
         return new OrderSummaryResponse(
-                orderRepository.countByEstablishment_Id(tenantId),
-                orderRepository.countByEstablishment_IdAndStatus(tenantId, OrderStatus.PENDING),
-                orderRepository.countByEstablishment_IdAndStatus(tenantId, OrderStatus.CONFIRMED),
-                orderRepository.countByEstablishment_IdAndStatus(tenantId, OrderStatus.PREPARING),
-                orderRepository.countByEstablishment_IdAndStatus(tenantId, OrderStatus.DISPATCHED),
-                orderRepository.countByEstablishment_IdAndStatus(tenantId, OrderStatus.DELIVERED),
-                orderRepository.countByEstablishment_IdAndStatus(tenantId, OrderStatus.CANCELLED)
+                orderRepository.countByEstablishment_IdAndHistoryHiddenFalse(tenantId),
+                orderRepository.countByEstablishment_IdAndStatusAndHistoryHiddenFalse(tenantId, OrderStatus.PENDING),
+                orderRepository.countByEstablishment_IdAndStatusAndHistoryHiddenFalse(tenantId, OrderStatus.CONFIRMED),
+                orderRepository.countByEstablishment_IdAndStatusAndHistoryHiddenFalse(tenantId, OrderStatus.PREPARING),
+                orderRepository.countByEstablishment_IdAndStatusAndHistoryHiddenFalse(tenantId, OrderStatus.DISPATCHED),
+                orderRepository.countByEstablishment_IdAndStatusAndHistoryHiddenFalse(tenantId, OrderStatus.DELIVERED),
+                orderRepository.countByEstablishment_IdAndStatusAndHistoryHiddenFalse(tenantId, OrderStatus.CANCELLED)
         );
     }
 
