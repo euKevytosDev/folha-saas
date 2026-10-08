@@ -154,6 +154,42 @@
     border-bottom: 1px solid var(--color-border);
 }
 
+.order-admin-row.is-cancelled {
+    margin: 0.45rem 0;
+    padding: 0.85rem 0.9rem;
+    border: 1px solid #f0b4ae;
+    border-radius: 12px;
+    background: #fff4f3;
+}
+
+.badge.is-cancelled {
+    background: #fde2e0;
+    color: #9b1c1c;
+}
+
+.checkout-section.is-cancelled {
+    border-color: #f0b4ae;
+    background: #fff6f5;
+}
+
+.cancel-order-box {
+    display: grid;
+    gap: 0.45rem;
+    margin-top: 1rem;
+}
+
+.btn-cancel-order {
+    min-height: 44px;
+    background: #fff;
+    color: #9b1c1c;
+    border: 1px solid #e7a29c;
+}
+
+.btn-cancel-order:hover {
+    background: #fff1f0;
+    color: #7f1515;
+}
+
 .order-admin-head {
     display: flex;
     flex-wrap: wrap;

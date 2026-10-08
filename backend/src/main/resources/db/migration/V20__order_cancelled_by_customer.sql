@@ -1,0 +1,2 @@
+ALTER TABLE orders
+    ADD COLUMN cancelled_by_customer BOOLEAN NOT NULL DEFAULT FALSE;

@@ -28,6 +28,7 @@ public final class OrderMapper {
                 order.getPublicCode(),
                 order.getViewToken(),
                 order.getStatus(),
+                order.isCancelledByCustomer(),
                 order.getFulfillmentType(),
                 order.getPaymentMethod(),
                 order.getCustomerName(),

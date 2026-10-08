@@ -35,6 +35,15 @@ public class StoreOrderController {
         return orderService.checkout(slug, request, idempotencyKey);
     }
 
+    @PostMapping("/{publicCode}/cancel")
+    public OrderResponse cancel(
+            @PathVariable String slug,
+            @PathVariable String publicCode,
+            @RequestParam("token") String token
+    ) {
+        return orderService.cancelByCustomer(slug, publicCode, token);
+    }
+
     @GetMapping("/{publicCode}")
     public OrderResponse get(
             @PathVariable String slug,

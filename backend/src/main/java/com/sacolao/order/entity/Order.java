@@ -52,6 +52,9 @@ public class Order {
     @Column(name = "history_hidden", nullable = false)
     private boolean historyHidden;
 
+    @Column(name = "cancelled_by_customer", nullable = false)
+    private boolean cancelledByCustomer;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "fulfillment_type", nullable = false, length = 16)
     private FulfillmentType fulfillmentType;
@@ -225,6 +228,14 @@ public class Order {
 
     public void setHistoryHidden(boolean historyHidden) {
         this.historyHidden = historyHidden;
+    }
+
+    public boolean isCancelledByCustomer() {
+        return cancelledByCustomer;
+    }
+
+    public void setCancelledByCustomer(boolean cancelledByCustomer) {
+        this.cancelledByCustomer = cancelledByCustomer;
     }
 
     public FulfillmentType getFulfillmentType() {

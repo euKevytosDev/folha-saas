@@ -39,9 +39,63 @@ async function boot() {
         $("#order-total").textContent = formatBRL(order.total);
         renderDetails(order);
         renderPayment(order.payment);
+        renderCancel(order);
         schedulePoll(order);
     } catch (error) {
         showError(error instanceof ApiError ? error.message : "Não foi possível carregar o pedido.");
+    }
+}
+
+function renderCancel(order) {
+    const card = $("#order-card");
+    const badge = $("#order-status");
+    const cancelled = order.status === "CANCELLED";
+    card?.classList.toggle("is-cancelled", cancelled);
+    badge?.classList.toggle("is-cancelled", cancelled);
+    if (cancelled && order.cancelledByCustomer) {
+        if (badge) {
+            badge.textContent = "Cancelado por você";
+        }
+        $("#order-heading").textContent = "Você cancelou este pedido";
+    }
+    let box = $("#cancel-order-box");
+    if (!box && card) {
+        box = document.createElement("div");
+        box.id = "cancel-order-box";
+        box.className = "cancel-order-box";
+        card.append(box);
+    }
+    if (!box) {
+        return;
+    }
+    box.replaceChildren();
+    if (cancelled || order.status === "DELIVERED") {
+        return;
+    }
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "btn btn-cancel-order";
+    button.textContent = "Cancelar pedido";
+    button.addEventListener("click", () => cancelMyOrder(order));
+    const hint = document.createElement("p");
+    hint.className = "muted";
+    hint.textContent = "A loja vê na hora que você cancelou e para de preparar.";
+    box.append(button, hint);
+}
+
+async function cancelMyOrder(order) {
+    if (!window.confirm(`Cancelar o pedido ${order.publicCode}?`)) {
+        return;
+    }
+    try {
+        await api(
+            `/store/${encodeURIComponent(slug)}/orders/${encodeURIComponent(order.publicCode)}/cancel?token=${encodeURIComponent(token)}`,
+            { method: "POST" }
+        );
+        alertBox.hidden = true;
+        await boot();
+    } catch (error) {
+        showError(error instanceof ApiError ? error.message : "Não foi possível cancelar o pedido.");
     }
 }
 

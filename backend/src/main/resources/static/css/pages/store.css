@@ -65,7 +65,32 @@
     border-top: 1px solid var(--color-border);
 }
 
-.my-order:first-child {
+.my-order a {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.85rem;
+    flex: 1;
+    min-width: 0;
+    color: inherit;
+    text-decoration: none;
+}
+
+.my-order.is-cancelled {
+    margin: 0.35rem 0;
+    padding: 0.75rem 0.8rem;
+    border: 1px solid #f0b4ae;
+    border-radius: 12px;
+    background: #fff4f3;
+}
+
+.my-order .btn-cancel-order {
+    flex: none;
+    min-height: 40px;
+    padding: 0.4rem 0.75rem;
+}
+
+.my-order:first-child:not(.is-cancelled) {
     border-top: 0;
     padding-top: 0;
 }

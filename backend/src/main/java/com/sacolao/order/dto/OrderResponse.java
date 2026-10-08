@@ -19,6 +19,7 @@ public record OrderResponse(
         String publicCode,
         String viewToken,
         OrderStatus status,
+        boolean cancelledByCustomer,
         FulfillmentType fulfillmentType,
         PaymentMethod paymentMethod,
         String customerName,

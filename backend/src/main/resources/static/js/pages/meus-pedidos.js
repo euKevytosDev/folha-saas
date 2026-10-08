@@ -44,20 +44,33 @@ async function boot() {
         }
         empty.hidden = true;
         orders.forEach(({ order, token }) => {
+            const row = document.createElement("div");
+            row.className = "my-order";
+            if (order.status === "CANCELLED") {
+                row.classList.add("is-cancelled");
+            }
             const link = document.createElement("a");
-            link.className = "my-order";
             link.href = orderUrl(slug, order.publicCode, order.viewToken || token);
             const copy = document.createElement("span");
             const title = document.createElement("strong");
             title.textContent = order.publicCode;
             const meta = document.createElement("span");
             meta.className = "muted";
-            meta.textContent = `${statusLabel(order.status)} · ${formatWhen(order.createdAt)}`;
+            meta.textContent = `${statusLabel(order)} · ${formatWhen(order.createdAt)}`;
             copy.append(title, meta);
             const total = document.createElement("strong");
             total.textContent = formatBRL(order.total);
             link.append(copy, total);
-            list.append(link);
+            row.append(link);
+            if (order.status !== "CANCELLED" && order.status !== "DELIVERED") {
+                const cancel = document.createElement("button");
+                cancel.type = "button";
+                cancel.className = "btn btn-cancel-order";
+                cancel.textContent = "Cancelar";
+                cancel.addEventListener("click", () => cancelRemembered(order, token));
+                row.append(cancel);
+            }
+            list.append(row);
         });
     } catch {
         showError("Não foi possível abrir seus pedidos.");
@@ -65,7 +78,30 @@ async function boot() {
     }
 }
 
-function statusLabel(status) {
+async function cancelRemembered(order, token) {
+    if (!window.confirm(`Cancelar o pedido ${order.publicCode}?`)) {
+        return;
+    }
+    try {
+        await api(
+            `/store/${encodeURIComponent(slug)}/orders/${encodeURIComponent(order.publicCode)}/cancel?token=${encodeURIComponent(order.viewToken || token)}`,
+            { method: "POST" }
+        );
+        list.replaceChildren();
+        empty.hidden = false;
+        empty.textContent = "Carregando…";
+        alertBox.hidden = true;
+        await boot();
+    } catch (error) {
+        showError(error?.message || "Não foi possível cancelar o pedido.");
+    }
+}
+
+function statusLabel(order) {
+    if (order?.status === "CANCELLED" && order.cancelledByCustomer) {
+        return "Cancelado por você";
+    }
+    const status = order?.status || order;
     return ({
         PENDING: "Pendente",
         CONFIRMED: "Confirmado",

@@ -255,6 +255,22 @@ public class OrderService {
         return toResponse(order);
     }
 
+    @Transactional
+    public OrderResponse cancelByCustomer(String slug, String publicCode, String viewToken) {
+        Establishment store = requireActiveStore(slug);
+        Order order = orderRepository.findDetailedByPublicCodeAndEstablishmentId(normalizeCode(publicCode), store.getId())
+                .orElseThrow(this::notFound);
+        assertViewToken(order, viewToken);
+        if (order.getStatus() == OrderStatus.DELIVERED) {
+            throw new UnprocessableException("ORDER_DELIVERED", "Pedido já entregue não pode ser cancelado");
+        }
+        if (order.getStatus() == OrderStatus.CANCELLED) {
+            throw new UnprocessableException("ORDER_CANCELLED", "Este pedido já está cancelado");
+        }
+        markCancelled(order, true);
+        return toResponse(order);
+    }
+
     @Transactional(readOnly = true)
     public List<OrderResponse> list(OrderStatus status) {
         return orderRepository.findAllDetailedInTenant(TenantContext.require(), status).stream()
@@ -278,17 +294,29 @@ public class OrderService {
             );
         }
         OrderStatus previous = order.getStatus();
-        order.setStatus(next);
-        if (next == OrderStatus.CANCELLED && previous != OrderStatus.CANCELLED) {
-            stockService.restoreForCancelledOrder(order);
-            if (order.getCouponId() != null) {
-                couponRepository.findById(order.getCouponId()).ifPresent(couponService::releaseUsed);
+        if (next == OrderStatus.CANCELLED) {
+            markCancelled(order, false);
+        } else {
+            order.setStatus(next);
+            if (next == OrderStatus.DELIVERED && previous != OrderStatus.DELIVERED) {
+                paymentService.markPaidForDeliveredOrder(order.getId());
             }
         }
-        if (next == OrderStatus.DELIVERED && previous != OrderStatus.DELIVERED) {
-            paymentService.markPaidForDeliveredOrder(order.getId());
-        }
         return toResponse(order);
+    }
+
+    private void markCancelled(Order order, boolean byCustomer) {
+        if (order.getStatus() == OrderStatus.CANCELLED) {
+            return;
+        }
+        order.setStatus(OrderStatus.CANCELLED);
+        if (byCustomer) {
+            order.setCancelledByCustomer(true);
+        }
+        stockService.restoreForCancelledOrder(order);
+        if (order.getCouponId() != null) {
+            couponRepository.findById(order.getCouponId()).ifPresent(couponService::releaseUsed);
+        }
     }
 
     @Transactional

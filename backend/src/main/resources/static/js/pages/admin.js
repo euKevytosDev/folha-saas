@@ -1956,7 +1956,7 @@ function renderDashboard(summary, orders) {
         title.textContent = `${order.publicCode} · ${order.customerName}`;
         const meta = document.createElement("span");
         meta.className = "muted";
-        meta.textContent = `${statusLabel(order.status)} · ${fulfillmentLabel(order.fulfillmentType)}`;
+        meta.textContent = `${orderStatusLabel(order)} · ${fulfillmentLabel(order.fulfillmentType)}`;
         body.append(title, meta);
         const total = document.createElement("strong");
         total.textContent = formatBRL(order.total);
@@ -2141,6 +2141,10 @@ function renderOrders(orders) {
     orders.forEach((order) => {
         const row = document.createElement("div");
         row.className = "order-admin-row";
+        const cancelled = order.status === "CANCELLED";
+        if (cancelled) {
+            row.classList.add("is-cancelled");
+        }
         if (freshOrderIds.has(order.id)) {
             row.classList.add("is-fresh");
         }
@@ -2152,8 +2156,8 @@ function renderOrders(orders) {
         const title = document.createElement("strong");
         title.textContent = `${order.publicCode} · ${order.customerName}`;
         const badge = document.createElement("span");
-        badge.className = "badge";
-        badge.textContent = statusLabel(order.status);
+        badge.className = cancelled ? "badge is-cancelled" : "badge";
+        badge.textContent = orderStatusLabel(order);
         titleGroup.append(title, badge);
         head.append(titleGroup);
         if (order.status === "DELIVERED" || order.status === "CANCELLED") {
@@ -2234,7 +2238,7 @@ function renderOrders(orders) {
             actions.append(waBtn);
         }
 
-        if (payment && payment.status !== "PAID" && (
+        if (!cancelled && payment && payment.status !== "PAID" && (
             ["CASH", "ON_DELIVERY"].includes(payment.method) || payment.provider === "MANUAL"
         )) {
             const confirmPay = document.createElement("button");
@@ -2245,9 +2249,11 @@ function renderOrders(orders) {
             actions.append(confirmPay);
         }
 
-        appendNfceActions(actions, order);
+        if (!cancelled) {
+            appendNfceActions(actions, order);
+        }
 
-        if (next) {
+        if (!cancelled && next) {
             const advance = document.createElement("button");
             advance.type = "button";
             advance.className = "btn btn-primary";
@@ -2255,7 +2261,7 @@ function renderOrders(orders) {
             advance.addEventListener("click", () => updateOrderStatus(order.id, next));
             actions.append(advance);
         }
-        if (canCancel(order.status)) {
+        if (!cancelled && canCancel(order.status)) {
             const cancel = document.createElement("button");
             cancel.type = "button";
             cancel.className = "btn btn-ghost";
@@ -2565,7 +2571,7 @@ function printNonFiscalReceipt(order) {
     <div class="pair"><span>Data do pedido</span><span>${escapeHtml(formatOrderDate(order.createdAt))}</span></div>
     <div class="pair"><span>Hora do pedido</span><span>${escapeHtml(formatOrderClock(order.createdAt))}</span></div>
     <div class="line muted">Horário de Brasília</div>
-    <div class="pair"><span>Status</span><span>${escapeHtml(statusLabel(order.status))}</span></div>
+    <div class="pair"><span>Status</span><span>${escapeHtml(orderStatusLabel(order))}</span></div>
     <div class="pair"><span>Tipo</span><span>${escapeHtml(fulfillmentLabel(order.fulfillmentType))}</span></div>
     <hr class="sep">
     <div class="line"><strong>Cliente</strong></div>
@@ -3289,6 +3295,13 @@ function statusLabel(status) {
         DELIVERED: "Entregue",
         CANCELLED: "Cancelado"
     })[status] || status;
+}
+
+function orderStatusLabel(order) {
+    if (order?.status === "CANCELLED" && order.cancelledByCustomer) {
+        return "Cliente cancelou";
+    }
+    return statusLabel(order?.status);
 }
 
 function actionLabel(status) {
