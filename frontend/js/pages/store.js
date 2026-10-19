@@ -1,7 +1,7 @@
 import { api, ApiError } from "../api/client.js";
 import { currentStoreSlug, checkoutUrl, myOrdersUrl } from "../utils/nav.js";
 import { $, on } from "../utils/dom.js";
-import { formatBRL, formatQuantity, quantityHint, unitStep, discountPercent } from "../utils/format.js";
+import { formatBRL, formatQuantity, quantityHint, unitStep, discountPercent, foldSearch } from "../utils/format.js";
 import { nextOpenHint } from "../utils/hours.js";
 import { createThumb, optimizedImageUrl } from "../utils/media.js";
 import { addToCart, cartCount, clearCart, loadCart, setCartQuantity } from "../store/cart.js";
@@ -219,9 +219,9 @@ function visibleProducts() {
     if (state.categoryId) {
         products = products.filter((product) => product.categoryId === state.categoryId);
     }
-    const query = state.query.trim().toLowerCase();
+    const query = foldSearch(state.query.trim());
     if (query) {
-        products = products.filter((product) => (product.name || "").toLowerCase().includes(query));
+        products = products.filter((product) => foldSearch(product.name).includes(query));
     }
     return products;
 }

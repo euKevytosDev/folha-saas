@@ -1,3 +1,11 @@
+/** Remove acentos para busca (maçã ≈ maca). */
+export function foldSearch(value) {
+    return String(value || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase();
+}
+
 export function formatBRL(value) {
     return new Intl.NumberFormat("pt-BR", {
         style: "currency",

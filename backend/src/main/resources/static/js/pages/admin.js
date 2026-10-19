@@ -1,7 +1,7 @@
 import { api, apiUpload, ApiError } from "../api/client.js";
 import { logout, requirePageAuth } from "../auth/api.js";
 import { $ } from "../utils/dom.js";
-import { formatBRL, formatQuantity, discountPercent } from "../utils/format.js";
+import { formatBRL, formatQuantity, discountPercent, foldSearch } from "../utils/format.js";
 import { compressImageFile } from "../utils/image.js";
 import { createThumb, optimizedImageUrl, setPreviewImage } from "../utils/media.js";
 import { storeUrl } from "../utils/nav.js";
@@ -1345,20 +1345,19 @@ async function refreshCatalog() {
 }
 
 function filteredCatalogProducts(products) {
-    const query = ($("#product-search")?.value || "").trim().toLowerCase();
+    const query = foldSearch(($("#product-search")?.value || "").trim());
     if (!query) {
         return products || [];
     }
     return (products || []).filter((item) => {
-        const haystack = [
+        const haystack = foldSearch([
             item.name,
             item.categoryName,
             item.unit,
             ...(Array.isArray(item.variants) ? item.variants.map((variant) => variant.name) : [])
         ]
             .filter(Boolean)
-            .join(" ")
-            .toLowerCase();
+            .join(" "));
         return haystack.includes(query);
     });
 }
