@@ -12,6 +12,10 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
+/**
+ * Envia WhatsApp via TextMeBot (api.textmebot.com).
+ * Mantém o nome da classe para não quebrar o wiring existente.
+ */
 @Component
 public class CallMeBotClient {
 
@@ -25,26 +29,30 @@ public class CallMeBotClient {
                 || text == null || text.isBlank()) {
             return;
         }
-        String phone = phoneDigits.replaceAll("\\D+", "");
-        if (phone.isBlank()) {
+        String digits = phoneDigits.replaceAll("\\D+", "");
+        if (digits.isBlank()) {
             return;
         }
+        String recipient = digits.startsWith("+") ? digits : "+" + digits;
         try {
-            String url = "https://api.callmebot.com/whatsapp.php"
-                    + "?phone=" + URLEncoder.encode(phone, StandardCharsets.UTF_8)
+            String url = "https://api.textmebot.com/send.php"
+                    + "?recipient=" + URLEncoder.encode(recipient, StandardCharsets.UTF_8)
                     + "&apikey=" + URLEncoder.encode(apiKey.trim(), StandardCharsets.UTF_8)
-                    + "&text=" + URLEncoder.encode(text, StandardCharsets.UTF_8);
+                    + "&text=" + URLEncoder.encode(text, StandardCharsets.UTF_8)
+                    + "&json=yes";
             HttpRequest request = HttpRequest.newBuilder(URI.create(url))
-                    .timeout(Duration.ofSeconds(15))
+                    .timeout(Duration.ofSeconds(20))
                     .header("User-Agent", "maxpedidos/1.0")
                     .GET()
                     .build();
             HttpResponse<String> response = HTTP.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-            if (response.statusCode() >= 400) {
-                log.warn("CallMeBot HTTP {} body={}", response.statusCode(), truncate(response.body()));
+            if (response.statusCode() >= 400 || (response.body() != null && response.body().toLowerCase().contains("\"status\":\"error\""))) {
+                log.warn("TextMeBot HTTP {} body={}", response.statusCode(), truncate(response.body()));
+            } else {
+                log.info("TextMeBot ok phoneEnding={}", digits.length() >= 4 ? digits.substring(digits.length() - 4) : "****");
             }
         } catch (Exception ex) {
-            log.warn("CallMeBot falhou: {}", ex.toString());
+            log.warn("TextMeBot falhou: {}", ex.toString());
         }
     }
 
@@ -52,6 +60,6 @@ public class CallMeBotClient {
         if (body == null) {
             return "";
         }
-        return body.length() > 200 ? body.substring(0, 200) : body;
+        return body.length() > 240 ? body.substring(0, 240) : body;
     }
 }
