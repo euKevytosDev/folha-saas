@@ -16,5 +16,12 @@ rsync -a --delete \
   "$SRC/css" "$SRC/js" "$SRC/assets" "$SRC/pages" "$SRC/public" \
   "$DEST/"
 
+# Favicon na raiz do static: sobrescreve o ícone padrão do Spring (folha verde)
+for fav in favicon.ico favicon.png; do
+  if [[ -f "$SRC/public/$fav" ]]; then
+    cp -f "$SRC/public/$fav" "$DEST/$fav"
+  fi
+done
+
 echo "Frontend sincronizado em $DEST"
 echo "Edite apenas frontend/; rode este script antes de commit."
