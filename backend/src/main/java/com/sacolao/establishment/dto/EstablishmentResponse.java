@@ -30,6 +30,9 @@ public record EstablishmentResponse(
         Map<String, List<OpeningInterval>> openingHours,
         BigDecimal ratingAvg,
         int ratingCount,
+        boolean whatsappAlertEnabled,
+        String whatsappAlertPhone,
+        boolean whatsappAlertApikeyConfigured,
         Instant createdAt,
         Instant updatedAt
 ) {

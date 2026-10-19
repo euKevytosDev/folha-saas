@@ -85,6 +85,15 @@ public class Establishment {
     @Column(name = "plan_code", nullable = false, length = 32)
     private PlanCode planCode = PlanCode.BASIC;
 
+    @Column(name = "whatsapp_alert_enabled", nullable = false)
+    private boolean whatsappAlertEnabled;
+
+    @Column(name = "whatsapp_alert_phone", length = 32)
+    private String whatsappAlertPhone;
+
+    @Column(name = "whatsapp_alert_apikey", length = 80)
+    private String whatsappAlertApikey;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -257,6 +266,30 @@ public class Establishment {
 
     public void setPlanCode(PlanCode planCode) {
         this.planCode = planCode;
+    }
+
+    public boolean isWhatsappAlertEnabled() {
+        return whatsappAlertEnabled;
+    }
+
+    public void setWhatsappAlertEnabled(boolean whatsappAlertEnabled) {
+        this.whatsappAlertEnabled = whatsappAlertEnabled;
+    }
+
+    public String getWhatsappAlertPhone() {
+        return whatsappAlertPhone;
+    }
+
+    public void setWhatsappAlertPhone(String whatsappAlertPhone) {
+        this.whatsappAlertPhone = whatsappAlertPhone;
+    }
+
+    public String getWhatsappAlertApikey() {
+        return whatsappAlertApikey;
+    }
+
+    public void setWhatsappAlertApikey(String whatsappAlertApikey) {
+        this.whatsappAlertApikey = whatsappAlertApikey;
     }
 
     public Instant getCreatedAt() {

@@ -332,6 +332,27 @@
                                     <label for="store-profile-address">Endereço</label>
                                     <input id="store-profile-address" name="address" type="text">
                                 </div>
+                                <label class="admin-check">
+                                    <input id="store-whatsapp-alert-enabled" name="whatsappAlertEnabled" type="checkbox">
+                                    Avisar no WhatsApp quando chegar pedido novo
+                                </label>
+                                <p class="muted">Grátis via CallMeBot. O dono recebe um alerta no celular.</p>
+                                <div class="field">
+                                    <label for="store-whatsapp-alert-phone">Número do alerta (com DDI)</label>
+                                    <input id="store-whatsapp-alert-phone" name="whatsappAlertPhone" type="tel" placeholder="5531999999999" inputmode="numeric">
+                                    <p class="muted">Ex.: 55 + DDD + número, só dígitos.</p>
+                                </div>
+                                <div class="field">
+                                    <label for="store-whatsapp-alert-apikey">Chave do CallMeBot</label>
+                                    <input id="store-whatsapp-alert-apikey" name="whatsappAlertApikey" type="text" placeholder="Cole a chave aqui" autocomplete="off">
+                                    <p class="muted">
+                                        1) Abra
+                                        <a href="https://www.callmebot.com/blog/free-api-whatsapp-messages/" target="_blank" rel="noopener noreferrer">callmebot.com</a>
+                                        e ative o bot no WhatsApp.
+                                        2) Cole aqui a apikey que o bot enviar.
+                                        Deixe em branco para manter a chave já salva.
+                                    </p>
+                                </div>
                             </div>
                             <div class="form-slide">
                                 <p class="form-step-label">2 de 3 · Horários</p>
@@ -561,6 +582,6 @@
         </div>
     </main>
     <div class="order-toast" id="order-toast" hidden role="status"></div>
-    <script type="module" src="/js/pages/admin.js?v=e81cf2c616"></script>
+    <script type="module" src="/js/pages/admin.js?v=20d17d4264"></script>
 </body>
 </html>

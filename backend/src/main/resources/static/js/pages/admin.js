@@ -2974,8 +2974,14 @@ async function saveStoreProfile({ skipCarouselValidation = false, silent = false
             logoUrl: form.logoUrl.value || null,
             coverUrl: form.coverUrl.value || null,
             storeOpenMode: form.storeOpenMode.value,
-            openingHours: hours
+            openingHours: hours,
+            whatsappAlertEnabled: !!form.whatsappAlertEnabled?.checked,
+            whatsappAlertPhone: form.whatsappAlertPhone?.value || null
         };
+        const apikey = String(form.whatsappAlertApikey?.value || "").trim();
+        if (apikey) {
+            body.whatsappAlertApikey = apikey;
+        }
         establishment = await api(`/establishments/${establishment.id}`, {
             method: "PUT",
             body
@@ -3009,6 +3015,18 @@ function fillStoreProfileForm(store) {
     form.logoUrl.value = store.logoUrl ?? "";
     form.coverUrl.value = store.coverUrl ?? "";
     form.storeOpenMode.value = store.storeOpenMode ?? "AUTO";
+    if (form.whatsappAlertEnabled) {
+        form.whatsappAlertEnabled.checked = !!store.whatsappAlertEnabled;
+    }
+    if (form.whatsappAlertPhone) {
+        form.whatsappAlertPhone.value = store.whatsappAlertPhone ?? "";
+    }
+    if (form.whatsappAlertApikey) {
+        form.whatsappAlertApikey.value = "";
+        form.whatsappAlertApikey.placeholder = store.whatsappAlertApikeyConfigured
+            ? "Chave já salva — cole outra só se for trocar"
+            : "Cole a chave aqui";
+    }
     setStoreMediaPreview("#store-logo-preview", "#store-logo-preview-img", store.logoUrl, { width: 256, height: 256 });
     setStoreMediaPreview("#store-cover-preview", "#store-cover-preview-img", store.coverUrl, { width: 800, height: 320 });
     renderOpeningHoursEditor(store.openingHours || {});

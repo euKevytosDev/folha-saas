@@ -134,6 +134,16 @@ public class EstablishmentService {
         if (request.openingHours() != null) {
             establishment.setOpeningHours(availabilityService.serializeHours(request.openingHours()));
         }
+        if (request.whatsappAlertEnabled() != null) {
+            establishment.setWhatsappAlertEnabled(request.whatsappAlertEnabled());
+        }
+        if (request.whatsappAlertPhone() != null) {
+            String digits = request.whatsappAlertPhone().replaceAll("\\D+", "");
+            establishment.setWhatsappAlertPhone(digits.isBlank() ? null : digits);
+        }
+        if (request.whatsappAlertApikey() != null && !request.whatsappAlertApikey().isBlank()) {
+            establishment.setWhatsappAlertApikey(request.whatsappAlertApikey().trim());
+        }
         return toResponse(establishment);
     }
 

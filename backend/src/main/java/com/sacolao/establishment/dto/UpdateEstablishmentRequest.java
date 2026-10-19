@@ -21,6 +21,9 @@ public record UpdateEstablishmentRequest(
         @Size(max = 16) String zipCode,
         StoreOpenMode storeOpenMode,
         @Size(max = 64) String timezone,
-        Map<String, List<@Valid OpeningInterval>> openingHours
+        Map<String, List<@Valid OpeningInterval>> openingHours,
+        Boolean whatsappAlertEnabled,
+        @Size(max = 32) String whatsappAlertPhone,
+        @Size(max = 80) String whatsappAlertApikey
 ) {
 }

@@ -41,6 +41,7 @@ import com.sacolao.payment.service.PaymentService;
 import com.sacolao.product.entity.Product;
 import com.sacolao.product.repository.ProductRepository;
 import com.sacolao.product.support.VariantSelection;
+import com.sacolao.notify.WhatsAppOrderAlertService;
 import com.sacolao.stock.service.StockService;
 import com.sacolao.tenant.TenantContext;
 import org.springframework.stereotype.Service;
@@ -87,6 +88,7 @@ public class OrderService {
     private final StoreAvailabilityService availabilityService;
     private final EstablishmentPaymentSettingsRepository paymentSettingsRepository;
     private final CouponRepository couponRepository;
+    private final WhatsAppOrderAlertService whatsAppOrderAlertService;
     private final JsonMapper jsonMapper;
 
     public OrderService(
@@ -103,6 +105,7 @@ public class OrderService {
             StoreAvailabilityService availabilityService,
             EstablishmentPaymentSettingsRepository paymentSettingsRepository,
             CouponRepository couponRepository,
+            WhatsAppOrderAlertService whatsAppOrderAlertService,
             JsonMapper jsonMapper
     ) {
         this.orderRepository = orderRepository;
@@ -118,6 +121,7 @@ public class OrderService {
         this.availabilityService = availabilityService;
         this.paymentSettingsRepository = paymentSettingsRepository;
         this.couponRepository = couponRepository;
+        this.whatsAppOrderAlertService = whatsAppOrderAlertService;
         this.jsonMapper = jsonMapper;
     }
 
@@ -243,6 +247,7 @@ public class OrderService {
                     201
             );
         }
+        whatsAppOrderAlertService.notifyNewOrder(store, saved);
         return response;
     }
 

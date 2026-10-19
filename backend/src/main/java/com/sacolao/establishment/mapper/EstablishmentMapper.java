@@ -33,6 +33,10 @@ public final class EstablishmentMapper {
                 availability.parseHours(establishment.getOpeningHours()),
                 establishment.getRatingAvg(),
                 establishment.getRatingCount(),
+                establishment.isWhatsappAlertEnabled(),
+                establishment.getWhatsappAlertPhone(),
+                establishment.getWhatsappAlertApikey() != null
+                        && !establishment.getWhatsappAlertApikey().isBlank(),
                 establishment.getCreatedAt(),
                 establishment.getUpdatedAt()
         );
