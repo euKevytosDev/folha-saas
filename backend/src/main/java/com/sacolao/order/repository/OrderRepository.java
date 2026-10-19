@@ -74,6 +74,7 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
             select o from Order o
             where o.establishment.id = :establishmentId
               and o.status = com.sacolao.order.entity.OrderStatus.CANCELLED
+              and o.historyHidden = false
               and o.updatedAt >= :start
               and o.updatedAt < :end
             """)
