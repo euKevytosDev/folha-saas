@@ -3330,7 +3330,6 @@ function paymentStatusLabel(status) {
 
 function wireAdminNav() {
     const nav = $("#admin-nav");
-    const stage = $("#admin-stage");
     nav?.addEventListener("click", (event) => {
         const tab = event.target.closest(".admin-tab");
         if (tab && !tab.hidden) {
@@ -3340,29 +3339,6 @@ function wireAdminNav() {
     const allowed = visibleAdminPanels();
     const hash = window.location.hash.replace("#", "");
     showAdminPanel(allowed.includes(hash) ? hash : (allowed[0] || "pedidos"));
-
-    let touchStartX = 0;
-    let ignoreSwipe = false;
-    stage?.addEventListener("touchstart", (event) => {
-        touchStartX = event.changedTouches[0].clientX;
-        ignoreSwipe = Boolean(event.target.closest("input, textarea, select, button, a, label"));
-    }, { passive: true });
-    stage?.addEventListener("touchend", (event) => {
-        if (ignoreSwipe) {
-            return;
-        }
-        const delta = event.changedTouches[0].clientX - touchStartX;
-        if (Math.abs(delta) < 56) {
-            return;
-        }
-        const list = visibleAdminPanels();
-        const current = document.querySelector(".admin-panel.is-active")?.dataset.panel;
-        const index = list.indexOf(current);
-        const next = delta < 0 ? list[index + 1] : list[index - 1];
-        if (next) {
-            showAdminPanel(next);
-        }
-    }, { passive: true });
 }
 
 function visibleAdminPanels() {
