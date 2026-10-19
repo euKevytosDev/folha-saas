@@ -2265,7 +2265,12 @@ function renderOrders(orders) {
             cancel.type = "button";
             cancel.className = "btn btn-ghost";
             cancel.textContent = "Cancelar";
-            cancel.addEventListener("click", () => updateOrderStatus(order.id, "CANCELLED"));
+            cancel.addEventListener("click", () => {
+                if (!window.confirm(`Cancelar o pedido ${order.publicCode}?`)) {
+                    return;
+                }
+                updateOrderStatus(order.id, "CANCELLED");
+            });
             actions.append(cancel);
         }
         if (actions.childNodes.length) {
