@@ -1955,7 +1955,7 @@ function renderDashboard(summary, orders) {
         title.textContent = `${order.publicCode} · ${order.customerName}`;
         const meta = document.createElement("span");
         meta.className = "muted";
-        meta.textContent = `${orderStatusLabel(order)} · ${fulfillmentLabel(order.fulfillmentType)}`;
+        meta.textContent = `${orderStatusLabel(order)} · ${fulfillmentLabel(order.fulfillmentType)} · ${formatOrderWhen(order.createdAt)}`;
         body.append(title, meta);
         const total = document.createElement("strong");
         total.textContent = formatBRL(order.total);
@@ -2181,7 +2181,7 @@ function renderOrders(orders) {
         const scheduledLabel = order.scheduledFor
             ? ` · Agendado para ${formatOrderDateTime(order.scheduledFor)}`
             : "";
-        meta.textContent = `${formatBRL(order.total)} · ${fulfillmentLabel(order.fulfillmentType)} · ${formatPhoneDisplay(order.customerPhone)}${payLabel}${scheduledLabel}${nfceLabel}`;
+        meta.textContent = `${formatBRL(order.total)} · ${fulfillmentLabel(order.fulfillmentType)} · ${formatOrderWhen(order.createdAt)} · ${formatPhoneDisplay(order.customerPhone)}${payLabel}${scheduledLabel}${nfceLabel}`;
 
         const items = document.createElement("ul");
         items.className = "order-item-list";
@@ -2402,6 +2402,21 @@ function formatOrderDateTime(value) {
         return "—";
     }
     return `${date} ${clock}`;
+}
+
+function formatOrderWhen(value) {
+    const date = formatInBrazil(value, {
+        day: "2-digit",
+        month: "2-digit"
+    });
+    const clock = formatInBrazil(value, {
+        hour: "2-digit",
+        minute: "2-digit"
+    });
+    if (date === "—" || clock === "—") {
+        return "—";
+    }
+    return `${date} às ${clock}`;
 }
 
 function formatCpfDisplay(value) {
