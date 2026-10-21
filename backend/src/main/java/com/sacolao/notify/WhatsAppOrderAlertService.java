@@ -11,6 +11,9 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import java.math.BigDecimal;
 import java.text.NumberFormat;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
 @Service
@@ -31,7 +34,7 @@ public class WhatsAppOrderAlertService {
         if (store == null || order == null) {
             return;
         }
-        String message = buildMessage(order);
+        String message = buildMessage(store, order);
         runAfterCommit(() -> {
             sendWhatsApp(store, message, order.getPublicCode());
             sendTelegram(store, message, order.getPublicCode());
@@ -42,11 +45,14 @@ public class WhatsAppOrderAlertService {
         if (store == null || !store.isTelegramAlertEnabled()) {
             return false;
         }
-        String storeName = store.getName() == null || store.getName().isBlank() ? "sua loja" : store.getName().trim();
+        String storeName = storeName(store);
         return telegramClient.sendMessage(
                 store.getTelegramBotToken(),
                 store.getTelegramChatId(),
-                "MaxPedidos · Teste de alerta\nSe esta mensagem chegou, os pedidos novos da " + storeName + " avisam aqui."
+                "✅ Teste de alerta — MaxPedidos\n\n"
+                        + "Se esta mensagem chegou, os pedidos novos da "
+                        + storeName
+                        + " avisam aqui no Telegram."
         );
     }
 
@@ -90,18 +96,37 @@ public class WhatsAppOrderAlertService {
         }
     }
 
-    private static String buildMessage(Order order) {
-        String fulfillment = order.getFulfillmentType() == FulfillmentType.PICKUP ? "Retirada" : "Entrega";
+    private static String buildMessage(Establishment store, Order order) {
+        boolean pickup = order.getFulfillmentType() == FulfillmentType.PICKUP;
         BigDecimal total = order.getTotal() == null ? BigDecimal.ZERO : order.getTotal();
         StringBuilder sb = new StringBuilder();
-        sb.append("MaxPedidos · Novo pedido ").append(order.getPublicCode()).append('\n');
-        sb.append(nullToDash(order.getCustomerName())).append('\n');
-        sb.append(fulfillment).append(" · ").append(BRL.format(total)).append('\n');
-        sb.append("Tel: ").append(nullToDash(order.getCustomerPhone()));
+        sb.append("🔔 Novo pedido — ").append(order.getPublicCode()).append('\n');
+        sb.append("🏪 ").append(storeName(store)).append("\n\n");
+        sb.append("👤 ").append(nullToDash(order.getCustomerName())).append('\n');
+        sb.append(pickup ? "📦 Retirada" : "🛵 Entrega").append('\n');
+        sb.append("💰 ").append(BRL.format(total)).append('\n');
+        sb.append("📞 ").append(nullToDash(order.getCustomerPhone())).append('\n');
+        sb.append("🕒 Pedido ").append(formatWhen(order.getCreatedAt()));
         if (order.getScheduledFor() != null) {
-            sb.append("\nAgendado");
+            sb.append("\n📅 Agendado para ").append(formatWhen(order.getScheduledFor()));
         }
         return sb.toString();
+    }
+
+    private static String storeName(Establishment store) {
+        if (store == null || store.getName() == null || store.getName().isBlank()) {
+            return "sua loja";
+        }
+        return store.getName().trim();
+    }
+
+    private static String formatWhen(Instant value) {
+        if (value == null) {
+            return "—";
+        }
+        return DateTimeFormatter.ofPattern("dd/MM 'às' HH:mm")
+                .withZone(ZoneId.of("America/Sao_Paulo"))
+                .format(value);
     }
 
     private static String nullToDash(String value) {
