@@ -33,6 +33,9 @@ public record EstablishmentResponse(
         boolean whatsappAlertEnabled,
         String whatsappAlertPhone,
         boolean whatsappAlertApikeyConfigured,
+        boolean telegramAlertEnabled,
+        String telegramChatId,
+        boolean telegramBotTokenConfigured,
         Instant createdAt,
         Instant updatedAt
 ) {

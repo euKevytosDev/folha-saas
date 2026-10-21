@@ -2959,6 +2959,16 @@ function wireStoreProfileForm() {
         event.preventDefault();
         await saveStoreProfile();
     });
+    $("#store-telegram-test")?.addEventListener("click", async () => {
+        const alertBox = $("#store-profile-alert");
+        try {
+            await saveStoreProfile({ skipCarouselValidation: true, silent: true });
+            await api(`/establishments/${establishment.id}/telegram-test`, { method: "POST" });
+            showFormSuccess(alertBox, "Mensagem de teste enviada no Telegram.");
+        } catch (error) {
+            showFormAlert(alertBox, error, "Não foi possível enviar o teste do Telegram.");
+        }
+    });
 }
 
 async function saveStoreProfile({ skipCarouselValidation = false, silent = false } = {}) {
@@ -2996,6 +3006,12 @@ async function saveStoreProfile({ skipCarouselValidation = false, silent = false
         const apikey = String(form.whatsappAlertApikey?.value || "").trim();
         if (apikey) {
             body.whatsappAlertApikey = apikey;
+        }
+        body.telegramAlertEnabled = !!form.telegramAlertEnabled?.checked;
+        body.telegramChatId = form.telegramChatId?.value || null;
+        const telegramToken = String(form.telegramBotToken?.value || "").trim();
+        if (telegramToken) {
+            body.telegramBotToken = telegramToken;
         }
         establishment = await api(`/establishments/${establishment.id}`, {
             method: "PUT",
@@ -3041,6 +3057,18 @@ function fillStoreProfileForm(store) {
         form.whatsappAlertApikey.placeholder = store.whatsappAlertApikeyConfigured
             ? "Chave já salva — cole outra só se for trocar"
             : "Cole a chave aqui";
+    }
+    if (form.telegramAlertEnabled) {
+        form.telegramAlertEnabled.checked = !!store.telegramAlertEnabled;
+    }
+    if (form.telegramChatId) {
+        form.telegramChatId.value = store.telegramChatId ?? "";
+    }
+    if (form.telegramBotToken) {
+        form.telegramBotToken.value = "";
+        form.telegramBotToken.placeholder = store.telegramBotTokenConfigured
+            ? "Token já salvo — cole outro só se for trocar"
+            : "Cole o token aqui";
     }
     setStoreMediaPreview("#store-logo-preview", "#store-logo-preview-img", store.logoUrl, { width: 256, height: 256 });
     setStoreMediaPreview("#store-cover-preview", "#store-cover-preview-img", store.coverUrl, { width: 800, height: 320 });

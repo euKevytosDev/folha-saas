@@ -37,6 +37,10 @@ public final class EstablishmentMapper {
                 establishment.getWhatsappAlertPhone(),
                 establishment.getWhatsappAlertApikey() != null
                         && !establishment.getWhatsappAlertApikey().isBlank(),
+                establishment.isTelegramAlertEnabled(),
+                establishment.getTelegramChatId(),
+                establishment.getTelegramBotToken() != null
+                        && !establishment.getTelegramBotToken().isBlank(),
                 establishment.getCreatedAt(),
                 establishment.getUpdatedAt()
         );

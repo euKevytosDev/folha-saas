@@ -2,7 +2,9 @@ package com.sacolao.establishment.service;
 
 import com.sacolao.common.exception.ForbiddenException;
 import com.sacolao.common.exception.ResourceNotFoundException;
+import com.sacolao.common.exception.UnprocessableException;
 import com.sacolao.common.util.Slugify;
+import com.sacolao.notify.WhatsAppOrderAlertService;
 import com.sacolao.establishment.dto.CreateEstablishmentRequest;
 import com.sacolao.establishment.dto.EstablishmentResponse;
 import com.sacolao.establishment.dto.UpdateEstablishmentRequest;
@@ -26,13 +28,16 @@ public class EstablishmentService {
 
     private final EstablishmentRepository establishmentRepository;
     private final StoreAvailabilityService availabilityService;
+    private final WhatsAppOrderAlertService orderAlertService;
 
     public EstablishmentService(
             EstablishmentRepository establishmentRepository,
-            StoreAvailabilityService availabilityService
+            StoreAvailabilityService availabilityService,
+            WhatsAppOrderAlertService orderAlertService
     ) {
         this.establishmentRepository = establishmentRepository;
         this.availabilityService = availabilityService;
+        this.orderAlertService = orderAlertService;
     }
 
     @Transactional
@@ -144,7 +149,40 @@ public class EstablishmentService {
         if (request.whatsappAlertApikey() != null && !request.whatsappAlertApikey().isBlank()) {
             establishment.setWhatsappAlertApikey(request.whatsappAlertApikey().trim());
         }
+        if (request.telegramAlertEnabled() != null) {
+            establishment.setTelegramAlertEnabled(request.telegramAlertEnabled());
+        }
+        if (request.telegramChatId() != null) {
+            String chatId = request.telegramChatId().trim();
+            establishment.setTelegramChatId(chatId.isBlank() ? null : chatId);
+        }
+        if (request.telegramBotToken() != null && !request.telegramBotToken().isBlank()) {
+            establishment.setTelegramBotToken(request.telegramBotToken().trim());
+        }
         return toResponse(establishment);
+    }
+
+    @Transactional(readOnly = true)
+    public void sendTelegramTest(UUID id) {
+        AuthenticatedUser current = SecurityUtils.requireUser();
+        if (current.role() == UserRole.SUPER_ADMIN || current.role() == UserRole.STAFF) {
+            throw new ForbiddenException("Acesso negado");
+        }
+        UUID tenantId = TenantContext.require();
+        if (!tenantId.equals(id)) {
+            throw notFound();
+        }
+        Establishment establishment = findOrNotFound(id);
+        if (!establishment.isTelegramAlertEnabled()
+                || establishment.getTelegramChatId() == null
+                || establishment.getTelegramChatId().isBlank()
+                || establishment.getTelegramBotToken() == null
+                || establishment.getTelegramBotToken().isBlank()) {
+            throw new UnprocessableException("TELEGRAM_NOT_READY", "Salve o Telegram ligado, com token e chat id, e teste de novo");
+        }
+        if (!orderAlertService.sendTelegramTest(establishment)) {
+            throw new UnprocessableException("TELEGRAM_FAILED", "Não deu para enviar. Confira se o dono já mandou /start no bot.");
+        }
     }
 
     @Transactional

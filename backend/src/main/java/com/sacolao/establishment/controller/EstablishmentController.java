@@ -1,5 +1,6 @@
 package com.sacolao.establishment.controller;
 
+import com.sacolao.auth.dto.MessageResponse;
 import com.sacolao.establishment.dto.CreateEstablishmentRequest;
 import com.sacolao.establishment.dto.EstablishmentResponse;
 import com.sacolao.establishment.dto.EstablishmentStatusRequest;
@@ -52,6 +53,13 @@ public class EstablishmentController {
             @Valid @RequestBody UpdateEstablishmentRequest request
     ) {
         return establishmentService.update(id, request);
+    }
+
+    @PostMapping("/{id}/telegram-test")
+    @PreAuthorize("hasAnyRole('OWNER', 'ADMIN')")
+    public MessageResponse telegramTest(@PathVariable UUID id) {
+        establishmentService.sendTelegramTest(id);
+        return new MessageResponse("Mensagem de teste enviada no Telegram");
     }
 
     @PatchMapping("/{id}/status")

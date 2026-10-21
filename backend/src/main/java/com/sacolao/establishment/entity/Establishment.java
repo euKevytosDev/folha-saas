@@ -94,6 +94,15 @@ public class Establishment {
     @Column(name = "whatsapp_alert_apikey", length = 80)
     private String whatsappAlertApikey;
 
+    @Column(name = "telegram_alert_enabled", nullable = false)
+    private boolean telegramAlertEnabled;
+
+    @Column(name = "telegram_chat_id", length = 32)
+    private String telegramChatId;
+
+    @Column(name = "telegram_bot_token", length = 160)
+    private String telegramBotToken;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -290,6 +299,30 @@ public class Establishment {
 
     public void setWhatsappAlertApikey(String whatsappAlertApikey) {
         this.whatsappAlertApikey = whatsappAlertApikey;
+    }
+
+    public boolean isTelegramAlertEnabled() {
+        return telegramAlertEnabled;
+    }
+
+    public void setTelegramAlertEnabled(boolean telegramAlertEnabled) {
+        this.telegramAlertEnabled = telegramAlertEnabled;
+    }
+
+    public String getTelegramChatId() {
+        return telegramChatId;
+    }
+
+    public void setTelegramChatId(String telegramChatId) {
+        this.telegramChatId = telegramChatId;
+    }
+
+    public String getTelegramBotToken() {
+        return telegramBotToken;
+    }
+
+    public void setTelegramBotToken(String telegramBotToken) {
+        this.telegramBotToken = telegramBotToken;
     }
 
     public Instant getCreatedAt() {

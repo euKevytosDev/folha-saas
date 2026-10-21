@@ -352,6 +352,32 @@
                                         Deixe em branco para manter a chave já salva.
                                     </p>
                                 </div>
+                                <label class="admin-check">
+                                    <input id="store-telegram-alert-enabled" name="telegramAlertEnabled" type="checkbox">
+                                    Avisar no Telegram quando chegar pedido novo
+                                </label>
+                                <p class="muted">Grátis e chega no celular mesmo com o computador desligado.</p>
+                                <div class="field">
+                                    <label for="store-telegram-chat-id">Chat ID do Telegram</label>
+                                    <input id="store-telegram-chat-id" name="telegramChatId" type="text" placeholder="123456789" inputmode="numeric">
+                                    <p class="muted">
+                                        1) Abra
+                                        <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer">@userinfobot</a>
+                                        e copie o Id.
+                                    </p>
+                                </div>
+                                <div class="field">
+                                    <label for="store-telegram-bot-token">Token do bot</label>
+                                    <input id="store-telegram-bot-token" name="telegramBotToken" type="text" placeholder="Cole o token aqui" autocomplete="off">
+                                    <p class="muted">
+                                        1) Abra
+                                        <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer">@BotFather</a>
+                                        → /newbot → copie o token.
+                                        2) Abra o bot criado e envie /start.
+                                        Deixe em branco para manter o token já salvo.
+                                    </p>
+                                </div>
+                                <button class="btn btn-secondary" type="button" id="store-telegram-test">Enviar teste no Telegram</button>
                             </div>
                             <div class="form-slide">
                                 <p class="form-step-label">2 de 3 · Horários</p>
@@ -581,6 +607,6 @@
         </div>
     </main>
     <div class="order-toast" id="order-toast" hidden role="status"></div>
-    <script type="module" src="/js/pages/admin.js?v=4a9578aa98"></script>
+    <script type="module" src="/js/pages/admin.js?v=abfda34b0e"></script>
 </body>
 </html>

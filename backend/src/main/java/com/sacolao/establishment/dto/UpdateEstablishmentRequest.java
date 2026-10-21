@@ -24,6 +24,9 @@ public record UpdateEstablishmentRequest(
         Map<String, List<@Valid OpeningInterval>> openingHours,
         Boolean whatsappAlertEnabled,
         @Size(max = 32) String whatsappAlertPhone,
-        @Size(max = 80) String whatsappAlertApikey
+        @Size(max = 80) String whatsappAlertApikey,
+        Boolean telegramAlertEnabled,
+        @Size(max = 32) String telegramChatId,
+        @Size(max = 160) String telegramBotToken
 ) {
 }
