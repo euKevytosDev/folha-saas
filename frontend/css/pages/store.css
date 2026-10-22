@@ -662,6 +662,10 @@
     font-weight: 700;
 }
 
+.cart-bar-button.is-catch {
+    animation: cart-catch 0.3s ease;
+}
+
 .cart-drawer {
     position: fixed;
     inset: 0;
@@ -939,48 +943,78 @@ body.sheet-open {
 }
 
 .add-confirm {
+    --fly-x: 0px;
+    --fly-y: 120px;
     position: fixed;
     inset: 0;
     z-index: 80;
     display: grid;
     place-items: center;
     pointer-events: none;
-    opacity: 0;
-}
-
-.add-confirm.is-on {
-    animation: add-confirm-fade 0.5s ease forwards;
 }
 
 .add-confirm-mark {
-    width: 3.35rem;
-    height: 3.35rem;
+    width: 3.1rem;
+    height: 3.1rem;
     border-radius: 999px;
     background: #16A34A;
     color: #fff;
     display: grid;
     place-items: center;
-    font-size: 1.55rem;
-    font-weight: 700;
-    line-height: 1;
-    box-shadow: 0 12px 28px rgba(22, 163, 74, 0.28);
+    opacity: 0;
+    box-shadow: 0 10px 24px rgba(22, 163, 74, 0.28);
+    will-change: transform, opacity;
+}
+
+.add-confirm-mark svg {
+    width: 1.35rem;
+    height: 1.35rem;
+    display: block;
 }
 
 .add-confirm.is-on .add-confirm-mark {
-    animation: add-confirm-pop 0.5s ease;
+    animation: add-confirm-fly 0.42s cubic-bezier(0.42, 0, 0.18, 1) forwards;
+}
+
+@keyframes add-confirm-fly {
+    0% {
+        transform: translate(0, 0) scale(0.62);
+        opacity: 0;
+    }
+    14% {
+        transform: translate(0, 0) scale(1);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(var(--fly-x), var(--fly-y)) scale(0.16);
+        opacity: 0;
+    }
+}
+
+@keyframes cart-catch {
+    0%,
+    100% {
+        transform: scale(1);
+    }
+    42% {
+        transform: scale(1.03);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .add-confirm.is-on .add-confirm-mark {
+        animation: add-confirm-fade 0.32s ease forwards;
+    }
+
+    .cart-bar-button.is-catch {
+        animation: none;
+    }
 }
 
 @keyframes add-confirm-fade {
-    0% { opacity: 0; }
-    14% { opacity: 1; }
-    72% { opacity: 1; }
-    100% { opacity: 0; }
-}
-
-@keyframes add-confirm-pop {
-    0% { transform: scale(0.82); }
-    22% { transform: scale(1); }
-    100% { transform: scale(0.96); }
+    0% { opacity: 0; transform: scale(0.9); }
+    30% { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(0.96); }
 }
 
 @media (min-width: 720px) {

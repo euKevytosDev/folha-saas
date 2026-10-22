@@ -840,16 +840,34 @@ function pulseAddFeedback() {
         host.id = "add-confirm";
         host.className = "add-confirm";
         host.setAttribute("aria-hidden", "true");
-        host.innerHTML = '<span class="add-confirm-mark">✓</span>';
+        host.innerHTML = '<span class="add-confirm-mark"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6.2 12.2 10.1 16l7.7-8.2" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
         document.body.append(host);
     }
+    const cart = document.getElementById("open-cart");
+    const originX = window.innerWidth / 2;
+    const originY = window.innerHeight / 2;
+    let flyX = 0;
+    let flyY = Math.min(window.innerHeight * 0.38, 280);
+    if (cart && cart.getClientRects().length) {
+        const box = cart.getBoundingClientRect();
+        flyX = box.left + box.width / 2 - originX;
+        flyY = box.top + box.height / 2 - originY;
+    }
+    host.style.setProperty("--fly-x", `${Math.round(flyX)}px`);
+    host.style.setProperty("--fly-y", `${Math.round(flyY)}px`);
     host.classList.remove("is-on");
+    cart?.classList.remove("is-catch");
     void host.offsetWidth;
     host.classList.add("is-on");
     window.clearTimeout(pulseAddFeedback.timer);
+    window.clearTimeout(pulseAddFeedback.catchTimer);
+    pulseAddFeedback.catchTimer = window.setTimeout(() => {
+        cart?.classList.add("is-catch");
+    }, 280);
     pulseAddFeedback.timer = window.setTimeout(() => {
         host.classList.remove("is-on");
-    }, 520);
+        cart?.classList.remove("is-catch");
+    }, 460);
 }
 
 function showAlert(message) {
