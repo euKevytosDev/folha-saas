@@ -570,21 +570,60 @@
 .qty-control {
     display: inline-flex;
     align-items: center;
+    gap: 2px;
+    padding: 3px;
     border: 1px solid var(--color-border);
     border-radius: 999px;
-    overflow: hidden;
+    background: #fff;
 }
 
 .qty-control button,
 .qty-control input {
     border: 0;
-    background: transparent;
-    min-height: 36px;
+    min-height: 32px;
 }
 
 .qty-control button {
-    width: 36px;
-    font-size: 1.1rem;
+    width: 32px;
+    height: 32px;
+    min-height: 32px;
+    border-radius: 999px;
+    font-size: 1.05rem;
+    font-weight: 600;
+    line-height: 1;
+}
+
+.qty-minus {
+    background: #fdeeee;
+    color: #c24747;
+}
+
+.qty-plus {
+    background: #e8f6ec;
+    color: #2f8f52;
+}
+
+.qty-minus:hover,
+.qty-minus:focus-visible {
+    background: #f8dede;
+}
+
+.qty-plus:hover,
+.qty-plus:focus-visible {
+    background: #d8efde;
+}
+
+.qty-minus:active {
+    background: #f3cccc;
+}
+
+.qty-plus:active {
+    background: #c8e6d0;
+}
+
+.qty-control button:disabled,
+.variant-stepper button:disabled {
+    opacity: 0.38;
 }
 
 .qty-control input {
@@ -788,10 +827,11 @@
 .variant-stepper button {
     width: 2rem;
     height: 2rem;
+    border: 0;
     border-radius: 999px;
-    border: 1px solid var(--color-border);
-    background: var(--color-surface);
-    font-size: 1.1rem;
+    font-size: 1.05rem;
+    font-weight: 600;
+    line-height: 1;
 }
 
 .variant-stepper span {

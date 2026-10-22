@@ -392,6 +392,8 @@ function addControl(product) {
     qty.className = "qty-control";
     const minus = document.createElement("button");
     minus.type = "button";
+    minus.className = "qty-minus";
+    minus.setAttribute("aria-label", "Diminuir quantidade");
     minus.textContent = "−";
     const input = document.createElement("input");
     input.type = "number";
@@ -408,6 +410,8 @@ function addControl(product) {
     input.setAttribute("aria-label", "Quantidade");
     const plus = document.createElement("button");
     plus.type = "button";
+    plus.className = "qty-plus";
+    plus.setAttribute("aria-label", "Aumentar quantidade");
     plus.textContent = "+";
 
     const hint = document.createElement("p");
@@ -624,9 +628,13 @@ function cartLine(line) {
     qty.className = "qty-control";
     const minus = document.createElement("button");
     minus.type = "button";
+    minus.className = "qty-minus";
+    minus.setAttribute("aria-label", "Diminuir quantidade");
     minus.textContent = "−";
     const plus = document.createElement("button");
     plus.type = "button";
+    plus.className = "qty-plus";
+    plus.setAttribute("aria-label", "Aumentar quantidade");
     plus.textContent = "+";
     const step = line.combo ? 1 : unitStep(line.unit);
     minus.addEventListener("click", () => changeLine(line, -step));
@@ -783,12 +791,16 @@ function openVariantSheet(product) {
         stepper.className = "variant-stepper";
         const minus = document.createElement("button");
         minus.type = "button";
+        minus.className = "qty-minus";
+        minus.setAttribute("aria-label", "Diminuir opção");
         minus.textContent = "−";
         const badge = document.createElement("span");
         badge.dataset.variantCount = "true";
         badge.textContent = "0";
         const plus = document.createElement("button");
         plus.type = "button";
+        plus.className = "qty-plus";
+        plus.setAttribute("aria-label", "Aumentar opção");
         plus.textContent = "+";
         minus.addEventListener("click", () => changeCount(variant.id, -1));
         plus.addEventListener("click", () => changeCount(variant.id, 1));
