@@ -21,6 +21,16 @@ public class FrontendController {
         return "forward:/pages/cadastro.html";
     }
 
+    @GetMapping("/privacidade")
+    public String privacy() {
+        return "forward:/pages/privacidade.html";
+    }
+
+    @GetMapping("/cookies")
+    public String cookies() {
+        return "forward:/pages/cookies.html";
+    }
+
     @GetMapping("/recuperar-senha")
     public String recoverPassword() {
         return "forward:/pages/recuperar-senha.html";
