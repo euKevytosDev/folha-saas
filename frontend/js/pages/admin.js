@@ -1890,7 +1890,14 @@ async function refreshOrders(options = {}) {
     renderOrderSummary(summary);
     renderOrders(filtered);
     renderDashboard(summary, orders);
-    await refreshCash();
+    hideAlert($("#orders-alert"));
+    try {
+        await refreshCash();
+    } catch (error) {
+        if (!options.silent) {
+            showFormAlert($("#orders-alert"), error, "Não foi possível atualizar o caixa.");
+        }
+    }
     return { hasNew: fresh.length > 0, fresh };
 }
 
