@@ -542,35 +542,16 @@ function refreshLocalCart() {
         });
     });
     subtotal = Math.round(subtotal * 100) / 100;
-    const deliveryFee = estimateDeliveryFee(subtotal);
-    const total = Math.round((subtotal + deliveryFee) * 100) / 100;
     state.quote = {
         items: lines,
         subtotal,
         discount: 0,
-        deliveryFee,
-        total,
+        deliveryFee: 0,
+        total: subtotal,
         local: true
     };
     renderCartBar();
     renderCart();
-}
-
-/** Estimativa de frete no carrinho (antes de escolher retirada/entrega). */
-function estimateDeliveryFee(subtotal) {
-    const delivery = state.store?.delivery;
-    if (!delivery || delivery.deliveryEnabled === false) {
-        return 0;
-    }
-    const fee = Number(delivery.fixedFee || 0);
-    if (!(fee > 0)) {
-        return 0;
-    }
-    const freeAbove = Number(delivery.freeAboveAmount);
-    if (Number.isFinite(freeAbove) && freeAbove > 0 && Number(subtotal) + 1e-9 >= freeAbove) {
-        return 0;
-    }
-    return Math.round(fee * 100) / 100;
 }
 
 function renderCartBar() {
@@ -583,7 +564,7 @@ function renderCartBar() {
     }
     const count = cartCount(items);
     els.cartCount.textContent = count === 1 ? "1 item" : `${formatCount(count)} itens`;
-    els.cartSubtotal.textContent = formatBRL(state.quote?.total || state.quote?.subtotal || 0);
+    els.cartSubtotal.textContent = formatBRL(state.quote?.subtotal || 0);
 }
 
 function formatCount(value) {
@@ -603,12 +584,7 @@ function renderCart() {
     }
     $("#quote-subtotal").textContent = formatBRL(state.quote?.subtotal || 0);
     $("#quote-discount").textContent = formatBRL(state.quote?.discount || 0);
-    const fee = Number(state.quote?.deliveryFee ?? estimateDeliveryFee(state.quote?.subtotal || 0));
-    const deliveryEl = $("#quote-delivery");
-    if (deliveryEl) {
-        deliveryEl.textContent = fee > 0 ? `Frete fixo ${formatBRL(fee)}` : "Grátis / a calcular";
-    }
-    $("#quote-total").textContent = formatBRL(state.quote?.total || 0);
+    $("#quote-total").textContent = formatBRL(state.quote?.subtotal || 0);
     syncCheckoutLink();
 }
 
@@ -875,11 +851,11 @@ function pulseAddFeedback() {
     window.clearTimeout(pulseAddFeedback.catchTimer);
     pulseAddFeedback.catchTimer = window.setTimeout(() => {
         cart?.classList.add("is-catch");
-    }, 280);
+    }, 500);
     pulseAddFeedback.timer = window.setTimeout(() => {
         host.classList.remove("is-on");
         cart?.classList.remove("is-catch");
-    }, 460);
+    }, 680);
 }
 
 function showAlert(message) {
