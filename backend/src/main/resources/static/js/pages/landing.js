@@ -13,17 +13,34 @@ window.addEventListener("scroll", () => {
 const form = $("#lead-form");
 const alertBox = $("#lead-alert");
 const done = $("#lead-done");
+const planHint = $("#plan-chosen");
+
+document.querySelectorAll("[data-plan]").forEach((link) => {
+    link.addEventListener("click", () => {
+        const plan = link.dataset.plan;
+        if (!form || !plan) {
+            return;
+        }
+        form.dataset.plan = plan;
+        if (planHint) {
+            planHint.hidden = false;
+            planHint.textContent = `Você escolheu o plano ${plan}.`;
+        }
+    });
+});
 
 form?.addEventListener("submit", async (event) => {
     event.preventDefault();
     alertBox.hidden = true;
     const submit = form.querySelector("button[type='submit']");
     submit.disabled = true;
+    const chosen = form.dataset.plan;
+    const brief = form.brief.value.trim();
     const body = {
         name: form.name.value.trim(),
         phone: form.phone.value.trim(),
         businessName: form.businessName.value.trim(),
-        brief: form.brief.value.trim(),
+        brief: chosen ? `Plano de interesse: ${chosen}. ${brief}` : brief,
         website: form.website.value.trim()
     };
     try {
