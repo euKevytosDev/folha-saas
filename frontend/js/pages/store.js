@@ -442,6 +442,9 @@ function addControl(product) {
     add.addEventListener("click", () => {
         addToCart(state.store.id, product.id, Number(input.value), null);
         refreshLocalCart();
+        input.value = startQuantity(product);
+        syncHint();
+        pulseAddFeedback();
     });
     actions.append(qtyBlock, add);
     return actions;
@@ -822,6 +825,31 @@ function confirmVariantSheet() {
     addToCart(state.store.id, product.id, 1, selected.map((variant) => variant.id));
     closeVariantSheet();
     refreshLocalCart();
+    pulseAddFeedback();
+}
+
+function pulseAddFeedback() {
+    try {
+        navigator.vibrate?.(12);
+    } catch {
+        // alguns celulares não vibram no navegador
+    }
+    let host = document.getElementById("add-confirm");
+    if (!host) {
+        host = document.createElement("div");
+        host.id = "add-confirm";
+        host.className = "add-confirm";
+        host.setAttribute("aria-hidden", "true");
+        host.innerHTML = '<span class="add-confirm-mark">✓</span>';
+        document.body.append(host);
+    }
+    host.classList.remove("is-on");
+    void host.offsetWidth;
+    host.classList.add("is-on");
+    window.clearTimeout(pulseAddFeedback.timer);
+    pulseAddFeedback.timer = window.setTimeout(() => {
+        host.classList.remove("is-on");
+    }, 520);
 }
 
 function showAlert(message) {
