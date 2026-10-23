@@ -196,6 +196,55 @@
     align-items: center;
     justify-content: space-between;
     gap: 0.5rem;
+    cursor: pointer;
+}
+
+.order-fold {
+    width: 2rem;
+    height: 2rem;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--color-text-muted);
+    display: grid;
+    place-items: center;
+    padding: 0;
+    flex: none;
+}
+
+.order-fold:hover,
+.order-fold:focus-visible {
+    color: var(--color-text);
+    background: var(--color-surface-muted, #f4f6f2);
+}
+
+.order-fold svg {
+    width: 1.05rem;
+    height: 1.05rem;
+    display: block;
+    transition: transform 0.18s ease;
+}
+
+.order-admin-row.is-collapsed .order-fold svg {
+    transform: rotate(-90deg);
+}
+
+.order-admin-count {
+    display: none;
+    margin: 0;
+}
+
+.order-admin-row.is-collapsed .order-admin-count {
+    display: block;
+}
+
+.order-admin-row.is-collapsed .order-admin-body {
+    display: none;
+}
+
+.order-admin-row.is-collapsed {
+    padding-top: 0.65rem;
+    padding-bottom: 0.65rem;
 }
 
 .order-admin-title {

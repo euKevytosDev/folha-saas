@@ -121,6 +121,8 @@ const orderState = { status: "OPEN" };
 const cashState = { preset: "today" };
 let knownOrderIds = new Set();
 let freshOrderIds = new Set();
+/** Preferência de recolher/abrir cada pedido (sobrevive ao refresh da lista). */
+const orderFold = new Map();
 let ordersPollTimer = 0;
 let audioCtx = null;
 let soundUnlocked = false;
@@ -2130,6 +2132,25 @@ function renderOrderSummary(summary) {
     });
 }
 
+function isOrderCollapsed(order) {
+    if (orderFold.has(order.id)) {
+        return orderFold.get(order.id);
+    }
+    return order.status === "DELIVERED" || order.status === "CANCELLED";
+}
+
+function applyOrderFold(row, order, collapsed) {
+    row.classList.toggle("is-collapsed", collapsed);
+    const fold = row.querySelector(".order-fold");
+    if (!fold) {
+        return;
+    }
+    fold.setAttribute("aria-expanded", String(!collapsed));
+    fold.setAttribute("aria-label", collapsed
+        ? `Abrir pedido ${order.publicCode}`
+        : `Recolher pedido ${order.publicCode}`);
+}
+
 function renderOrders(orders) {
     const list = $("#orders-list");
     if (!list) {
@@ -2157,6 +2178,10 @@ function renderOrders(orders) {
 
         const head = document.createElement("div");
         head.className = "order-admin-head";
+        const fold = document.createElement("button");
+        fold.type = "button";
+        fold.className = "order-fold";
+        fold.innerHTML = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 10.5 12 14.5 16 10.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
         const titleGroup = document.createElement("div");
         titleGroup.className = "order-admin-title";
         const title = document.createElement("strong");
@@ -2165,7 +2190,7 @@ function renderOrders(orders) {
         badge.className = cancelled ? "badge is-cancelled" : "badge";
         badge.textContent = orderStatusLabel(order);
         titleGroup.append(title, badge);
-        head.append(titleGroup);
+        head.append(fold, titleGroup);
         if (order.status === "DELIVERED" || order.status === "CANCELLED") {
             const remove = document.createElement("button");
             remove.type = "button";
@@ -2190,6 +2215,14 @@ function renderOrders(orders) {
             : "";
         meta.textContent = `${formatBRL(order.total)} · ${fulfillmentLabel(order.fulfillmentType)} · ${formatOrderWhen(order.createdAt)} · ${formatPhoneDisplay(order.customerPhone)}${payLabel}${scheduledLabel}${nfceLabel}`;
 
+        const itemCount = (order.items || []).length;
+        const countLine = document.createElement("p");
+        countLine.className = "order-admin-count muted";
+        countLine.textContent = itemCount === 1 ? "1 item" : `${itemCount} itens`;
+
+        const body = document.createElement("div");
+        body.className = "order-admin-body";
+
         const items = document.createElement("ul");
         items.className = "order-item-list";
         (order.items || []).forEach((item) => {
@@ -2201,22 +2234,23 @@ function renderOrders(orders) {
             );
             items.append(li);
         });
+        body.append(items);
 
-        row.append(head, meta, items);
+        row.append(head, meta, countLine);
 
         const addressLine = formatOrderAddress(order);
         if (addressLine) {
             const address = document.createElement("p");
             address.className = "order-admin-address";
             address.textContent = addressLine;
-            row.append(address);
+            body.append(address);
         }
 
         if (order.notes) {
             const notes = document.createElement("p");
             notes.className = "muted";
             notes.textContent = `Obs.: ${order.notes}`;
-            row.append(notes);
+            body.append(notes);
         }
 
         const next = nextStatus(order.status);
@@ -2281,8 +2315,26 @@ function renderOrders(orders) {
             actions.append(cancel);
         }
         if (actions.childNodes.length) {
-            row.append(actions);
+            body.append(actions);
         }
+        row.append(body);
+        const collapsed = isOrderCollapsed(order);
+        applyOrderFold(row, order, collapsed);
+        const toggleFold = (event) => {
+            if (event.target.closest(".order-history-remove")) {
+                return;
+            }
+            const next = !row.classList.contains("is-collapsed");
+            orderFold.set(order.id, next);
+            applyOrderFold(row, order, next);
+        };
+        fold.addEventListener("click", toggleFold);
+        head.addEventListener("click", (event) => {
+            if (event.target.closest(".order-fold") || event.target.closest(".order-history-remove")) {
+                return;
+            }
+            toggleFold(event);
+        });
         list.append(row);
     });
 }
